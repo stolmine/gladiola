@@ -19,6 +19,7 @@ var defaultStep = {
 ~bpm          = 120;
 ~clockDiv     = 0.25;
 ~playing      = false;
+~playheadStep = 0;
 ~voice        = nil;
 ~seqClock     = nil;
 
@@ -93,6 +94,7 @@ var defaultStep = {
                     };
                 };
 
+                ~playheadStep = ~currentStep;
                 ~currentStep = (~currentStep + 1) % ~patternLength;
 
                 { ~updateGridLEDs.() }.defer;

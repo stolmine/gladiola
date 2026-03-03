@@ -22,6 +22,14 @@
 - [x] serialosc auto-detect via ~connectSerialosc
 - [x] main.scd boot with modular file loading
 
+## bugs
+
+- [ ] steps trigger one step late — check if we advance ~currentStep before or after triggering (should trigger then advance, not advance then trigger)
+
+## next
+
+- [ ] active steps should display velocity via LED brightness (map velocity to brightness range)
+
 ## remaining
 
 - [ ] time stretching infrastructure for loop/break support
