@@ -150,6 +150,8 @@ s.waitForBoot({
 	"[Gladiola]   ~startTransport.()               - Start sequencer".postln;
 	"[Gladiola]   ~stopTransport.()                - Stop sequencer".postln;
 	"[Gladiola]   ~loadSamples.(path, mode)        - Load samples".postln;
+	"[Gladiola]   ~setClockDiv.(div)                - Set clock division (0.0625-4.0)".postln;
+	"[Gladiola]   ~setTempo.(bpm)                  - Change tempo (20-300 BPM)".postln;
 	"[Gladiola]   ~setPatternLength.(n)            - Set pattern length (1-128)".postln;
 	"[Gladiola]   ~clearPattern.()                 - Clear all steps".postln;
 	"[Gladiola]   ~cleanup.()                      - Shutdown".postln;

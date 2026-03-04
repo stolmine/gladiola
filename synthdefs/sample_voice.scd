@@ -31,10 +31,11 @@
 
         var combinedTrig = Trig1.kr(max(t_trig, gatedPulse), ControlDur.ir);
 
-        // Amplitude envelope: fast attack, medium percussive release.
-        // No doneAction — voice is persistent and the envelope just decays.
+        // Gate envelope: sustains at full level for step duration, short release to avoid clicks.
+        // stepDur divided by ratchet count so each ratchet hit gets its own gate.
+        var gateDur = safeStepDur / clampedRatchet;
         var env = EnvGen.kr(
-            Env.perc(attackTime: 0.002, releaseTime: 0.3, level: 1.0, curve: -4),
+            Env.new([0, 1, 1, 0], [0.002, gateDur - 0.012, 0.01], [2, 0, -4]),
             gate: combinedTrig
         );
 

@@ -94,14 +94,14 @@ var paramNames = [\bank, \pitch, \velocity, \loopLength, \loopRegion, \ratchet, 
             // param column: highlight selected, show bank brightness for slot 0
             paramRows.do { |row, idx|
                 var brightness;
-                if(idx == ~selectedParam) {
-                    brightness = GridInterface.ledBright;
+                if(idx == 0) {
+                    // bank slot: brightness maps bank index across full range
+                    var bankVal = step[\bank];
+                    var numBanks = (~numBanks ? 1).max(1);
+                    brightness = (GridInterface.ledDim + ((bankVal + 1) / numBanks * (GridInterface.ledFull - GridInterface.ledDim))).round.asInteger.clip(GridInterface.ledDim, GridInterface.ledFull);
                 } {
-                    if(idx == 0) {
-                        // bank slot: brightness indicates current bank
-                        var bankVal = step[\bank];
-                        var numBanks = (~numBanks ? 1).max(1);
-                        brightness = (GridInterface.ledDim + (bankVal / numBanks.max(1) * (GridInterface.ledFull - GridInterface.ledDim))).round.asInteger.clip(GridInterface.ledDim, GridInterface.ledFull);
+                    if(idx == ~selectedParam) {
+                        brightness = GridInterface.ledBright;
                     } {
                         brightness = GridInterface.ledDim;
                     };
@@ -146,7 +146,7 @@ var paramNames = [\bank, \pitch, \velocity, \loopLength, \loopRegion, \ratchet, 
                     } {
                         if(~steps[i][\on]) {
                             var vel = ~steps[i][\velocity];
-                            brightness = (GridInterface.ledDim + (vel * (GridInterface.ledBright - GridInterface.ledDim))).round.asInteger;
+                            brightness = (GridInterface.ledDim + (vel * (GridInterface.ledMedium - GridInterface.ledDim))).round.asInteger;
                         } {
                             brightness = GridInterface.ledOff;
                         }
@@ -188,11 +188,11 @@ var paramNames = [\bank, \pitch, \velocity, \loopLength, \loopRegion, \ratchet, 
                                 var newBankSize;
                                 ~steps[~heldStep][\bank] = newBank;
                                 newBankSize = ~samplesInBank.(newBank);
-                                if(~steps[~heldStep][\sample] >= newBankSize) {
-                                    ~steps[~heldStep][\sample] = 0;
-                                };
+                                ~steps[~heldStep][\sample] = 0;
+                                "[Gladiola] Step %: bank -> % (% samples)".format(~heldStep, newBank, newBankSize).postln;
                             } {
                                 ~selectedParam = paramIdx;
+                                "[Gladiola] Step %: param -> %".format(~heldStep, paramNames[paramIdx]).postln;
                             };
                             ~updateGridLEDs.();
                         };
@@ -207,9 +207,11 @@ var paramNames = [\bank, \pitch, \velocity, \loopLength, \loopRegion, \ratchet, 
                                     if(~selectedParam == 0) {
                                         // param 0: row sets sample index
                                         ~steps[~heldStep][\sample] = slotIdx;
+                                        "[Gladiola] Step %: sample -> % (bank %)".format(~heldStep, slotIdx, ~steps[~heldStep][\bank]).postln;
                                     } {
                                         var val = ~valueForPosition.(~selectedParam, slotIdx);
                                         ~steps[~heldStep][paramNames[~selectedParam]] = val;
+                                        "[Gladiola] Step %: % -> %".format(~heldStep, paramNames[~selectedParam], val).postln;
                                     };
                                     ~updateGridLEDs.();
                                 };

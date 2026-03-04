@@ -77,7 +77,7 @@ var defaultStep = {
                     buf = ~getSample.(bank, sample);
 
                     if(buf.notNil) {
-                        stepDur = ~clockDiv / (~bpm / 60);
+                        stepDur = ~clockDiv / ~seqClock.tempo;
 
                         ~voice.set(
                             \bufnum,     buf.bufnum,
@@ -136,6 +136,19 @@ var defaultStep = {
     } {
         "[Gladiola] setStep: index % out of range.".format(index).postln;
     };
+};
+
+~setClockDiv = { |div|
+    ~clockDiv = div.clip(0.0625, 4.0);
+    "[Gladiola] Clock division set to %.".format(~clockDiv).postln;
+};
+
+~setTempo = { |bpm|
+    ~bpm = bpm.clip(20, 300);
+    if(~seqClock.notNil) {
+        ~seqClock.tempo = ~bpm / 60;
+    };
+    "[Gladiola] Tempo set to % BPM.".format(~bpm).postln;
 };
 
 ~clearPattern = {
