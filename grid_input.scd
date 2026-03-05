@@ -84,8 +84,9 @@
                     if(~paramMenuActive && ~heldTrack.notNil && ~heldStepIdx.notNil) {
                         var paramNames = ~currentParamNames.();
                         var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
+                        var pageToggleCol = if(~heldStepIdx == 3) { 4 } { 3 };
 
-                        if(x == 3 && y == 7) {
+                        if(x == pageToggleCol && y == 7) {
                             // Page toggle on utility row
                             ~paramPage = 1 - ~paramPage;
                             ~selectedParam = 0;

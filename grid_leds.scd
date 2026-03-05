@@ -63,8 +63,11 @@
             };
         }.();
 
-        // Page toggle at (3, 7)
-        ~grid.led(3, 7, if(~paramPage == 1) { GridInterface.ledFull } { GridInterface.ledMedium });
+        // Page toggle: shifts to col 4 when held step is col 3
+        {
+            var pageToggleCol = if(~heldStepIdx == 3) { 4 } { 3 };
+            ~grid.led(pageToggleCol, 7, if(~paramPage == 1) { GridInterface.ledFull } { GridInterface.ledMedium });
+        }.();
 
     } {
         if(~utilityOverlayActive) {
