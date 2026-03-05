@@ -29,6 +29,7 @@ var defaultStep = {
 ~transpose     = 1.0;
 ~globalReverse = false;
 ~presets       = Array.fill(4, { nil });
+~clipboard     = nil;
 ~seqClock      = nil;
 
 ~voiceGroup    = nil;

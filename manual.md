@@ -29,7 +29,7 @@ Row 7:  Utility row
 | 0 | Transport start/stop (tap), panic/silence all (double-tap) |
 | 1 | Clock division (hold for menu) |
 | 2 | Delay division (hold for menu) |
-| 3 | Global reverse toggle / param page toggle (during param overlay) |
+| 3 | Global reverse toggle |
 | 4 | Global transpose (hold for menu) |
 | 5-8 | Preset slots 1-4 |
 | 9-15 | Track mute toggles (tracks 1-7) |
@@ -91,8 +91,6 @@ Tap columns 9-15 on the utility row to toggle mute for tracks 1-7. Muted tracks 
 
 Tap column 3 on the utility row to toggle global reverse. When active (full brightness), all steps play in reverse — except steps that already have per-step reverse enabled, which flip back to forward playback. This is a global inversion of each step's individual reverse setting.
 
-During the parameter overlay, column 3 functions as the param page toggle instead.
-
 ### Presets
 
 Four preset slots (columns 5-8 on the utility row) can save and recall the full groovebox state.
@@ -107,13 +105,27 @@ Preset slots show full brightness when occupied, off when empty. Presets are blo
 
 ## Parameter Overlay
 
-Hold any active step to open the parameter overlay. The held step lights full brightness. The held step's column shows parameter selectors on the other rows (including row 7 for the 7th param). The selected parameter's row shows value positions.
+Hold any active step to open the parameter overlay. The held step lights full brightness. The held step's column shows parameter selectors on all other rows (0-7). The selected parameter's row shows value positions.
+
+Two action buttons (P and C) appear on the far side of the grid, dynamically positioned to avoid the held step:
+
+- **P (Page toggle)**: Switches between param page 1 and page 2. Medium brightness = page 1, full = page 2.
+- **C (Copy)**: Copies all params from the held step to the clipboard. Dim = clipboard empty, bright = clipboard has data.
+
+The action buttons appear at column 14 when the held step is in the left half (cols 0-7), or column 1 when in the right half (cols 8-15). Vertically, P is always above C with a 1-row gap between them and the held step's row.
+
+### Copy/Paste
+
+- **Copy**: While in the param overlay, tap the C button to copy the held step's parameters
+- **Paste**: Hold an inactive (off) step — if the clipboard has data, the step is filled with clipboard params and activated. No param menu opens.
+- Holding an active step always opens the param menu normally, regardless of clipboard state
+- The clipboard persists across overlay sessions until overwritten
 
 ### Navigating Parameters
 
 - Tap a row in the held column to select that parameter
 - Tap a column in the selected parameter's row to set its value
-- Tap (3, 7) to toggle between page 1 and page 2 (medium brightness = page 1, full = page 2)
+- Tap the P button to toggle between page 1 and page 2
 
 ### Page 1 Parameters
 

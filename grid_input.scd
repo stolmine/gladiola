@@ -12,6 +12,7 @@
 ~utilityHeldButton = nil;
 ~presetHeldSlot = nil;
 ~presetHeldX = nil;
+~clipboard = nil;
 
 ~paramRowForIndex = { |paramIdx, heldTrack|
     // Maps param index (0-6) to grid row, skipping heldTrack's row.
@@ -30,6 +31,15 @@
             }
         }
     }
+};
+
+~overlayActionPositions = { |heldTrack, heldStepIdx|
+    var actionCol = if(heldStepIdx <= 7) { 14 } { 1 };
+    var pRow, cRow;
+    if(heldTrack <= 1) { pRow = heldTrack + 2; cRow = heldTrack + 4 };
+    if(heldTrack >= 2 && (heldTrack <= 4)) { pRow = heldTrack - 2; cRow = heldTrack + 2 };
+    if(heldTrack >= 5) { pRow = heldTrack - 4; cRow = heldTrack - 2 };
+    Dictionary[\pageCol -> actionCol, \pageRow -> pRow, \copyCol -> actionCol, \copyRow -> cRow]
 };
 
 ~valueIdxForCol = { |col, heldCol|
@@ -84,13 +94,20 @@
                     if(~paramMenuActive && ~heldTrack.notNil && ~heldStepIdx.notNil) {
                         var paramNames = ~currentParamNames.();
                         var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
-                        var pageToggleCol = if(~heldStepIdx == 3) { 4 } { 3 };
+                        var actionPos = ~overlayActionPositions.(~heldTrack, ~heldStepIdx);
 
-                        if(x == pageToggleCol && y == 7) {
-                            // Page toggle on utility row
+                        if(x == actionPos[\pageCol] && (y == actionPos[\pageRow])) {
+                            // Page toggle
                             ~paramPage = 1 - ~paramPage;
                             ~selectedParam = 0;
                             "[Gladiola] Param page -> %".format(~paramPage).postln;
+                            ~updateGridLEDs.();
+                        } {
+                        if(x == actionPos[\copyCol] && (y == actionPos[\copyRow])) {
+                            // Copy step params to clipboard
+                            ~clipboard = step.copy;
+                            ~clipboard.removeAt(\on);
+                            "[Gladiola] Copied step params from track % step %".format(~heldTrack, ~heldStepIdx).postln;
                             ~updateGridLEDs.();
                         } {
                             if(x == ~heldStepIdx && (y != ~heldTrack)) {
@@ -132,6 +149,7 @@
                                 };
                             };
                         };
+                        };
                     } {
                         if(y == 7) {
                             if(x == 0) {
@@ -172,14 +190,28 @@
             if(y >= 0 && (y < ~numTracks)) {
                 var track = ~tracks[y];
                 if(~stepInRange.(x, track[\startStep], track[\endStep])) {
-                    ~pendingToggle = nil;
-                    ~pendingToggleTrack = nil;
-                    ~heldTrack = y;
-                    ~heldStepIdx = x;
-                    ~paramMenuActive = true;
-                    ~selectedParam = 0;
-                    ~paramPage = 0;
-                    ~updateGridLEDs.();
+                    var step = track[\steps][x];
+                    if(~clipboard.notNil && (step[\on] == false)) {
+                        // Paste clipboard into off step
+                        ~pendingToggle = nil;
+                        ~pendingToggleTrack = nil;
+                        ~clipboard.keysValuesDo { |key, val|
+                            step[key] = val;
+                        };
+                        step[\on] = true;
+                        "[Gladiola] Pasted into track % step %".format(y, x).postln;
+                        ~updateGridLEDs.();
+                    } {
+                        // Open param menu
+                        ~pendingToggle = nil;
+                        ~pendingToggleTrack = nil;
+                        ~heldTrack = y;
+                        ~heldStepIdx = x;
+                        ~paramMenuActive = true;
+                        ~selectedParam = 0;
+                        ~paramPage = 0;
+                        ~updateGridLEDs.();
+                    };
                 };
             };
             if(y == 7) {

@@ -25,6 +25,7 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 
 - 7 tracks × 16 steps with per-step parameters (2 pages, 14 params)
 - Hold-to-reveal parameter overlay with bank/sample selection
+- Step copy/paste with dynamically positioned overlay action buttons
 - 4-slot preset system (save/recall/clear full state)
 - Global reverse toggle (XOR with per-step reverse)
 - Clock/delay division and transpose overlays

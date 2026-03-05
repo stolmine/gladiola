@@ -49,12 +49,15 @@
 - [x] input mutex system: modal guards on doubleTap handler block length modal/preset clear during overlays
 - [x] preset coordinate tracking (~presetHeldX) prevents wrong-slot recall on slide
 - [x] undo-toggle scoped to ~stepInRange to prevent out-of-range step corruption
+- [x] step copy/paste: copy params from held step (C button), paste into off steps (hold)
+- [x] dynamic overlay action buttons (P=page toggle, C=copy) positioned relative to held step
+- [x] removed fixed page toggle at (3,7)/(4,7) — row 7 now full param selector during overlay
 
 ## ideas
 
 - [ ] time stretching infrastructure for loop/break support
 - [ ] pattern save/load (persist to disk)
-- [ ] copy/paste steps or regions
+- [ ] copy/paste step regions (multi-step copy)
 - [ ] swing / groove templates
 - [ ] clock sync (MIDI clock, Link)
 - [ ] audio output routing options (bus selection)

@@ -5,6 +5,9 @@
         var step = track[\steps][~heldStepIdx];
         var paramNames = ~currentParamNames.();
         var numParams = paramNames.size;
+        var actionPos = ~overlayActionPositions.(~heldTrack, ~heldStepIdx);
+        var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
+        var curVal, curPos, numValid;
 
         ~grid.clear;
 
@@ -34,22 +37,21 @@
         };
 
         // Value row for selected param
-        {
-            var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
-            var curVal, curPos, numValid;
+        if(~selectedParam == 0 && (~paramPage == 0)) {
+            curVal = step[\sample];
+            curPos = curVal.asInteger;
+            numValid = ~numValidPositions.(0, 0, ~heldTrack, ~heldStepIdx);
+        } {
+            curVal = step[paramNames[~selectedParam]];
+            curPos = ~positionForValue.(~paramPage, ~selectedParam, curVal);
+            numValid = ~numValidPositions.(~paramPage, ~selectedParam, ~heldTrack, ~heldStepIdx);
+        };
 
-            if(~selectedParam == 0 && (~paramPage == 0)) {
-                curVal = step[\sample];
-                curPos = curVal.asInteger;
-                numValid = ~numValidPositions.(0, 0, ~heldTrack, ~heldStepIdx);
-            } {
-                curVal = step[paramNames[~selectedParam]];
-                curPos = ~positionForValue.(~paramPage, ~selectedParam, curVal);
-                numValid = ~numValidPositions.(~paramPage, ~selectedParam, ~heldTrack, ~heldStepIdx);
-            };
-
-            16.do { |col|
-                if(col != ~heldStepIdx) {
+        16.do { |col|
+            if(col != ~heldStepIdx) {
+                // Skip action button cells to avoid visual collision
+                if((col == actionPos[\pageCol]) && ((valueRow == actionPos[\pageRow]) || (valueRow == actionPos[\copyRow]))) {
+                } {
                     var valIdx = if(col < ~heldStepIdx) { col } { col - 1 };
                     if(valIdx < numValid) {
                         var brightness = if(valIdx == curPos) {
@@ -61,13 +63,13 @@
                     };
                 };
             };
-        }.();
+        };
 
-        // Page toggle: shifts to col 4 when held step is col 3
-        {
-            var pageToggleCol = if(~heldStepIdx == 3) { 4 } { 3 };
-            ~grid.led(pageToggleCol, 7, if(~paramPage == 1) { GridInterface.ledFull } { GridInterface.ledMedium });
-        }.();
+        // Action buttons: P (page toggle) and C (copy)
+        ~grid.led(actionPos[\pageCol], actionPos[\pageRow],
+            if(~paramPage == 1) { GridInterface.ledFull } { GridInterface.ledMedium });
+        ~grid.led(actionPos[\copyCol], actionPos[\copyRow],
+            if(~clipboard.notNil) { GridInterface.ledBright } { GridInterface.ledDim });
 
     } {
         if(~utilityOverlayActive) {
