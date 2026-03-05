@@ -134,7 +134,7 @@ var defaultStep = {
                                 \ratchet,    ratchet,
                                 \stepDur,    stepDur,
                                 \gateLength, step[\gateLength],
-                                \reverse,    (step[\reverse] xor: ~globalReverse).asInteger,
+                                \reverse,    (step[\reverse].asBoolean xor: ~globalReverse).asInteger,
                                 \filter,     step[\filter],
                                 \pan,        step[\pan],
                                 \delaySend,  step[\delaySend],
