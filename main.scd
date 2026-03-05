@@ -1,8 +1,3 @@
-// Gladiola - Main Boot File
-// A groovebox for monome grid, powered by SuperCollider
-//
-// Usage: "/path/to/main.scd".load;
-
 (
 var rawPath = thisProcess.nowExecutingPath;
 var basePath = if(rawPath.notNil && { rawPath.size > 0 }) {
@@ -29,7 +24,7 @@ s.waitForBoot({
 	loadOrError.(basePath +/+ "synthdefs/sample_voice.scd");
 	~gladiolaLoadSynthDefs.();
 	s.sync;
-	"[Gladiola] SynthDef loaded.".postln;
+	"[Gladiola] SynthDefs loaded.".postln;
 
 	// ========================================
 	// LOAD SAMPLE LOADER
@@ -53,10 +48,12 @@ s.waitForBoot({
 	s.sync;
 
 	// ========================================
-	// LOAD GRID HANDLER (define only; connect via ~connectGrid)
+	// LOAD GRID MODULES
 	// ========================================
 
-	loadOrError.(basePath +/+ "grid_handler.scd");
+	loadOrError.(basePath +/+ "grid_params.scd");
+	loadOrError.(basePath +/+ "grid_leds.scd");
+	loadOrError.(basePath +/+ "grid_input.scd");
 
 	// ========================================
 	// CONNECT GRID
@@ -104,13 +101,9 @@ s.waitForBoot({
 			connected = true;
 			~connectGrid.("127.0.0.1", port, false, "/" ++ id);
 
-			// Free immediately so only the first-listed device connects.
-			// Re-call ~connectSerialosc to select a different device.
 			OSCdef(\gladiolaDeviceInfo).free;
 		}, '/serialosc/device');
 
-		// Guard against no device responding: free the listener after 5 seconds.
-		// Uses a flag rather than re-querying OSCdef, which always returns non-nil.
 		AppClock.sched(5.0, {
 			if(connected.not) {
 				OSCdef(\gladiolaDeviceInfo).free;
@@ -130,7 +123,10 @@ s.waitForBoot({
 		if(~stopTransport.notNil)  { ~stopTransport.() };
 		if(~disconnectGrid.notNil) { ~disconnectGrid.() };
 		if(~freeSamples.notNil)    { ~freeSamples.() };
-		if(~voice.notNil)          { ~voice.free; ~voice = nil };
+		if(~delaySynth.notNil) { ~delaySynth.free; ~delaySynth = nil };
+		if(~fxGroup.notNil)    { ~fxGroup.free; ~fxGroup = nil };
+		if(~voiceGroup.notNil) { ~voiceGroup.free; ~voiceGroup = nil };
+		if(~delayBus.notNil)   { ~delayBus.free; ~delayBus = nil };
 		"[Gladiola] Cleanup complete.".postln;
 	};
 
@@ -141,6 +137,7 @@ s.waitForBoot({
 	"[Gladiola] ========================================".postln;
 	"[Gladiola] BOOT COMPLETE".postln;
 	"[Gladiola] ========================================".postln;
+	"[Gladiola] % tracks × % steps".format(~numTracks, ~stepsPerTrack).postln;
 	"[Gladiola] Samples: % banks loaded".format(~numBanks).postln;
 	"[Gladiola] BPM: %".format(~bpm).postln;
 	"[Gladiola] ========================================".postln;
@@ -150,9 +147,12 @@ s.waitForBoot({
 	"[Gladiola]   ~startTransport.()               - Start sequencer".postln;
 	"[Gladiola]   ~stopTransport.()                - Stop sequencer".postln;
 	"[Gladiola]   ~loadSamples.(path, mode)        - Load samples".postln;
-	"[Gladiola]   ~setClockDiv.(div)                - Set clock division (0.0625-4.0)".postln;
-	"[Gladiola]   ~setTempo.(bpm)                  - Change tempo (20-300 BPM)".postln;
-	"[Gladiola]   ~setPatternLength.(n)            - Set pattern length (1-128)".postln;
+	"[Gladiola]   ~setClockDiv.(div)               - Clock division (0.0625-4.0)".postln;
+	"[Gladiola]   ~setDelayDiv.(div)               - Delay division (0.0625-4.0)".postln;
+	"[Gladiola]   ~setTempo.(bpm)                  - Change tempo (20-300)".postln;
+	"[Gladiola]   ~setTrackStart.(t, step)          - Track start point (0-15)".postln;
+	"[Gladiola]   ~setTrackEnd.(t, step)            - Track end point (0-15)".postln;
+	"[Gladiola]   ~muteTrack.(idx) / ~unmuteTrack.(idx)".postln;
 	"[Gladiola]   ~clearPattern.()                 - Clear all steps".postln;
 	"[Gladiola]   ~cleanup.()                      - Shutdown".postln;
 	"[Gladiola] ========================================".postln;

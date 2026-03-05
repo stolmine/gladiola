@@ -9,64 +9,73 @@
             ratchet = 1,
             stepDur = 0.125,
             t_trig = 0,
-            out = 0;
+            out = 0,
+            gateLength = 1.0,
+            reverse = 0,
+            filter = 0.0,
+            pan = 0.0,
+            delaySend = 0.0,
+            bitcrush = 0.0,
+            delayBus = 0;
 
-        var smoothRate = Lag.kr(rate, 0.05);
-        var smoothAmp  = Lag.kr(amp,  0.05);
+        var smoothRate, smoothAmp,
+            clampedRatchet, safeStepDur, ratchetFreq, ratchetImpulse,
+            count, latch, gatedPulse, combinedTrig,
+            gateDur, holdDur, env,
+            bufFrames, bufRate, startFrame, loopFrames, oneShot, loopEnd,
+            phasorStart, phasorEnd, phasorResetPos, phasorRate, phasor,
+            sig,
+            crushed, filterFreq, filterSig, filterSelect, lpf, hpf,
+            panned;
 
-        // Ratchet: t_trig is pulse 0 (immediate); Impulse supplies pulses 1..N-1.
-        // PulseCount resets to 0 on t_trig, so the latch opens for counts 0..(N-2),
-        // producing exactly N-1 extra pulses — N total including the original t_trig.
-        // stepDur is guarded against zero to prevent Impulse.kr(inf).
+        smoothRate = Lag.kr(rate, 0.05);
+        smoothAmp  = Lag.kr(amp,  0.05);
 
-        var clampedRatchet = ratchet.clip(1, 8).round(1);
-        var safeStepDur    = stepDur.max(ControlDur.ir);
+        clampedRatchet = ratchet.clip(1, 8).round(1);
+        safeStepDur    = stepDur.max(ControlDur.ir);
 
-        var ratchetFreq    = clampedRatchet / safeStepDur;
-        var ratchetImpulse = Impulse.kr(ratchetFreq);
+        ratchetFreq    = clampedRatchet / safeStepDur;
+        ratchetImpulse = Impulse.kr(ratchetFreq);
 
-        var count      = PulseCount.kr(ratchetImpulse, t_trig);
-        var latch      = (count < (clampedRatchet - 1));
-        var gatedPulse = ratchetImpulse * latch;
+        count      = PulseCount.kr(ratchetImpulse, t_trig);
+        latch      = (count < (clampedRatchet - 1));
+        gatedPulse = ratchetImpulse * latch;
 
-        var combinedTrig = Trig1.kr(max(t_trig, gatedPulse), ControlDur.ir);
+        combinedTrig = Trig1.kr(max(t_trig, gatedPulse), ControlDur.ir);
 
-        // Gate envelope: sustains at full level for step duration, short release to avoid clicks.
-        // stepDur divided by ratchet count so each ratchet hit gets its own gate.
-        var gateDur = safeStepDur / clampedRatchet;
-        var env = EnvGen.kr(
-            Env.new([0, 1, 1, 0], [0.002, gateDur - 0.012, 0.01], [2, 0, -4]),
+        gateDur = safeStepDur * gateLength.clip(0.01, 100.0) / clampedRatchet;
+        holdDur = (gateDur - 0.012).max(0.0);
+        env = EnvGen.kr(
+            Env.new([0, 1, 1, 0], [0.002, holdDur, 0.01], [2, 0, -4]),
             gate: combinedTrig
         );
 
-        var bufFrames  = BufFrames.kr(bufnum);
-        var bufRate    = BufRateScale.kr(bufnum);
-        var startFrame = loopRegion * bufFrames;
-        var loopFrames = loopLength * bufFrames;
+        bufFrames  = BufFrames.kr(bufnum);
+        bufRate    = BufRateScale.kr(bufnum);
+        startFrame = loopRegion * bufFrames;
+        loopFrames = loopLength * bufFrames;
 
-        // loopLength == 0 → one-shot: phasor runs from loopRegion to end of buffer.
-        // loopLength >  0 → loop: phasor wraps within [loopRegion, loopRegion + loopLength].
-        // loopRegion and loopLength are not lagged: changes take effect on the next trigger
-        // rather than drifting mid-playback, which would cause transient zero-length loops.
-        var oneShot = (loopLength <= 0);
+        oneShot = (loopLength <= 0);
 
-        var loopEnd = Select.kr(oneShot, [
+        loopEnd = Select.kr(oneShot, [
             startFrame + loopFrames,
             bufFrames
         ]);
 
-        // Phasor resets to startFrame on each combinedTrig.
-        // BufRd loop=0 in one-shot mode holds final sample when phasor exceeds bufFrames;
-        // BufRd loop=1 in loop mode wraps within the Phasor-defined region.
-        var phasor = Phasor.ar(
+        phasorStart    = Select.kr(reverse, [startFrame, loopEnd]);
+        phasorEnd      = Select.kr(reverse, [loopEnd, startFrame]);
+        phasorResetPos = Select.kr(reverse, [startFrame, loopEnd]);
+        phasorRate     = Select.kr(reverse, [bufRate * smoothRate, bufRate * smoothRate * -1]);
+
+        phasor = Phasor.ar(
             trig:     combinedTrig,
-            rate:     bufRate * smoothRate,
-            start:    startFrame,
-            end:      loopEnd,
-            resetPos: startFrame
+            rate:     phasorRate,
+            start:    phasorStart,
+            end:      phasorEnd,
+            resetPos: phasorResetPos
         );
 
-        var sig = BufRd.ar(
+        sig = BufRd.ar(
             numChannels:   1,
             bufnum:        bufnum,
             phase:         phasor,
@@ -76,7 +85,28 @@
 
         sig = sig * env * smoothAmp;
 
-        Out.ar(out, Pan2.ar(sig, 0.0));
+        crushed = Decimator.ar(sig, 44100 * (1 - (bitcrush * 0.9)), 24 - (bitcrush * 20));
+        sig = SelectX.ar(bitcrush, [sig, crushed]);
+
+        filterFreq   = LinExp.kr(filter.abs, 0, 1, 200, 18000);
+        lpf          = RLPF.ar(sig, filterFreq, 0.7);
+        hpf          = RHPF.ar(sig, filterFreq, 0.7);
+        filterSelect = K2A.ar(filter > 0);
+        filterSig    = SelectX.ar(filterSelect, [lpf, hpf]);
+        sig          = SelectX.ar(filter.abs, [sig, filterSig]);
+
+        panned = Pan2.ar(sig, pan);
+
+        Out.ar(delayBus, panned * delaySend);
+        Out.ar(out, panned);
+    }).add;
+
+    SynthDef(\gladiolaDelay, {
+        arg delayBus = 0, delaytime = 0.5, feedback = 0.7, mix = 0.5, out = 0;
+        var input, delayed;
+        input   = In.ar(delayBus, 2);
+        delayed = CombC.ar(input, 2.0, delaytime, delaytime * 12 * feedback);
+        Out.ar(out, delayed * mix);
     }).add;
 
 };
