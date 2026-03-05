@@ -43,6 +43,12 @@
 - [x] bank brightness indicator on param column
 - [x] playhead LED clearly brighter than active steps
 - [x] grid split into grid_params.scd, grid_leds.scd, grid_input.scd
+- [x] 4-slot preset system (cols 5-8 row 7): tap to recall, hold to save, double-tap to clear
+- [x] presets capture full state: steps, params, start/end, mutes, clockDiv, delayDiv, transpose, globalReverse
+- [x] global reverse toggle (col 3 row 7): XOR inversion of per-step reverse settings
+- [x] input mutex system: modal guards on doubleTap handler block length modal/preset clear during overlays
+- [x] preset coordinate tracking (~presetHeldX) prevents wrong-slot recall on slide
+- [x] undo-toggle scoped to ~stepInRange to prevent out-of-range step corruption
 
 ## ideas
 

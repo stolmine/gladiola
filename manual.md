@@ -29,9 +29,9 @@ Row 7:  Utility row
 | 0 | Transport start/stop (tap), panic/silence all (double-tap) |
 | 1 | Clock division (hold for menu) |
 | 2 | Delay division (hold for menu) |
-| 3 | Param page toggle (during param overlay) |
+| 3 | Global reverse toggle / param page toggle (during param overlay) |
 | 4 | Global transpose (hold for menu) |
-| 5-8 | Reserved |
+| 5-8 | Preset slots 1-4 |
 | 9-15 | Track mute toggles (tracks 1-7) |
 
 ## Basic Operation
@@ -87,6 +87,24 @@ The transpose button lights full when transposed away from unity. Transpose mult
 
 Tap columns 9-15 on the utility row to toggle mute for tracks 1-7. Muted tracks show full brightness on their mute button; active steps on muted tracks display dim.
 
+### Global Reverse
+
+Tap column 3 on the utility row to toggle global reverse. When active (full brightness), all steps play in reverse — except steps that already have per-step reverse enabled, which flip back to forward playback. This is a global inversion of each step's individual reverse setting.
+
+During the parameter overlay, column 3 functions as the param page toggle instead.
+
+### Presets
+
+Four preset slots (columns 5-8 on the utility row) can save and recall the full groovebox state.
+
+- **Tap**: Recall saved preset
+- **Hold**: Save current state to preset slot
+- **Double-tap**: Clear preset slot
+
+Each preset captures: all track steps and parameters, start/end points, track mutes, clock division, delay division, transpose, and global reverse state.
+
+Preset slots show full brightness when occupied, off when empty. Presets are blocked during overlays and modals to prevent accidental changes.
+
 ## Parameter Overlay
 
 Hold any active step to open the parameter overlay. The held step lights full brightness. The held step's column shows parameter selectors on the other rows (including row 7 for the 7th param). The selected parameter's row shows value positions.
@@ -139,6 +157,9 @@ Hold any active step to open the parameter overlay. The held step lights full br
 | `~unmuteTrack.(idx)` | Unmute track |
 | `~loadSamples.(path, mode)` | Load samples (subdirectory/random/sequential) |
 | `~clearPattern.()` | Clear all steps |
+| `~savePreset.(slot)` | Save full state to preset slot (0-3) |
+| `~recallPreset.(slot)` | Recall state from preset slot (0-3) |
+| `~clearPreset.(slot)` | Clear preset slot (0-3) |
 | `~cleanup.()` | Shutdown |
 
 ## File Structure

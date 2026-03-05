@@ -27,6 +27,8 @@ var defaultStep = {
 ~delayDiv      = 0.25;
 ~playing       = false;
 ~transpose     = 1.0;
+~globalReverse = false;
+~presets       = Array.fill(4, { nil });
 ~seqClock      = nil;
 
 ~voiceGroup    = nil;
@@ -132,7 +134,7 @@ var defaultStep = {
                                 \ratchet,    ratchet,
                                 \stepDur,    stepDur,
                                 \gateLength, step[\gateLength],
-                                \reverse,    step[\reverse].asInteger,
+                                \reverse,    (step[\reverse] xor: ~globalReverse).asInteger,
                                 \filter,     step[\filter],
                                 \pan,        step[\pan],
                                 \delaySend,  step[\delaySend],
@@ -263,6 +265,50 @@ var defaultStep = {
         ~tracks[i][\endStep] = 15;
     };
     "[Gladiola] All patterns cleared.".postln;
+};
+
+~savePreset = { |slot|
+    var snapshot = Dictionary.new;
+    snapshot[\tracks] = ~numTracks.collect { |i|
+        var t = ~tracks[i];
+        Dictionary[
+            \steps -> t[\steps].collect { |s| s.copy },
+            \startStep -> t[\startStep],
+            \endStep -> t[\endStep],
+            \muted -> t[\muted]
+        ]
+    };
+    snapshot[\clockDiv] = ~clockDiv;
+    snapshot[\delayDiv] = ~delayDiv;
+    snapshot[\transpose] = ~transpose;
+    snapshot[\globalReverse] = ~globalReverse;
+    ~presets[slot] = snapshot;
+    "[Gladiola] Preset % saved.".format(slot + 1).postln;
+};
+
+~recallPreset = { |slot|
+    var snapshot = ~presets[slot];
+    if(snapshot.notNil) {
+        ~numTracks.do { |i|
+            var saved = snapshot[\tracks][i];
+            ~tracks[i][\steps] = saved[\steps].collect { |s| s.copy };
+            ~tracks[i][\startStep] = saved[\startStep];
+            ~tracks[i][\endStep] = saved[\endStep];
+            ~tracks[i][\muted] = saved[\muted];
+        };
+        ~setClockDiv.(snapshot[\clockDiv]);
+        ~setDelayDiv.(snapshot[\delayDiv]);
+        ~transpose = snapshot[\transpose];
+        ~globalReverse = snapshot[\globalReverse] ? false;
+        "[Gladiola] Preset % recalled.".format(slot + 1).postln;
+    } {
+        "[Gladiola] Preset % is empty.".format(slot + 1).postln;
+    };
+};
+
+~clearPreset = { |slot|
+    ~presets[slot] = nil;
+    "[Gladiola] Preset % cleared.".format(slot + 1).postln;
 };
 
 "[Gladiola] sequencer.scd loaded.".postln;

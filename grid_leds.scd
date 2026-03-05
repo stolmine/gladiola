@@ -173,7 +173,11 @@
                 ~grid.led(0, 7, if(~playing) { GridInterface.ledFull } { GridInterface.ledDim });
                 ~grid.led(1, 7, GridInterface.ledDim);
                 ~grid.led(2, 7, GridInterface.ledDim);
+                ~grid.led(3, 7, if(~globalReverse) { GridInterface.ledFull } { GridInterface.ledDim });
                 ~grid.led(4, 7, if(~transpose != 1.0) { GridInterface.ledFull } { GridInterface.ledDim });
+                4.do { |i|
+                    ~grid.led(5 + i, 7, if(~presets[i].notNil) { GridInterface.ledFull } { GridInterface.ledOff });
+                };
                 ~numTracks.do { |i|
                     ~grid.led(9 + i, 7, if(~tracks[i][\muted]) { GridInterface.ledFull } { GridInterface.ledDim });
                 };

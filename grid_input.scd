@@ -10,6 +10,8 @@
 ~utilityOverlayActive = false;
 ~utilityOverlayType = nil;
 ~utilityHeldButton = nil;
+~presetHeldSlot = nil;
+~presetHeldX = nil;
 
 ~paramRowForIndex = { |paramIdx, heldTrack|
     // Maps param index (0-6) to grid row, skipping heldTrack's row.
@@ -135,6 +137,15 @@
                                 if(~playing) { ~stopTransport.() } { ~startTransport.() };
                                 ~updateGridLEDs.();
                             };
+                            if(x == 3) {
+                                ~globalReverse = ~globalReverse.not;
+                                "[Gladiola] Global reverse -> %".format(~globalReverse).postln;
+                                ~updateGridLEDs.();
+                            };
+                            if(x >= 5 && (x <= 8)) {
+                                ~presetHeldSlot = x - 5;
+                                ~presetHeldX = x;
+                            };
                             if(x >= 9 && (x <= 15)) {
                                 var trackIdx = x - 9;
                                 ~toggleMuteTrack.(trackIdx);
@@ -195,6 +206,12 @@
                     "[Gladiola] Transpose overlay opened (current: %)".format(~transpose).postln;
                     ~updateGridLEDs.();
                 };
+                if(x >= 5 && (x <= 8)) {
+                    ~presetHeldSlot = nil;
+                    ~presetHeldX = nil;
+                    ~savePreset.(x - 5);
+                    ~updateGridLEDs.();
+                };
             };
         };
     });
@@ -219,13 +236,21 @@
                     "[Gladiola] Div overlay release ignored: x=%, y=%, expected (%, 7)".format(x, y, ~utilityHeldButton).postln;
                 };
             } {
-                if(~pendingToggle.notNil && ~pendingToggleTrack.notNil) {
-                    var stepIdx = ~pendingToggle;
-                    var trackIdx = ~pendingToggleTrack;
-                    ~pendingToggle = nil;
-                    ~pendingToggleTrack = nil;
-                    ~tracks[trackIdx][\steps][stepIdx][\on] = ~tracks[trackIdx][\steps][stepIdx][\on].not;
+                if(y == 7 && (x >= 5) && (x <= 8) && ~presetHeldSlot.notNil && (x == ~presetHeldX)) {
+                    var slot = ~presetHeldSlot;
+                    ~presetHeldSlot = nil;
+                    ~presetHeldX = nil;
+                    ~recallPreset.(slot);
                     ~updateGridLEDs.();
+                } {
+                    if(~pendingToggle.notNil && ~pendingToggleTrack.notNil) {
+                        var stepIdx = ~pendingToggle;
+                        var trackIdx = ~pendingToggleTrack;
+                        ~pendingToggle = nil;
+                        ~pendingToggleTrack = nil;
+                        ~tracks[trackIdx][\steps][stepIdx][\on] = ~tracks[trackIdx][\steps][stepIdx][\on].not;
+                        ~updateGridLEDs.();
+                    };
                 };
             };
         };
@@ -237,21 +262,29 @@
             ~panicVoices.();
             ~updateGridLEDs.();
         };
+        if(y == 7 && (x >= 5) && (x <= 8)) {
+            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~lengthModalTrack.isNil) {
+                ~presetHeldSlot = nil;
+                ~presetHeldX = nil;
+                ~clearPreset.(x - 5);
+                ~updateGridLEDs.();
+            };
+        };
         if(y >= 0 && (y < ~numTracks)) {
-            var track = ~tracks[y];
-            // Undo the step toggle from first tap's release
-            track[\steps][x][\on] = track[\steps][x][\on].not;
-            // Set tapped position as start, select end next
-            ~setTrackStart.(y, x);
-            ~pendingToggle = nil;
-            ~pendingToggleTrack = nil;
-            ~paramMenuActive = false;
-            ~heldTrack = nil;
-            ~heldStepIdx = nil;
-            ~lengthModalTrack = y;
-            ~lengthModalMode = \setEnd;
-            "[Gladiola] Track %: start -> %, select end".format(y, x).postln;
-            ~updateGridLEDs.();
+            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~lengthModalTrack.isNil) {
+                var track = ~tracks[y];
+                if(~stepInRange.(x, track[\startStep], track[\endStep])) {
+                    // Undo the step toggle from first tap's release
+                    track[\steps][x][\on] = track[\steps][x][\on].not;
+                    ~setTrackStart.(y, x);
+                    ~pendingToggle = nil;
+                    ~pendingToggleTrack = nil;
+                    ~lengthModalTrack = y;
+                    ~lengthModalMode = \setEnd;
+                    "[Gladiola] Track %: start -> %, select end".format(y, x).postln;
+                    ~updateGridLEDs.();
+                };
+            };
         };
     });
 
