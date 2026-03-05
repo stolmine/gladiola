@@ -57,19 +57,26 @@
                 };
             } {
                 if(~utilityOverlayActive) {
-                    var expectedCol = if(~utilityOverlayType == \clockDiv) { 1 } { 2 };
+                    var expectedCol = switch(~utilityOverlayType)
+                        { \clockDiv } { 1 }
+                        { \delayDiv } { 2 }
+                        { \transpose } { 4 };
                     if(x == expectedCol && (y < 7)) {
-                        var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
-                        var div = divValues[y];
-                        "[Gladiola] Div overlay tap: col %, row % -> %".format(x, y, div).postln;
-                        if(~utilityOverlayType == \clockDiv) {
-                            ~setClockDiv.(div);
+                        if(~utilityOverlayType == \transpose) {
+                            var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];
+                            ~transpose = transposeValues[y];
+                            "[Gladiola] Transpose -> %".format(~transpose).postln;
                         } {
-                            ~setDelayDiv.(div);
+                            var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
+                            var div = divValues[y];
+                            "[Gladiola] Div overlay tap: col %, row % -> %".format(x, y, div).postln;
+                            if(~utilityOverlayType == \clockDiv) {
+                                ~setClockDiv.(div);
+                            } {
+                                ~setDelayDiv.(div);
+                            };
                         };
                         ~updateGridLEDs.();
-                    } {
-                        "[Gladiola] Div overlay tap ignored: x=%, y=%, expected col=%".format(x, y, expectedCol).postln;
                     };
                 } {
                     if(~paramMenuActive && ~heldTrack.notNil && ~heldStepIdx.notNil) {
@@ -180,6 +187,14 @@
                     "[Gladiola] Delay div overlay opened (current: %)".format(~delayDiv).postln;
                     ~updateGridLEDs.();
                 };
+                if(x == 4) {
+                    ~pendingToggle = nil;
+                    ~utilityOverlayActive = true;
+                    ~utilityOverlayType = \transpose;
+                    ~utilityHeldButton = x;
+                    "[Gladiola] Transpose overlay opened (current: %)".format(~transpose).postln;
+                    ~updateGridLEDs.();
+                };
             };
         };
     });
@@ -217,11 +232,16 @@
     });
 
     ~grid.doubleTap({ |x, y|
+        if(y == 7 && (x == 0)) {
+            ~stopTransport.();
+            ~panicVoices.();
+            ~updateGridLEDs.();
+        };
         if(y >= 0 && (y < ~numTracks)) {
             var track = ~tracks[y];
             // Undo the step toggle from first tap's release
             track[\steps][x][\on] = track[\steps][x][\on].not;
-            // Set this position as start, then select end
+            // Set tapped position as start, select end next
             ~setTrackStart.(y, x);
             ~pendingToggle = nil;
             ~pendingToggleTrack = nil;
@@ -230,6 +250,7 @@
             ~heldStepIdx = nil;
             ~lengthModalTrack = y;
             ~lengthModalMode = \setEnd;
+            "[Gladiola] Track %: start -> %, select end".format(y, x).postln;
             ~updateGridLEDs.();
         };
     });

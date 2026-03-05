@@ -28,15 +28,17 @@
 - [x] active steps display velocity via LED brightness (dim→medium range)
 - [x] live tempo change via ~setTempo (updates TempoClock in place)
 - [x] live clock division change via ~setClockDiv (hold col 1 row 7, vertical overlay)
-- [x] gate envelope with range from 1/16 step to full sustain
+- [x] live delay division change via ~setDelayDiv (hold col 2 row 7, vertical overlay)
+- [x] global transpose (hold col 4 row 7, vertical overlay: -oct5th to +oct5th)
+- [x] gate envelope with range from 1/16 step to full sustain (15 exponential values)
 - [x] reverse sample playback per step
 - [x] bipolar filter per step (negative=lowpass, positive=highpass)
 - [x] per-step pan control
 - [x] per-step probability (step fires based on coin flip)
 - [x] per-step delay send amount
 - [x] per-step bitcrush effect
-- [x] tempo-synced delay (CombC with configurable division, hold col 2 row 7)
-- [x] transport start/stop on (0,7)
+- [x] tempo-synced delay (CombC with configurable division)
+- [x] transport start/stop on (0,7), double-tap for panic (silence all voices)
 - [x] per-track mute toggles on (9-15, 7)
 - [x] bank brightness indicator on param column
 - [x] playhead LED clearly brighter than active steps

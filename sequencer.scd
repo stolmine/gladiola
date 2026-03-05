@@ -26,6 +26,7 @@ var defaultStep = {
 ~clockDiv      = 0.25;
 ~delayDiv      = 0.25;
 ~playing       = false;
+~transpose     = 1.0;
 ~seqClock      = nil;
 
 ~voiceGroup    = nil;
@@ -124,7 +125,7 @@ var defaultStep = {
 
                             voice.set(
                                 \bufnum,     buf.bufnum,
-                                \rate,       pitch,
+                                \rate,       pitch * ~transpose,
                                 \amp,        velocity,
                                 \loopLength, loopLength,
                                 \loopRegion, loopRegion,
@@ -169,6 +170,15 @@ var defaultStep = {
     };
 
     "[Gladiola] Transport stopped.".postln;
+};
+
+~panicVoices = {
+    ~numTracks.do { |i|
+        if(~tracks[i][\voice].notNil) {
+            ~tracks[i][\voice].set(\amp, 0, \t_trig, 0);
+        };
+    };
+    "[Gladiola] All voices silenced.".postln;
 };
 
 ~setTrackStart = { |trackIdx, step|

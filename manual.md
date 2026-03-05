@@ -26,10 +26,12 @@ Row 7:  Utility row
 
 | Column | Function |
 |--------|----------|
-| 0 | Transport start/stop (tap) |
+| 0 | Transport start/stop (tap), panic/silence all (double-tap) |
 | 1 | Clock division (hold for menu) |
 | 2 | Delay division (hold for menu) |
 | 3 | Param page toggle (during param overlay) |
+| 4 | Global transpose (hold for menu) |
+| 5-8 | Reserved |
 | 9-15 | Track mute toggles (tracks 1-7) |
 
 ## Basic Operation
@@ -37,6 +39,11 @@ Row 7:  Utility row
 ### Toggling Steps
 
 Tap a step on any track row to toggle it on/off. Active steps show LED brightness proportional to velocity. The playhead shows at full brightness during playback.
+
+### Transport
+
+- **Tap** (0, 7): Toggle start/stop
+- **Double-tap** (0, 7): Stop transport and immediately silence all voices (panic)
 
 ### Start/End Points
 
@@ -60,22 +67,42 @@ Hold column 1 (clock) or column 2 (delay) on the utility row. Options appear ver
 
 Tap a row to select. Release the held button to close.
 
+### Transpose
+
+Hold column 4 on the utility row. Options appear vertically in the column above:
+
+| Row | Interval | Ratio |
+|-----|----------|-------|
+| 0 | -octave - fifth | 0.333× |
+| 1 | -octave | 0.5× |
+| 2 | -fifth | 0.667× |
+| 3 | Unity | 1.0× |
+| 4 | +fifth | 1.5× |
+| 5 | +octave | 2.0× |
+| 6 | +octave + fifth | 3.0× |
+
+The transpose button lights full when transposed away from unity. Transpose multiplies pitch globally across all tracks.
+
+### Track Mutes
+
+Tap columns 9-15 on the utility row to toggle mute for tracks 1-7. Muted tracks show full brightness on their mute button; active steps on muted tracks display dim.
+
 ## Parameter Overlay
 
-Hold any active step to open the parameter overlay. The held step lights full brightness. The held step's column shows parameter selectors on the other rows. The selected parameter's row shows value positions.
+Hold any active step to open the parameter overlay. The held step lights full brightness. The held step's column shows parameter selectors on the other rows (including row 7 for the 7th param). The selected parameter's row shows value positions.
 
 ### Navigating Parameters
 
 - Tap a row in the held column to select that parameter
 - Tap a column in the selected parameter's row to set its value
-- Tap (3, 7) to toggle between page 1 and page 2
+- Tap (3, 7) to toggle between page 1 and page 2 (medium brightness = page 1, full = page 2)
 
 ### Page 1 Parameters
 
 | Param | Range | Notes |
 |-------|-------|-------|
 | Bank | 0-15 | Tap again when selected to cycle banks |
-| Pitch | 0.125x - 4.0x | 15 preset values |
+| Pitch | 0.125× - 4.0× | 15 preset values |
 | Velocity | 1/15 - 1.0 | Affects LED brightness |
 | Loop Length | 0.0 - 1.0 | 0 = one-shot, >0 = loop region |
 | Loop Region | 0.0 - 1.0 | Start position in buffer |
@@ -86,13 +113,13 @@ Hold any active step to open the parameter overlay. The held step lights full br
 
 | Param | Range | Notes |
 |-------|-------|-------|
-| Gate Length | 1/16 step - full sustain | 15 values, exponential |
+| Gate Length | 1/16 step - full sustain | 15 exponential values |
 | Reverse | off/on | Plays sample backward |
-| Filter | -1.0 - 1.0 | Negative=lowpass, positive=highpass, 0=bypass |
-| Pan | -1.0 - 1.0 | Stereo position |
-| Probability | 1/15 - 1.0 | Chance step fires |
-| Delay Send | 0.0 - 1.0 | Amount sent to delay |
-| Bitcrush | 0.0 - 1.0 | Sample rate/bit reduction |
+| Filter | -1.0 - 1.0 | Negative=lowpass, positive=highpass, center=bypass |
+| Pan | -1.0 - 1.0 | Stereo position, center=mono |
+| Probability | 1/15 - 1.0 | Chance step fires each pass |
+| Delay Send | 0.0 - 1.0 | Amount sent to tempo-synced delay |
+| Bitcrush | 0.0 - 1.0 | Sample rate and bit depth reduction |
 
 ## Functions
 
@@ -102,6 +129,7 @@ Hold any active step to open the parameter overlay. The held step lights full br
 | `~connectGrid.(ip, port, osc, prefix)` | Connect manually |
 | `~startTransport.()` | Start sequencer |
 | `~stopTransport.()` | Stop sequencer |
+| `~panicVoices.()` | Silence all voices immediately |
 | `~setTempo.(bpm)` | Change tempo (20-300) |
 | `~setClockDiv.(div)` | Clock division (0.0625-4.0) |
 | `~setDelayDiv.(div)` | Delay division (0.0625-4.0) |

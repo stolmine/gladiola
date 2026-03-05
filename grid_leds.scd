@@ -68,19 +68,34 @@
 
     } {
         if(~utilityOverlayActive) {
-            var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
-            var currentDiv = if(~utilityOverlayType == \clockDiv) { ~clockDiv } { ~delayDiv };
-            var col = if(~utilityOverlayType == \clockDiv) { 1 } { 2 };
+            var col = switch(~utilityOverlayType)
+                { \clockDiv } { 1 }
+                { \delayDiv } { 2 }
+                { \transpose } { 4 };
 
             ~grid.clear;
 
-            divValues.do { |div, i|
-                var brightness = if(div == currentDiv) {
-                    GridInterface.ledFull
-                } {
-                    GridInterface.ledDim
+            if(~utilityOverlayType == \transpose) {
+                var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];
+                transposeValues.do { |val, i|
+                    var brightness = if(val == ~transpose) {
+                        GridInterface.ledFull
+                    } {
+                        GridInterface.ledDim
+                    };
+                    ~grid.led(col, i, brightness);
                 };
-                ~grid.led(col, i, brightness);
+            } {
+                var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
+                var currentDiv = if(~utilityOverlayType == \clockDiv) { ~clockDiv } { ~delayDiv };
+                divValues.do { |div, i|
+                    var brightness = if(div == currentDiv) {
+                        GridInterface.ledFull
+                    } {
+                        GridInterface.ledDim
+                    };
+                    ~grid.led(col, i, brightness);
+                };
             };
         } {
             if(~lengthModalTrack.notNil) {
@@ -158,6 +173,7 @@
                 ~grid.led(0, 7, if(~playing) { GridInterface.ledFull } { GridInterface.ledDim });
                 ~grid.led(1, 7, GridInterface.ledDim);
                 ~grid.led(2, 7, GridInterface.ledDim);
+                ~grid.led(4, 7, if(~transpose != 1.0) { GridInterface.ledFull } { GridInterface.ledDim });
                 ~numTracks.do { |i|
                     ~grid.led(9 + i, 7, if(~tracks[i][\muted]) { GridInterface.ledFull } { GridInterface.ledDim });
                 };
