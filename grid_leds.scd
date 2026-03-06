@@ -269,6 +269,14 @@
                 ~numTracks.do { |i|
                     ~grid.led(9 + i, 7, if(~tracks[i][\muted]) { GridInterface.ledFull } { GridInterface.ledDim });
                 };
+                if(~transportHeld == true) {
+                    ~grid.led(0, 7, GridInterface.ledFull);
+                    // Column 0 rows 0-6: BPM nudge (+10,+5,+1,reset,-1,-5,-10)
+                    7.do { |row|
+                        var brightness = if(row == 3) { GridInterface.ledBright } { GridInterface.ledDim };
+                        ~grid.led(0, row, brightness);
+                    };
+                };
             };
         };
         };

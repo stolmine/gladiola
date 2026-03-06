@@ -18,6 +18,8 @@
 ~trackParamTrack = nil;
 ~reverseHeld = false;
 ~prevTranspose = nil;
+~transportHeld = false;
+~transportPressTime = nil;
 
 ~paramRowForIndex = { |paramIdx, heldTrack|
     // Maps param index (0-6) to grid row, skipping heldTrack's row.
@@ -93,6 +95,18 @@
                     ~updateGridLEDs.();
                 };
             } {
+                if(~transportHeld) {
+                    if(x == 0 && (y < 7)) {
+                        var nudges = [10, 5, 1, nil, -1, -5, -10];
+                        var nudge = nudges[y];
+                        if(nudge.notNil) {
+                            ~setTempo.(~bpm + nudge);
+                        } {
+                            ~setTempo.(120);
+                        };
+                        ~updateGridLEDs.();
+                    };
+                } {
                 if(~utilityOverlayActive) {
                     var expectedCol = switch(~utilityOverlayType)
                         { \clockDiv } { 1 }
@@ -237,8 +251,19 @@
                         } {
                             if(y == 7) {
                                 if(x == 0) {
-                                    if(~playing) { ~stopTransport.() } { ~startTransport.() };
-                                    ~updateGridLEDs.();
+                                    ~pendingToggle = 0;
+                                    ~pendingToggleTrack = 7;
+                                    ~transportPressTime = Main.elapsedTime;
+                                    AppClock.sched(0.5, {
+                                        if(~transportPressTime.notNil && ((Main.elapsedTime - ~transportPressTime) >= 0.45)) {
+                                            ~transportHeld = true;
+                                            ~pendingToggle = nil;
+                                            ~pendingToggleTrack = nil;
+                                            "[Gladiola] Tempo nudge mode".postln;
+                                            ~updateGridLEDs.();
+                                        };
+                                        nil;
+                                    });
                                 };
                                 if(x == 3) {
                                     ~globalReverse = ~globalReverse.not;
@@ -275,12 +300,13 @@
                         };
                     };
                 };
+                };
             };
         };
     });
 
     ~grid.hold({ |x, y|
-        if(~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil && ~lengthModalMode.isNil && ~utilityOverlayActive.not) {
+        if(~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil && ~lengthModalMode.isNil && ~utilityOverlayActive.not && ~transportHeld.not) {
             if(y >= 0 && (y < ~numTracks)) {
                 var track = ~tracks[y];
                 if(~stepInRange.(x, track[\startStep], track[\endStep])) {
@@ -357,6 +383,14 @@
     });
 
     ~grid.release({ |x, y|
+        if(y == 7 && (x == 0)) {
+            ~transportPressTime = nil;
+            if(~transportHeld) {
+                ~transportHeld = false;
+                "[Gladiola] Tempo nudge mode off".postln;
+                ~updateGridLEDs.();
+            };
+        };
         if(y == 7 && (x == 3) && ~reverseHeld) {
             ~reverseHeld = false;
             ~globalReverse = ~globalReverse.not;
@@ -398,6 +432,13 @@
                         ~updateGridLEDs.();
                     } {
                         if(~pendingToggle.notNil && ~pendingToggleTrack.notNil) {
+                            if(~pendingToggleTrack == 7 && (~pendingToggle == 0)) {
+                                // Transport toggle (deferred from press)
+                                ~pendingToggle = nil;
+                                ~pendingToggleTrack = nil;
+                                if(~playing) { ~stopTransport.() } { ~startTransport.() };
+                                ~updateGridLEDs.();
+                            } {
                             if(~pendingToggleTrack == 7) {
                                 // Mute toggle (deferred from press)
                                 var trackIdx = ~pendingToggle - 9;
@@ -413,6 +454,7 @@
                                 ~tracks[trackIdx][\steps][stepIdx][\on] = ~tracks[trackIdx][\steps][stepIdx][\on].not;
                                 ~updateGridLEDs.();
                             };
+                        };
                         };
                     };
                 };

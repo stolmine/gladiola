@@ -44,6 +44,23 @@ Tap a step on any track row to toggle it on/off. Active steps show LED brightnes
 
 - **Tap** (0, 7): Toggle start/stop
 - **Double-tap** (0, 7): Stop transport and immediately silence all voices (panic)
+- **Hold** (0, 7) for 500ms: Enter tempo nudge mode
+
+### Tempo Nudge
+
+Hold the transport button (column 0, row 7) for 500ms without releasing. The transport button lights full and column 0 rows 0-6 become BPM adjustment buttons:
+
+| Row | Action |
+|-----|--------|
+| 0 | +10 BPM |
+| 1 | +5 BPM |
+| 2 | +1 BPM |
+| 3 | Reset to 120 BPM |
+| 4 | -1 BPM |
+| 5 | -5 BPM |
+| 6 | -10 BPM |
+
+Tap any nudge button to apply the adjustment immediately. Release the transport button to exit nudge mode. Nudge mode is blocked during overlays, modals, and other active utility states.
 
 ### Start/End Points
 
@@ -170,6 +187,42 @@ Cannot open the step param overlay while the track overlay is active, and vice v
 | Delay Send | 0.0 - 1.0 | Amount sent to tempo-synced delay |
 | Bitcrush | 0.0 - 1.0 | Sample rate and bit depth reduction |
 
+## Session Manager
+
+Sessions persist the complete groovebox state to disk as `.gladiola` archives stored in `~/gladiola-sessions/`. The session manager GUI opens automatically on boot.
+
+### GUI Window
+
+The session manager window provides:
+
+- **BPM display**: Current tempo, updated live
+- **Samples display**: Folder name of the loaded sample directory
+- **Stereo level meters**: Amplitude of the main output bus (L/R), updated at 20Hz with peak hold
+- **New**: Prompt for a session name and a folder picker for the sample directory, then initialize a blank session
+- **Save**: Save to the current session name; prompts for a name first if none is set
+- **Save As**: Prompt for a new name and save a copy
+- **Load**: List all `.gladiola` files in `~/gladiola-sessions/` and load the selected one
+
+### What Sessions Capture
+
+- All 7 tracks: steps and per-step parameters, start/end points, mute state
+- BPM, clock division, delay division, transpose, global reverse
+- All 4 preset slots
+- Sample directory path
+
+### Session Functions
+
+| Function | Description |
+|----------|-------------|
+| `~buildSessionSnapshot.()` | Build a Dictionary snapshot of the current state |
+| `~saveSession.()` | Save to the current session path (no-op if no name set) |
+| `~saveSessionAs.(name)` | Save under a new name in `~/gladiola-sessions/` |
+| `~loadSession.(name)` | Load session by name from `~/gladiola-sessions/` |
+| `~newSession.(name, sampleDir)` | Initialize a blank session with the given name and sample folder |
+| `~sessionGUI.()` | Open (or bring to front) the session manager window |
+
+Loading a session stops transport, frees existing buffers (with a server sync to prevent buffer exhaustion), loads the new sample directory, then restores all track and global state.
+
 ## Functions
 
 | Function | Description |
@@ -191,16 +244,23 @@ Cannot open the step param overlay while the track overlay is active, and vice v
 | `~savePreset.(slot)` | Save full state to preset slot (0-3) |
 | `~recallPreset.(slot)` | Recall state from preset slot (0-3) |
 | `~clearPreset.(slot)` | Clear preset slot (0-3) |
+| `~buildSessionSnapshot.()` | Build snapshot Dictionary of current state |
+| `~saveSession.()` | Save current session |
+| `~saveSessionAs.(name)` | Save session under new name |
+| `~loadSession.(name)` | Load session by name |
+| `~newSession.(name, sampleDir)` | Create blank session |
+| `~sessionGUI.()` | Open session manager window |
 | `~cleanup.()` | Shutdown |
 
 ## File Structure
 
 | File | Purpose |
 |------|---------|
-| `main.scd` | Boot, load order, cleanup |
+| `main.scd` | Boot, load order, cleanup, session auto-open |
 | `sequencer.scd` | 7-track sequencer engine, transport, clock |
 | `synthdefs/sample_voice.scd` | Sample playback + delay SynthDefs |
-| `sample_loader.scd` | Bank-based sample loading |
+| `sample_loader.scd` | Bank-based sample loading; Server.sync after freeSamples prevents buffer exhaustion |
 | `grid_params.scd` | Parameter definitions, value tables |
 | `grid_leds.scd` | LED rendering for all modes |
 | `grid_input.scd` | Grid input handling |
+| `session.scd` | Session save/load/new and GUI window |

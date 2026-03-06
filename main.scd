@@ -13,6 +13,8 @@ var loadOrError = { |path|
 	path.load;
 };
 
+~basePath = basePath;
+
 "[Gladiola] Booting server...".postln;
 
 s.waitForBoot({
@@ -54,6 +56,14 @@ s.waitForBoot({
 	loadOrError.(basePath +/+ "grid_params.scd");
 	loadOrError.(basePath +/+ "grid_leds.scd");
 	loadOrError.(basePath +/+ "grid_input.scd");
+
+	// ========================================
+	// LOAD SESSION MANAGER
+	// ========================================
+
+	~sessionsDir = "~/gladiola-sessions".standardizePath;
+	if(File.exists(~sessionsDir).not) { File.mkdir(~sessionsDir) };
+	loadOrError.(basePath +/+ "session.scd");
 
 	// ========================================
 	// CONNECT GRID
@@ -155,7 +165,10 @@ s.waitForBoot({
 	"[Gladiola]   ~muteTrack.(idx) / ~unmuteTrack.(idx)".postln;
 	"[Gladiola]   ~clearPattern.()                 - Clear all steps".postln;
 	"[Gladiola]   ~cleanup.()                      - Shutdown".postln;
+	"[Gladiola]   ~sessionGUI.()                  - Open session manager".postln;
 	"[Gladiola] ========================================".postln;
+
+	{ ~sessionGUI.() }.defer;
 });
 
 )

@@ -13,13 +13,14 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 
 | File | Purpose |
 |------|---------|
-| `main.scd` | Boot sequence, file loading, grid connection |
+| `main.scd` | Boot sequence, file loading, grid connection, session auto-open |
 | `sequencer.scd` | 7-track sequencer engine, transport, presets, clock |
 | `synthdefs/sample_voice.scd` | Sample playback + delay SynthDefs |
 | `sample_loader.scd` | Bank-based sample loading (16 banks × 15 samples) |
 | `grid_params.scd` | Parameter definitions, value tables, mapping |
 | `grid_leds.scd` | LED rendering for all display modes |
 | `grid_input.scd` | Grid input handling, gesture recognition, modal state |
+| `session.scd` | Session save/load/new, GUI window with metering |
 
 ## Key Features
 
@@ -29,6 +30,8 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 - 4-slot preset system (save/recall/clear full state)
 - Global reverse toggle (XOR with per-step reverse)
 - Clock/delay division and transpose overlays
+- Tempo nudge mode: hold transport 500ms, column 0 rows 0-6 adjust BPM (±1/5/10, reset)
+- Session manager: save/load/new sessions as `.gladiola` archives with GUI and stereo metering
 - Tempo-synced delay, bitcrush, bipolar filter, pan, probability
 - Start/end points with wrap-around for polymetric patterns
 - Per-track "macro" parameter overlay via mute key hold (apply params to all steps at once)

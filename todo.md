@@ -52,11 +52,17 @@
 - [x] step copy/paste: copy params from held step (C button), paste into off steps (hold)
 - [x] dynamic overlay action buttons (P=page toggle, C=copy) positioned relative to held step
 - [x] removed fixed page toggle at (3,7)/(4,7) — row 7 now full param selector during overlay
+- [x] session manager (session.scd): save/load/new sessions as .gladiola archives in ~/gladiola-sessions/
+- [x] session GUI: BPM display, sample dir display, stereo level meters, New/Save/Save As/Load buttons
+- [x] sessions capture: tracks, presets, BPM, clockDiv, delayDiv, transpose, globalReverse, sampleDir
+- [x] tempo nudge mode: hold transport (0,7) 500ms → column 0 rows 0-6 become ±10/±5/±1/reset BPM buttons
+- [x] Server.sync after ~freeSamples in sample_loader.scd to prevent buffer exhaustion on session load
+- [x] ~basePath stored globally in main.scd; ~sessionsDir set to ~/gladiola-sessions/ with auto-create
+- [x] session GUI auto-opens on boot
 
 ## ideas
 
 - [ ] time stretching infrastructure for loop/break support
-- [ ] pattern save/load (persist to disk)
 - [ ] copy/paste step regions (multi-step copy)
 - [ ] swing / groove templates
 - [ ] clock sync (MIDI clock, Link)

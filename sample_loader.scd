@@ -39,6 +39,7 @@ var maxPerBank = 15;
         "[Gladiola] Directory not found: %".format(path).postln;
     } {
         ~freeSamples.value;
+        if(thisThread.isKindOf(Routine)) { Server.default.sync };
 
         allFiles = [];
         PathName(path).filesDo { |pn|
