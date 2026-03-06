@@ -16,7 +16,7 @@
             pan = 0.0,
             delaySend = 0.0,
             bitcrush = 0.0,
-            delayBus = 0;
+            fxSendBus = 0;
 
         var smoothRate, smoothAmp,
             clampedRatchet, safeStepDur, ratchetFreq, ratchetImpulse,
@@ -96,16 +96,8 @@
 
         panned = Pan2.ar(sig, pan);
 
-        Out.ar(delayBus, panned * delaySend);
+        Out.ar(fxSendBus, panned * delaySend);
         Out.ar(out, panned);
-    }).add;
-
-    SynthDef(\gladiolaDelay, {
-        arg delayBus = 0, delaytime = 0.5, feedback = 0.7, mix = 0.5, out = 0;
-        var input, delayed;
-        input   = In.ar(delayBus, 2);
-        delayed = CombC.ar(input, 2.0, delaytime, delaytime * 12 * feedback);
-        Out.ar(out, delayed * mix);
     }).add;
 
 };

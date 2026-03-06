@@ -37,7 +37,9 @@
 - [x] per-step probability (step fires based on coin flip)
 - [x] per-step delay send amount
 - [x] per-step bitcrush effect
-- [x] tempo-synced delay (CombC with configurable division)
+- [x] full FX chain: delay (CombC + tone filter), granular (MiClouds), reverb (Greyhole), saturation (softclip/tanh/fold), tilt EQ, compressor, limiter
+- [x] FX matrix overlay (hold col 2 row 7): 16×7 grid, one column per FX parameter, instant control
+- [x] per-track clock division (hold col 1 row 7): 7×7 grid, independent timing per track
 - [x] transport start/stop on (0,7), double-tap for panic (silence all voices)
 - [x] per-track mute toggles on (9-15, 7)
 - [x] bank brightness indicator on param column
@@ -69,5 +71,4 @@
 - [ ] audio output routing options (bus selection)
 - [ ] pattern chaining / song mode
 - [ ] sample slice mode (auto-chop breaks)
-- [ ] delay feedback / mix controls on utility row
 - [ ] per-track sample lock (all steps in a track share one sample)

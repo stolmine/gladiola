@@ -99,5 +99,11 @@ var gateLengthValues = [0.0625, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.625, 0.75, 1.
     }
 };
 
+// Center position for bipolar params (nil = no center)
+// Page 2 idx 2 = filter, idx 3 = pan; both centered at position 7
+~paramCenterPos = { |paramPage, paramIdx|
+    if(paramPage == 1 && ((paramIdx == 2) || (paramIdx == 3))) { 7 } { nil }
+};
+
 "[Gladiola] grid_params.scd loaded.".postln;
 )

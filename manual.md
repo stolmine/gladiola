@@ -28,7 +28,7 @@ Row 7:  Utility row
 |--------|----------|
 | 0 | Transport start/stop (tap), panic/silence all (double-tap) |
 | 1 | Clock division (hold for menu) |
-| 2 | Delay division (hold for menu) |
+| 2 | FX matrix (hold for menu). Lights full when any FX param differs from default. |
 | 3 | Global reverse toggle |
 | 4 | Global transpose (hold for menu) |
 | 5-8 | Preset slots 1-4 |
@@ -70,7 +70,7 @@ Start can be after end for wrap-around patterns (e.g., start=12, end=3 plays ste
 
 ### Division Menus
 
-Hold column 1 (clock) or column 2 (delay) on the utility row. Options appear vertically in the column above, rows 0-6:
+Hold column 1 (clock) on the utility row. Options appear vertically in the column above, rows 0-6:
 
 | Row | Division |
 |-----|----------|
@@ -83,6 +83,46 @@ Hold column 1 (clock) or column 2 (delay) on the utility row. Options appear ver
 | 6 | 4 (4.0) |
 
 Tap a row to select. Release the held button to close.
+
+## FX Matrix
+
+Hold column 2 on the utility row to open the FX matrix overlay. A 16×7 grid appears showing all FX parameters. Each column controls one parameter, rows 0-6 select from 7 preset values. One bright LED per column shows the current setting.
+
+Tap any position to set that parameter to the corresponding value. Changes take effect immediately.
+
+### Signal Flow
+
+```
+Voice dry → bus 0 → Saturation → Tilt EQ → Compressor → Limiter → Out
+Voice send → FX bus ─┬─ Delay ──→ bus 0
+                     ├─ Granular → bus 0
+                     └─ Reverb ──→ bus 0
+```
+
+### Parameters
+
+| Col | Parameter | Values (row 0→6) |
+|-----|-----------|-------------------|
+| 0 | Delay division | 1/16, dot 1/16, 1/8, dot 1/8, 1/4, 1/2, 1 |
+| 1 | Delay feedback | 0 → 0.95 |
+| 2 | Delay tone | -1 (dark) → +1 (bright) |
+| 3 | Delay level | 0 → 1.0 |
+| 4 | Granular size | 0 → 1.0 |
+| 5 | Granular position | 0 → 1.0 |
+| 6 | Granular pitch | 0 → 1.0 |
+| 7 | Granular level | 0 → 1.0 |
+| 8 | Reverb size | 0.1 → 1.0 |
+| 9 | Reverb damping | 0 → 1.0 |
+| 10 | Reverb level | 0 → 1.0 |
+| 11 | Saturation depth | 0 → 1.0 |
+| 12 | Saturation type | softclip → tanh → fold |
+| 13 | Tilt EQ | -1 (dark) → +1 (bright) |
+| 14 | Compressor amount | 0 → 1.0 |
+| 15 | Compressor color | 0 (fast) → 1.0 (slow) |
+
+Default state: all send levels at 0 (delay/granular/reverb silent), saturation off, tilt neutral, compressor off. A limiter (0.95 ceiling) is always active with no user controls.
+
+The per-step "Delay Send" parameter (page 2) controls how much of each voice is sent to the shared FX bus. The three parallel effects (delay, granular, reverb) all read from this bus.
 
 ### Transpose
 
@@ -122,7 +162,7 @@ Four preset slots (columns 5-8 on the utility row) can save and recall the full 
 - **Hold**: Save current state to preset slot
 - **Double-tap**: Clear preset slot
 
-Each preset captures: all track steps and parameters, start/end points, track mutes, clock division, delay division, transpose, and global reverse state.
+Each preset captures: all track steps and parameters, start/end points, track mutes, clock division, FX parameters, transpose, and global reverse state.
 
 Preset slots show full brightness when occupied, off when empty. Presets are blocked during overlays and modals to prevent accidental changes.
 
@@ -184,7 +224,7 @@ Cannot open the step param overlay while the track overlay is active, and vice v
 | Filter | -1.0 - 1.0 | Negative=lowpass, positive=highpass, center=bypass |
 | Pan | -1.0 - 1.0 | Stereo position, center=mono |
 | Probability | 1/15 - 1.0 | Chance step fires each pass |
-| Delay Send | 0.0 - 1.0 | Amount sent to tempo-synced delay |
+| Delay Send | 0.0 - 1.0 | Amount sent to FX bus (delay, granular, reverb) |
 | Bitcrush | 0.0 - 1.0 | Sample rate and bit depth reduction |
 
 ## Session Manager
@@ -206,7 +246,7 @@ The session manager window provides:
 ### What Sessions Capture
 
 - All 7 tracks: steps and per-step parameters, start/end points, mute state
-- BPM, clock division, delay division, transpose, global reverse
+- BPM, clock division, FX parameters, transpose, global reverse
 - All 4 preset slots
 - Sample directory path
 
@@ -234,7 +274,8 @@ Loading a session stops transport, frees existing buffers (with a server sync to
 | `~panicVoices.()` | Silence all voices immediately |
 | `~setTempo.(bpm)` | Change tempo (20-300) |
 | `~setClockDiv.(div)` | Clock division (0.0625-4.0) |
-| `~setDelayDiv.(div)` | Delay division (0.0625-4.0) |
+| `~setFxParam.(key, val)` | Set FX parameter (see FX Matrix for keys) |
+| `~setDelayDiv.(div)` | Legacy wrapper: set delay division (0.0625-4.0) |
 | `~setTrackStart.(track, step)` | Set track start point (0-15) |
 | `~setTrackEnd.(track, step)` | Set track end point (0-15) |
 | `~muteTrack.(idx)` | Mute track |
@@ -258,7 +299,9 @@ Loading a session stops transport, frees existing buffers (with a server sync to
 |------|---------|
 | `main.scd` | Boot, load order, cleanup, session auto-open |
 | `sequencer.scd` | 7-track sequencer engine, transport, clock |
-| `synthdefs/sample_voice.scd` | Sample playback + delay SynthDefs |
+| `synthdefs/sample_voice.scd` | Sample playback SynthDef |
+| `synthdefs/fx_chain.scd` | FX chain SynthDefs (delay, granular, reverb, saturation, tilt, compressor, limiter) |
+| `fx_params.scd` | FX parameter definitions, value tables, lookup functions |
 | `sample_loader.scd` | Bank-based sample loading; Server.sync after freeSamples prevents buffer exhaustion |
 | `grid_params.scd` | Parameter definitions, value tables |
 | `grid_leds.scd` | LED rendering for all modes |

@@ -54,10 +54,15 @@
                 } {
                     var valIdx = if(col < ~heldStepIdx) { col } { col - 1 };
                     if(valIdx < numValid) {
+                        var centerPos = ~paramCenterPos.(~paramPage, ~selectedParam);
                         var brightness = if(valIdx == curPos) {
                             GridInterface.ledFull
                         } {
-                            GridInterface.ledDim
+                            if(centerPos.notNil && (valIdx == centerPos)) {
+                                GridInterface.ledMedium
+                            } {
+                                GridInterface.ledDim
+                            }
                         };
                         ~grid.led(col, valueRow, brightness);
                     };
@@ -130,6 +135,7 @@
                 var unanimous = ~tracks[~trackParamTrack][\steps].every { |step| step[paramNames[~selectedParam]] == curVal };
                 var curPos = if(unanimous) { ~positionForValue.(~paramPage, ~selectedParam, curVal) } { nil };
                 var numValid = ~numValidPositions.(~paramPage, ~selectedParam, ~trackParamTrack, 0);
+                var centerPos = ~paramCenterPos.(~paramPage, ~selectedParam);
 
                 16.do { |col|
                     if(col != ~trackParamCol && (col != pagePos[\pageCol] || (valueRow != pagePos[\pageRow]))) {
@@ -138,7 +144,11 @@
                             var brightness = if(curPos.notNil && (valIdx == curPos)) {
                                 GridInterface.ledFull
                             } {
-                                GridInterface.ledDim
+                                if(centerPos.notNil && (valIdx == centerPos)) {
+                                    GridInterface.ledMedium
+                                } {
+                                    GridInterface.ledDim
+                                }
                             };
                             ~grid.led(col, valueRow, brightness);
                         };
@@ -169,11 +179,27 @@
                     };
                 };
             } {
-                var col = switch(~utilityOverlayType)
-                    { \delayDiv } { 2 }
-                    { \transpose } { 4 };
-
-                if(~utilityOverlayType == \transpose) {
+                if(~utilityOverlayType == \fxMatrix) {
+                    // FX matrix: 16 columns, fader style (up=more)
+                    // Current value = full, below = half, above = quarter
+                    16.do { |col|
+                        var key = ~fxParamKeys[col];
+                        var currentRow = ~fxPositionForValue.(col, ~fxParams[key]);
+                        7.do { |row|
+                            var brightness = if(row == currentRow) {
+                                GridInterface.ledFull
+                            } {
+                                if(row > currentRow) {
+                                    GridInterface.ledMedium
+                                } {
+                                    GridInterface.ledDim
+                                }
+                            };
+                            ~grid.led(col, row, brightness);
+                        };
+                    };
+                } {
+                    // Transpose overlay
                     var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];
                     transposeValues.do { |val, i|
                         var brightness = if(val == ~transpose) {
@@ -181,18 +207,7 @@
                         } {
                             GridInterface.ledDim
                         };
-                        ~grid.led(col, i, brightness);
-                    };
-                } {
-                    var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
-                    var currentDiv = ~delayDiv;
-                    divValues.do { |div, i|
-                        var brightness = if(div == currentDiv) {
-                            GridInterface.ledFull
-                        } {
-                            GridInterface.ledDim
-                        };
-                        ~grid.led(col, i, brightness);
+                        ~grid.led(4, i, brightness);
                     };
                 };
             };
@@ -278,7 +293,7 @@
                 // Row 7: utility
                 ~grid.led(0, 7, if(~playing) { GridInterface.ledFull } { GridInterface.ledDim });
                 ~grid.led(1, 7, GridInterface.ledDim);
-                ~grid.led(2, 7, GridInterface.ledDim);
+                ~grid.led(2, 7, if(~fxHasNonDefault.()) { GridInterface.ledFull } { GridInterface.ledDim });
                 ~grid.led(3, 7, if(~globalReverse) { GridInterface.ledFull } { GridInterface.ledDim });
                 ~grid.led(4, 7, if(~transpose != 1.0) { GridInterface.ledFull } { GridInterface.ledDim });
                 4.do { |i|

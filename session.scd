@@ -7,7 +7,7 @@
 	var snapshot = Dictionary.new;
 	snapshot[\sampleDir] = ~sampleDir;
 	snapshot[\bpm] = ~bpm;
-	snapshot[\delayDiv] = ~delayDiv;
+	snapshot[\fxParams] = ~fxParams.copy;
 	snapshot[\transpose] = ~transpose;
 	snapshot[\globalReverse] = ~globalReverse;
 	snapshot[\tracks] = ~numTracks.collect { |i|
@@ -34,6 +34,7 @@
 				td
 			};
 			copy[\clockDiv] = p[\clockDiv];
+			if(p[\fxParams].notNil) { copy[\fxParams] = p[\fxParams].copy };
 			copy[\delayDiv] = p[\delayDiv];
 			copy[\transpose] = p[\transpose];
 			copy[\globalReverse] = p[\globalReverse];
@@ -92,10 +93,21 @@
 				};
 
 				~bpm = snapshot[\bpm];
-				~delayDiv = snapshot[\delayDiv];
+				if(snapshot[\fxParams].notNil) {
+					snapshot[\fxParams].keysValuesDo { |key, val|
+						~setFxParam.(key, val);
+					};
+				} {
+					// Backward compat: old session with only delayDiv
+					~fxParamDefaults.keysValuesDo { |key, val|
+						~setFxParam.(key, val);
+					};
+					if(snapshot[\delayDiv].notNil) {
+						~setFxParam.(\delayDiv, snapshot[\delayDiv]);
+					};
+				};
 				~transpose = snapshot[\transpose];
 				~globalReverse = snapshot[\globalReverse] ? false;
-				~updateDelayTime.();
 
 				~presets = snapshot[\presets].collect { |p|
 					if(p.notNil) {
@@ -112,6 +124,7 @@
 						};
 						copy[\clockDiv] = p[\clockDiv];
 						copy[\delayDiv] = p[\delayDiv];
+						if(p[\fxParams].notNil) { copy[\fxParams] = p[\fxParams].copy };
 						copy[\transpose] = p[\transpose];
 						copy[\globalReverse] = p[\globalReverse];
 						copy
@@ -138,10 +151,8 @@
 		~clearPattern.();
 
 		~bpm = 120;
-		~delayDiv = 0.25;
 		~transpose = 1.0;
 		~globalReverse = false;
-		~updateDelayTime.();
 		~setTempo.(~bpm);
 
 		~presets = Array.fill(4, { nil });

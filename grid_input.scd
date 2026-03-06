@@ -117,22 +117,24 @@
                             ~updateGridLEDs.();
                         };
                     } {
-                        var expectedCol = switch(~utilityOverlayType)
-                            { \delayDiv } { 2 }
-                            { \transpose } { 4 };
-                        if(x == expectedCol && (y < 7)) {
-                            if(~utilityOverlayType == \transpose) {
-                                var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];
-                                ~prevTranspose = ~transpose;
-                                ~transpose = transposeValues[y];
-                                "[Gladiola] Transpose -> %".format(~transpose).postln;
-                            } {
-                                var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
-                                var div = divValues[y];
-                                "[Gladiola] Div overlay tap: col %, row % -> %".format(x, y, div).postln;
-                                ~setDelayDiv.(div);
+                        if(~utilityOverlayType == \fxMatrix) {
+                            if(x < 16 && (y < 7)) {
+                                var key = ~fxParamKeys[x];
+                                var value = ~fxValueForPosition.(x, y);
+                                ~setFxParam.(key, value);
+                                "[Gladiola] FX: % -> %".format(key, value).postln;
+                                ~updateGridLEDs.();
                             };
-                            ~updateGridLEDs.();
+                        } {
+                            if(~utilityOverlayType == \transpose) {
+                                if(x == 4 && (y < 7)) {
+                                    var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];
+                                    ~prevTranspose = ~transpose;
+                                    ~transpose = transposeValues[y];
+                                    "[Gladiola] Transpose -> %".format(~transpose).postln;
+                                    ~updateGridLEDs.();
+                                };
+                            };
                         };
                     };
                 } {
@@ -354,9 +356,9 @@
                 if(x == 2) {
                     ~pendingToggle = nil;
                     ~utilityOverlayActive = true;
-                    ~utilityOverlayType = \delayDiv;
+                    ~utilityOverlayType = \fxMatrix;
                     ~utilityHeldButton = x;
-                    "[Gladiola] Delay div overlay opened (current: %)".format(~delayDiv).postln;
+                    "[Gladiola] FX matrix overlay opened".postln;
                     ~updateGridLEDs.();
                 };
                 if(x == 4) {

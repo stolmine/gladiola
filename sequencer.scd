@@ -23,7 +23,13 @@ var defaultStep = {
 ~numTracks     = 7;
 ~stepsPerTrack = 16;
 ~bpm           = 120;
-~delayDiv      = 0.25;
+~fxParams = Dictionary.newFrom([
+    \delayDiv, 0.25, \delayFeedback, 0, \delayTone, 0, \delayLevel, 0,
+    \granSize, 0, \granPosition, 0, \granPitch, 0, \granLevel, 0,
+    \reverbSize, 0.5, \reverbDamp, 0.5, \reverbLevel, 0,
+    \satDepth, 0, \satType, 0, \tilt, 0, \compAmount, 0, \compColor, 0
+]);
+~fxParamDefaults = ~fxParams.copy;
 ~playing       = false;
 ~transpose     = 1.0;
 ~globalReverse = false;
@@ -32,9 +38,17 @@ var defaultStep = {
 ~seqClock      = nil;
 
 ~voiceGroup    = nil;
+~satGroup      = nil;
 ~fxGroup       = nil;
-~delayBus      = nil;
+~masterGroup   = nil;
+~fxSendBus     = nil;
 ~delaySynth    = nil;
+~granularSynth = nil;
+~reverbSynth   = nil;
+~satSynth      = nil;
+~tiltSynth     = nil;
+~compSynth     = nil;
+~limiterSynth  = nil;
 
 ~tracks = nil;
 
@@ -57,23 +71,57 @@ var defaultStep = {
             \clockDiv -> 0.25]
     });
 
-    ~voiceGroup = Group.new(s);
-    ~fxGroup = Group.after(~voiceGroup);
+    ~voiceGroup  = Group.new(s);
+    ~satGroup    = Group.after(~voiceGroup);
+    ~fxGroup     = Group.after(~satGroup);
+    ~masterGroup = Group.after(~fxGroup);
 
-    ~delayBus = Bus.audio(s, 2);
+    ~fxSendBus = Bus.audio(s, 2);
 
     ~numTracks.do { |i|
         ~tracks[i][\voice] = Synth(\gladiolaSample, [
-            \delayBus, ~delayBus.index
+            \fxSendBus, ~fxSendBus.index
         ], ~voiceGroup);
     };
 
     ~delaySynth = Synth(\gladiolaDelay, [
-        \delayBus, ~delayBus.index,
-        \delaytime, ~delayDiv * 60 / ~bpm,
-        \feedback, 0.7,
-        \mix, 0.5
+        \fxSendBus, ~fxSendBus.index,
+        \delaytime, ~fxParams[\delayDiv] * 60 / ~bpm,
+        \feedback, ~fxParams[\delayFeedback],
+        \tone, ~fxParams[\delayTone],
+        \level, ~fxParams[\delayLevel]
     ], ~fxGroup);
+
+    ~granularSynth = Synth(\gladiolaGranular, [
+        \fxSendBus, ~fxSendBus.index,
+        \size, ~fxParams[\granSize],
+        \position, ~fxParams[\granPosition],
+        \pitch, ~fxParams[\granPitch],
+        \level, ~fxParams[\granLevel]
+    ], ~fxGroup);
+
+    ~reverbSynth = Synth(\gladiolaReverb, [
+        \fxSendBus, ~fxSendBus.index,
+        \size, ~fxParams[\reverbSize],
+        \damping, ~fxParams[\reverbDamp],
+        \level, ~fxParams[\reverbLevel]
+    ], ~fxGroup);
+
+    ~satSynth = Synth(\gladiolaSaturation, [
+        \depth, ~fxParams[\satDepth],
+        \type, ~fxParams[\satType]
+    ], ~satGroup);
+
+    ~tiltSynth = Synth(\gladiolaTilt, [
+        \tilt, ~fxParams[\tilt]
+    ], ~masterGroup);
+
+    ~compSynth = Synth(\gladiolaCompressor, [
+        \amount, ~fxParams[\compAmount],
+        \color, ~fxParams[\compColor]
+    ], ~masterGroup);
+
+    ~limiterSynth = Synth(\gladiolaLimiter, [], ~masterGroup);
 
     "[Gladiola] Sequencer initialized. % tracks × % steps.".format(~numTracks, ~stepsPerTrack).postln;
 };
@@ -239,15 +287,35 @@ var defaultStep = {
 };
 
 ~setDelayDiv = { |div|
-    ~delayDiv = div.clip(0.0625, 4.0);
-    ~updateDelayTime.();
-    "[Gladiola] Delay division set to %.".format(~delayDiv).postln;
+    ~setFxParam.(\delayDiv, div.clip(0.0625, 4.0));
+    "[Gladiola] Delay division set to %.".format(~fxParams[\delayDiv]).postln;
 };
 
 ~updateDelayTime = {
     if(~delaySynth.notNil) {
-        ~delaySynth.set(\delaytime, ~delayDiv * 60 / ~bpm);
+        ~delaySynth.set(\delaytime, ~fxParams[\delayDiv] * 60 / ~bpm);
     };
+};
+
+~setFxParam = { |key, value|
+    ~fxParams[key] = value;
+    switch(key)
+    { \delayDiv }      { ~updateDelayTime.() }
+    { \delayFeedback } { if(~delaySynth.notNil) { ~delaySynth.set(\feedback, value) } }
+    { \delayTone }     { if(~delaySynth.notNil) { ~delaySynth.set(\tone, value) } }
+    { \delayLevel }    { if(~delaySynth.notNil) { ~delaySynth.set(\level, value) } }
+    { \granSize }      { if(~granularSynth.notNil) { ~granularSynth.set(\size, value) } }
+    { \granPosition }  { if(~granularSynth.notNil) { ~granularSynth.set(\position, value) } }
+    { \granPitch }     { if(~granularSynth.notNil) { ~granularSynth.set(\pitch, value) } }
+    { \granLevel }     { if(~granularSynth.notNil) { ~granularSynth.set(\level, value) } }
+    { \reverbSize }    { if(~reverbSynth.notNil) { ~reverbSynth.set(\size, value) } }
+    { \reverbDamp }    { if(~reverbSynth.notNil) { ~reverbSynth.set(\damping, value) } }
+    { \reverbLevel }   { if(~reverbSynth.notNil) { ~reverbSynth.set(\level, value) } }
+    { \satDepth }      { if(~satSynth.notNil) { ~satSynth.set(\depth, value) } }
+    { \satType }       { if(~satSynth.notNil) { ~satSynth.set(\type, value) } }
+    { \tilt }          { if(~tiltSynth.notNil) { ~tiltSynth.set(\tilt, value) } }
+    { \compAmount }    { if(~compSynth.notNil) { ~compSynth.set(\amount, value) } }
+    { \compColor }     { if(~compSynth.notNil) { ~compSynth.set(\color, value) } };
 };
 
 ~setTempo = { |bpm|
@@ -267,6 +335,9 @@ var defaultStep = {
         ~tracks[i][\endStep] = 15;
         ~tracks[i][\clockDiv] = 0.25;
     };
+    ~fxParamDefaults.keysValuesDo { |key, val|
+        ~setFxParam.(key, val);
+    };
     "[Gladiola] All patterns cleared.".postln;
 };
 
@@ -282,7 +353,7 @@ var defaultStep = {
             \clockDiv -> t[\clockDiv]
         ]
     };
-    snapshot[\delayDiv] = ~delayDiv;
+    snapshot[\fxParams] = ~fxParams.copy;
     snapshot[\transpose] = ~transpose;
     snapshot[\globalReverse] = ~globalReverse;
     ~presets[slot] = snapshot;
@@ -304,7 +375,19 @@ var defaultStep = {
                 ~tracks[i][\clockDiv] = 0.25;
             };
         };
-        ~setDelayDiv.(snapshot[\delayDiv]);
+        if(snapshot[\fxParams].notNil) {
+            snapshot[\fxParams].keysValuesDo { |key, val|
+                ~setFxParam.(key, val);
+            };
+        } {
+            // Backward compat: old preset with only delayDiv
+            ~fxParamDefaults.keysValuesDo { |key, val|
+                ~setFxParam.(key, val);
+            };
+            if(snapshot[\delayDiv].notNil) {
+                ~setFxParam.(\delayDiv, snapshot[\delayDiv]);
+            };
+        };
         ~transpose = snapshot[\transpose];
         ~globalReverse = snapshot[\globalReverse] ? false;
         "[Gladiola] Preset % recalled.".format(slot + 1).postln;

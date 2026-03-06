@@ -25,6 +25,8 @@ s.waitForBoot({
 
 	loadOrError.(basePath +/+ "synthdefs/sample_voice.scd");
 	~gladiolaLoadSynthDefs.();
+	loadOrError.(basePath +/+ "synthdefs/fx_chain.scd");
+	~gladiolaLoadFxSynthDefs.();
 	s.sync;
 	"[Gladiola] SynthDefs loaded.".postln;
 
@@ -54,6 +56,7 @@ s.waitForBoot({
 	// ========================================
 
 	loadOrError.(basePath +/+ "grid_params.scd");
+	loadOrError.(basePath +/+ "fx_params.scd");
 	loadOrError.(basePath +/+ "grid_leds.scd");
 	loadOrError.(basePath +/+ "grid_input.scd");
 
@@ -133,10 +136,15 @@ s.waitForBoot({
 		if(~stopTransport.notNil)  { ~stopTransport.() };
 		if(~disconnectGrid.notNil) { ~disconnectGrid.() };
 		if(~freeSamples.notNil)    { ~freeSamples.() };
-		if(~delaySynth.notNil) { ~delaySynth.free; ~delaySynth = nil };
-		if(~fxGroup.notNil)    { ~fxGroup.free; ~fxGroup = nil };
-		if(~voiceGroup.notNil) { ~voiceGroup.free; ~voiceGroup = nil };
-		if(~delayBus.notNil)   { ~delayBus.free; ~delayBus = nil };
+		[\delaySynth, \granularSynth, \reverbSynth, \satSynth, \tiltSynth, \compSynth, \limiterSynth].do { |key|
+			var synth = key.envirGet;
+			if(synth.notNil) { synth.free; key.envirPut(nil) };
+		};
+		[\masterGroup, \fxGroup, \satGroup, \voiceGroup].do { |key|
+			var group = key.envirGet;
+			if(group.notNil) { group.free; key.envirPut(nil) };
+		};
+		if(~fxSendBus.notNil) { ~fxSendBus.free; ~fxSendBus = nil };
 		"[Gladiola] Cleanup complete.".postln;
 	};
 
@@ -158,7 +166,7 @@ s.waitForBoot({
 	"[Gladiola]   ~stopTransport.()                - Stop sequencer".postln;
 	"[Gladiola]   ~loadSamples.(path, mode)        - Load samples".postln;
 	"[Gladiola]   ~setTrackClockDiv.(trackIdx, div) - Per-track clock division (0.0625-4.0)".postln;
-	"[Gladiola]   ~setDelayDiv.(div)               - Delay division (0.0625-4.0)".postln;
+	"[Gladiola]   ~setFxParam.(key, val)            - Set FX parameter".postln;
 	"[Gladiola]   ~setTempo.(bpm)                  - Change tempo (20-300)".postln;
 	"[Gladiola]   ~setTrackStart.(t, step)          - Track start point (0-15)".postln;
 	"[Gladiola]   ~setTrackEnd.(t, step)            - Track end point (0-15)".postln;
