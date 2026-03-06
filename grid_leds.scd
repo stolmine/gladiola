@@ -150,22 +150,6 @@
             ~grid.led(pagePos[\pageCol], pagePos[\pageRow],
                 if(~paramPage == 1) { GridInterface.ledFull } { GridInterface.ledMedium });
 
-            // Background: show other tracks' steps subdued
-            ~numTracks.do { |trackIdx|
-                if(trackIdx != ~trackParamTrack) {
-                    var t = ~tracks[trackIdx];
-                    ~stepsPerTrack.do { |stepIdx|
-                        if(~stepInRange.(stepIdx, t[\startStep], t[\endStep])) {
-                            if(t[\steps][stepIdx][\on]) {
-                                var vel = t[\steps][stepIdx][\velocity];
-                                ~grid.led(stepIdx, trackIdx,
-                                    (GridInterface.ledDim + (vel * (GridInterface.ledMedium - GridInterface.ledDim))).round.asInteger
-                                );
-                            };
-                        };
-                    };
-                };
-            };
 
         } {
             if(~utilityOverlayActive) {

@@ -16,6 +16,8 @@
 ~trackParamActive = false;
 ~trackParamCol = nil;
 ~trackParamTrack = nil;
+~reverseHeld = false;
+~prevTranspose = nil;
 
 ~paramRowForIndex = { |paramIdx, heldTrack|
     // Maps param index (0-6) to grid row, skipping heldTrack's row.
@@ -99,6 +101,7 @@
                     if(x == expectedCol && (y < 7)) {
                         if(~utilityOverlayType == \transpose) {
                             var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];
+                            ~prevTranspose = ~transpose;
                             ~transpose = transposeValues[y];
                             "[Gladiola] Transpose -> %".format(~transpose).postln;
                         } {
@@ -239,8 +242,18 @@
                                 };
                                 if(x == 3) {
                                     ~globalReverse = ~globalReverse.not;
+                                    ~reverseHeld = false;
                                     "[Gladiola] Global reverse -> %".format(~globalReverse).postln;
                                     ~updateGridLEDs.();
+                                };
+                                if(x == 4) {
+                                    if(~prevTranspose.notNil) {
+                                        var swap = ~transpose;
+                                        ~transpose = ~prevTranspose;
+                                        ~prevTranspose = swap;
+                                        "[Gladiola] Transpose swap -> %".format(~transpose).postln;
+                                        ~updateGridLEDs.();
+                                    };
                                 };
                                 if(x >= 5 && (x <= 8)) {
                                     ~presetHeldSlot = x - 5;
@@ -296,6 +309,9 @@
                 };
             };
             if(y == 7) {
+                if(x == 3) {
+                    ~reverseHeld = true;
+                };
                 if(x == 1) {
                     ~pendingToggle = nil;
                     ~utilityOverlayActive = true;
@@ -341,6 +357,12 @@
     });
 
     ~grid.release({ |x, y|
+        if(y == 7 && (x == 3) && ~reverseHeld) {
+            ~reverseHeld = false;
+            ~globalReverse = ~globalReverse.not;
+            "[Gladiola] Global reverse hold release -> %".format(~globalReverse).postln;
+            ~updateGridLEDs.();
+        };
         if(~paramMenuActive) {
             if(~heldTrack.notNil && (x == ~heldStepIdx) && (y == ~heldTrack)) {
                 ~paramMenuActive = false;

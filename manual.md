@@ -69,7 +69,10 @@ Tap a row to select. Release the held button to close.
 
 ### Transpose
 
-Hold column 4 on the utility row. Options appear vertically in the column above:
+- **Tap** col 4: Swap between the current transpose value and the previous one (the value before the last overlay selection).
+- **Hold** col 4: Open the overlay to pick a new value. The previous value is saved each time a new selection is made.
+
+Options appear vertically in the column above:
 
 | Row | Interval | Ratio |
 |-----|----------|-------|
@@ -91,7 +94,8 @@ Hold a mute key to open the track parameter overlay for that track (see [Track P
 
 ### Global Reverse
 
-Tap column 3 on the utility row to toggle global reverse. When active (full brightness), all steps play in reverse — except steps that already have per-step reverse enabled, which flip back to forward playback. This is a global inversion of each step's individual reverse setting.
+- **Tap** col 3: Permanently toggle global reverse. When active (full brightness), all steps play in reverse — except steps that already have per-step reverse enabled, which flip back to forward playback. This is a global inversion of each step's individual reverse setting.
+- **Hold** col 3: Temporarily invert the current reverse state while held. Releasing reverts to the prior state. Useful for momentary reverse effects during performance.
 
 ### Presets
 
@@ -130,6 +134,7 @@ Hold a mute key (cols 9-15, row 7) to open the track parameter overlay for that 
 - **Param column**: The held mute key's column, rows 0-6. Tap a row to select a parameter.
 - **Value row**: Appears at the selected parameter's row number. Tap a column to set the value.
 - **Page toggle (P)**: Appears at `heldCol - 4`. Switches between page 1 and page 2. No copy button.
+- **Held mute key LED**: Lit while the overlay is open.
 - **Scope**: Value changes apply to ALL steps in the track simultaneously.
 - **Unanimous indicator**: If all steps share the same value for the selected parameter, the current position lights full brightness. If steps have mixed values, no bright indicator is shown.
 
