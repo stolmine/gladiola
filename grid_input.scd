@@ -34,7 +34,7 @@
 };
 
 ~overlayActionPositions = { |heldTrack, heldStepIdx, valueRow|
-    var actionCol = if(heldStepIdx <= 7) { 14 } { 1 };
+    var actionCol = if(heldStepIdx <= 7) { (heldStepIdx + 4).min(15) } { (heldStepIdx - 4).max(0) };
     var pRow, cRow;
     if(heldTrack <= 1) { pRow = heldTrack + 2; cRow = heldTrack + 4 };
     if(heldTrack >= 2 && (heldTrack <= 4)) { pRow = heldTrack - 2; cRow = heldTrack + 2 };
