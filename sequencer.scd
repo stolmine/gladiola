@@ -23,7 +23,6 @@ var defaultStep = {
 ~numTracks     = 7;
 ~stepsPerTrack = 16;
 ~bpm           = 120;
-~clockDiv      = 0.25;
 ~delayDiv      = 0.25;
 ~playing       = false;
 ~transpose     = 1.0;
@@ -54,7 +53,8 @@ var defaultStep = {
             \endStep -> 15,
             \currentStep -> 0,
             \muted -> false,
-            \voice -> nil]
+            \voice -> nil,
+            \clockDiv -> 0.25]
     });
 
     ~voiceGroup = Group.new(s);
@@ -84,12 +84,11 @@ var defaultStep = {
     } {
         ~playing = true;
         ~numTracks.do { |i| ~tracks[i][\currentStep] = ~tracks[i][\startStep] };
-
         ~seqClock = TempoClock.new(~bpm / 60);
 
-        ~seqClock.schedAbs(~seqClock.beats, {
-            if(~playing) {
-                ~numTracks.do { |trackIdx|
+        ~numTracks.do { |trackIdx|
+            ~seqClock.schedAbs(~seqClock.beats, {
+                if(~playing) {
                     var track, step, voice, rand, bank, sample, pitch, velocity;
                     var loopLength, loopRegion, ratchet, buf, stepDur, numBanks, nextStep;
 
@@ -124,7 +123,7 @@ var defaultStep = {
                         buf = ~getSample.(bank, sample);
 
                         if(buf.notNil) {
-                            stepDur = ~clockDiv / ~seqClock.tempo;
+                            stepDur = track[\clockDiv] / ~seqClock.tempo;
 
                             voice.set(
                                 \bufnum,     buf.bufnum,
@@ -150,15 +149,15 @@ var defaultStep = {
                         nextStep = track[\startStep];
                     };
                     track[\currentStep] = nextStep;
-                };
 
-                { ~updateGridLEDs.() }.defer;
+                    { ~updateGridLEDs.() }.defer;
 
-                ~clockDiv
-            } {
-                nil
-            }
-        });
+                    track[\clockDiv]
+                } {
+                    nil
+                }
+            });
+        };
 
         "[Gladiola] Transport started at % BPM.".format(~bpm).postln;
     };
@@ -232,9 +231,11 @@ var defaultStep = {
     };
 };
 
-~setClockDiv = { |div|
-    ~clockDiv = div.clip(0.0625, 4.0);
-    "[Gladiola] Clock division set to %.".format(~clockDiv).postln;
+~setTrackClockDiv = { |trackIdx, div|
+    if((trackIdx >= 0) && (trackIdx < ~numTracks)) {
+        ~tracks[trackIdx][\clockDiv] = div.clip(0.0625, 4.0);
+        "[Gladiola] Track % clock div set to %.".format(trackIdx, ~tracks[trackIdx][\clockDiv]).postln;
+    };
 };
 
 ~setDelayDiv = { |div|
@@ -264,6 +265,7 @@ var defaultStep = {
         ~tracks[i][\currentStep] = 0;
         ~tracks[i][\startStep] = 0;
         ~tracks[i][\endStep] = 15;
+        ~tracks[i][\clockDiv] = 0.25;
     };
     "[Gladiola] All patterns cleared.".postln;
 };
@@ -276,10 +278,10 @@ var defaultStep = {
             \steps -> t[\steps].collect { |s| s.copy },
             \startStep -> t[\startStep],
             \endStep -> t[\endStep],
-            \muted -> t[\muted]
+            \muted -> t[\muted],
+            \clockDiv -> t[\clockDiv]
         ]
     };
-    snapshot[\clockDiv] = ~clockDiv;
     snapshot[\delayDiv] = ~delayDiv;
     snapshot[\transpose] = ~transpose;
     snapshot[\globalReverse] = ~globalReverse;
@@ -296,8 +298,12 @@ var defaultStep = {
             ~tracks[i][\startStep] = saved[\startStep];
             ~tracks[i][\endStep] = saved[\endStep];
             ~tracks[i][\muted] = saved[\muted];
+            if(saved[\clockDiv].notNil) {
+                ~tracks[i][\clockDiv] = saved[\clockDiv];
+            } {
+                ~tracks[i][\clockDiv] = 0.25;
+            };
         };
-        ~setClockDiv.(snapshot[\clockDiv]);
         ~setDelayDiv.(snapshot[\delayDiv]);
         ~transpose = snapshot[\transpose];
         ~globalReverse = snapshot[\globalReverse] ? false;

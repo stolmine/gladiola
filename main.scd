@@ -157,7 +157,7 @@ s.waitForBoot({
 	"[Gladiola]   ~startTransport.()               - Start sequencer".postln;
 	"[Gladiola]   ~stopTransport.()                - Stop sequencer".postln;
 	"[Gladiola]   ~loadSamples.(path, mode)        - Load samples".postln;
-	"[Gladiola]   ~setClockDiv.(div)               - Clock division (0.0625-4.0)".postln;
+	"[Gladiola]   ~setTrackClockDiv.(trackIdx, div) - Per-track clock division (0.0625-4.0)".postln;
 	"[Gladiola]   ~setDelayDiv.(div)               - Delay division (0.0625-4.0)".postln;
 	"[Gladiola]   ~setTempo.(bpm)                  - Change tempo (20-300)".postln;
 	"[Gladiola]   ~setTrackStart.(t, step)          - Track start point (0-15)".postln;

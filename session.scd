@@ -7,7 +7,6 @@
 	var snapshot = Dictionary.new;
 	snapshot[\sampleDir] = ~sampleDir;
 	snapshot[\bpm] = ~bpm;
-	snapshot[\clockDiv] = ~clockDiv;
 	snapshot[\delayDiv] = ~delayDiv;
 	snapshot[\transpose] = ~transpose;
 	snapshot[\globalReverse] = ~globalReverse;
@@ -17,19 +16,22 @@
 			\steps -> t[\steps].collect { |s| s.copy },
 			\startStep -> t[\startStep],
 			\endStep -> t[\endStep],
-			\muted -> t[\muted]
+			\muted -> t[\muted],
+			\clockDiv -> t[\clockDiv]
 		]
 	};
 	snapshot[\presets] = ~presets.collect { |p|
 		if(p.notNil) {
 			var copy = Dictionary.new;
 			copy[\tracks] = p[\tracks].collect { |t|
-				Dictionary[
+				var td = Dictionary[
 					\steps -> t[\steps].collect { |s| s.copy },
 					\startStep -> t[\startStep],
 					\endStep -> t[\endStep],
 					\muted -> t[\muted]
-				]
+				];
+				if(t[\clockDiv].notNil) { td[\clockDiv] = t[\clockDiv] };
+				td
 			};
 			copy[\clockDiv] = p[\clockDiv];
 			copy[\delayDiv] = p[\delayDiv];
@@ -82,10 +84,14 @@
 					~tracks[i][\endStep] = saved[\endStep];
 					~tracks[i][\muted] = saved[\muted];
 					~tracks[i][\currentStep] = ~tracks[i][\startStep];
+					if(saved[\clockDiv].notNil) {
+						~tracks[i][\clockDiv] = saved[\clockDiv];
+					} {
+						~tracks[i][\clockDiv] = 0.25;
+					};
 				};
 
 				~bpm = snapshot[\bpm];
-				~clockDiv = snapshot[\clockDiv];
 				~delayDiv = snapshot[\delayDiv];
 				~transpose = snapshot[\transpose];
 				~globalReverse = snapshot[\globalReverse] ? false;
@@ -95,12 +101,14 @@
 					if(p.notNil) {
 						var copy = Dictionary.new;
 						copy[\tracks] = p[\tracks].collect { |t|
-							Dictionary[
+							var td = Dictionary[
 								\steps -> t[\steps].collect { |s| s.copy },
 								\startStep -> t[\startStep],
 								\endStep -> t[\endStep],
 								\muted -> t[\muted]
-							]
+							];
+							if(t[\clockDiv].notNil) { td[\clockDiv] = t[\clockDiv] };
+							td
 						};
 						copy[\clockDiv] = p[\clockDiv];
 						copy[\delayDiv] = p[\delayDiv];
@@ -130,7 +138,6 @@
 		~clearPattern.();
 
 		~bpm = 120;
-		~clockDiv = 0.25;
 		~delayDiv = 0.25;
 		~transpose = 1.0;
 		~globalReverse = false;

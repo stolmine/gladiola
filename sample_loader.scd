@@ -34,6 +34,7 @@ var maxPerBank = 15;
     var allFiles, groups, bankIndex, sampleIndex, totalLoaded;
 
     path = path ?? { ~sampleDir };
+    ~sampleDir = path;
 
     if(PathName(path).isFolder.not) {
         "[Gladiola] Directory not found: %".format(path).postln;

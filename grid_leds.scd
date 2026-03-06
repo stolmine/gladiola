@@ -153,33 +153,47 @@
 
         } {
             if(~utilityOverlayActive) {
-            var col = switch(~utilityOverlayType)
-                { \clockDiv } { 1 }
-                { \delayDiv } { 2 }
-                { \transpose } { 4 };
-
             ~grid.clear;
 
-            if(~utilityOverlayType == \transpose) {
-                var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];
-                transposeValues.do { |val, i|
-                    var brightness = if(val == ~transpose) {
-                        GridInterface.ledFull
-                    } {
-                        GridInterface.ledDim
+            if(~utilityOverlayType == \clockDiv) {
+                var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
+                ~numTracks.do { |trackIdx|
+                    var trackDiv = ~tracks[trackIdx][\clockDiv];
+                    divValues.do { |div, colIdx|
+                        var brightness = if(div == trackDiv) {
+                            GridInterface.ledFull
+                        } {
+                            GridInterface.ledDim
+                        };
+                        ~grid.led(colIdx, trackIdx, brightness);
                     };
-                    ~grid.led(col, i, brightness);
                 };
             } {
-                var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
-                var currentDiv = if(~utilityOverlayType == \clockDiv) { ~clockDiv } { ~delayDiv };
-                divValues.do { |div, i|
-                    var brightness = if(div == currentDiv) {
-                        GridInterface.ledFull
-                    } {
-                        GridInterface.ledDim
+                var col = switch(~utilityOverlayType)
+                    { \delayDiv } { 2 }
+                    { \transpose } { 4 };
+
+                if(~utilityOverlayType == \transpose) {
+                    var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];
+                    transposeValues.do { |val, i|
+                        var brightness = if(val == ~transpose) {
+                            GridInterface.ledFull
+                        } {
+                            GridInterface.ledDim
+                        };
+                        ~grid.led(col, i, brightness);
                     };
-                    ~grid.led(col, i, brightness);
+                } {
+                    var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
+                    var currentDiv = ~delayDiv;
+                    divValues.do { |div, i|
+                        var brightness = if(div == currentDiv) {
+                            GridInterface.ledFull
+                        } {
+                            GridInterface.ledDim
+                        };
+                        ~grid.led(col, i, brightness);
+                    };
                 };
             };
         } {
