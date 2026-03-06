@@ -5,8 +5,8 @@
         var step = track[\steps][~heldStepIdx];
         var paramNames = ~currentParamNames.();
         var numParams = paramNames.size;
-        var actionPos = ~overlayActionPositions.(~heldTrack, ~heldStepIdx);
         var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
+        var actionPos = ~overlayActionPositions.(~heldTrack, ~heldStepIdx, valueRow);
         var curVal, curPos, numValid;
 
         ~grid.clear;

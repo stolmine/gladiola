@@ -33,12 +33,26 @@
     }
 };
 
-~overlayActionPositions = { |heldTrack, heldStepIdx|
+~overlayActionPositions = { |heldTrack, heldStepIdx, valueRow|
     var actionCol = if(heldStepIdx <= 7) { 14 } { 1 };
     var pRow, cRow;
     if(heldTrack <= 1) { pRow = heldTrack + 2; cRow = heldTrack + 4 };
     if(heldTrack >= 2 && (heldTrack <= 4)) { pRow = heldTrack - 2; cRow = heldTrack + 2 };
     if(heldTrack >= 5) { pRow = heldTrack - 4; cRow = heldTrack - 2 };
+    // Dodge value row collisions
+    if(valueRow.notNil) {
+        if(pRow == valueRow) {
+            // P tries to shift up (away from C), then down
+            if((pRow - 1) >= 0 && ((pRow - 1) != heldTrack)) { pRow = pRow - 1 }
+            { if((pRow + 1) <= 7 && ((pRow + 1) != heldTrack) && ((pRow + 1) != cRow)) { pRow = pRow + 1 } };
+        };
+        if(cRow == valueRow) {
+            // C tries to shift down (away from P), then up
+            if((cRow + 1) <= 7 && ((cRow + 1) != heldTrack)) { cRow = cRow + 1 }
+            { if((cRow - 1) >= 0 && ((cRow - 1) != heldTrack) && ((cRow - 1) != pRow)) { cRow = cRow - 1 } };
+        };
+    };
+    "[Gladiola] actionPos: heldTrack=%, heldStep=%, actionCol=%, pRow=%, cRow=%, valueRow=%".format(heldTrack, heldStepIdx, actionCol, pRow, cRow, valueRow).postln;
     Dictionary[\pageCol -> actionCol, \pageRow -> pRow, \copyCol -> actionCol, \copyRow -> cRow]
 };
 
@@ -94,7 +108,8 @@
                     if(~paramMenuActive && ~heldTrack.notNil && ~heldStepIdx.notNil) {
                         var paramNames = ~currentParamNames.();
                         var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
-                        var actionPos = ~overlayActionPositions.(~heldTrack, ~heldStepIdx);
+                        var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
+                        var actionPos = ~overlayActionPositions.(~heldTrack, ~heldStepIdx, valueRow);
 
                         if(x == actionPos[\pageCol] && (y == actionPos[\pageRow])) {
                             // Page toggle
