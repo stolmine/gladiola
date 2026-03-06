@@ -437,8 +437,9 @@
                     if(~presets[mappedSlot].isNil) {
                         ~presetHeldSlot = nil;
                         ~presetHeldX = nil;
-                        ~savePreset.(mappedSlot);
-                        ~lastRecalledSlot[btnIdx] = mappedSlot;
+                        ~presetSlotMap[btnIdx] = btnIdx;
+                        ~savePreset.(btnIdx);
+                        ~lastRecalledSlot[btnIdx] = btnIdx;
                         ~updateGridLEDs.();
                     } {
                         ~presetHeldSlot = nil;

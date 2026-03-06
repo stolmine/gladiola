@@ -208,7 +208,7 @@
                                             if(~presets[slotIdx].notNil) {
                                                 GridInterface.ledMedium
                                             } {
-                                                GridInterface.ledOff
+                                                GridInterface.ledDim
                                             }
                                         };
                                         ~grid.led(col, row, brightness);
@@ -218,6 +218,9 @@
                                 ~grid.led(8, 2, if(~presetConfirmArmed == \clear) { GridInterface.ledFull } { GridInterface.ledDim });
                                 ~grid.led(8, 4, if(~presetConfirmMode) { GridInterface.ledFull } { GridInterface.ledDim });
                                 ~grid.led(8, 6, if(~presetQuantized) { GridInterface.ledFull } { GridInterface.ledDim });
+                                if(~utilityHeldButton.notNil) {
+                                    ~grid.led(~utilityHeldButton, 7, GridInterface.ledFull);
+                                };
                             };
                         };
                     };
