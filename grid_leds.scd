@@ -72,7 +72,103 @@
             if(~clipboard.notNil) { GridInterface.ledBright } { GridInterface.ledDim });
 
     } {
-        if(~utilityOverlayActive) {
+        if(~trackParamActive && ~trackParamCol.notNil && ~trackParamTrack.notNil) {
+            var paramNames = ~currentParamNames.();
+            var numParams = paramNames.size;
+            var valueRow = ~selectedParam;
+            var pagePos = ~trackOverlayPagePos.(~trackParamCol, valueRow);
+
+            ~grid.clear;
+
+            // Held mute key bright
+            ~grid.led(~trackParamCol, 7, GridInterface.ledFull);
+
+            // Param column: rows 0-6 at trackParamCol
+            7.do { |row|
+                if(row < numParams) {
+                    var brightness;
+                    if(row == 0 && (~paramPage == 0)) {
+                        // Bank param: gradient based on bank value
+                        var bankVal = ~tracks[~trackParamTrack][\steps][0][\bank];
+                        var numBanks = (~numBanks ? 1).max(1);
+                        brightness = (GridInterface.ledDim + ((bankVal + 1) / numBanks * (GridInterface.ledFull - GridInterface.ledDim))).round.asInteger.clip(GridInterface.ledDim, GridInterface.ledFull);
+                    } {
+                        brightness = if(row == ~selectedParam) {
+                            GridInterface.ledBright
+                        } {
+                            GridInterface.ledDim
+                        };
+                    };
+                    ~grid.led(~trackParamCol, row, brightness);
+                };
+            };
+
+            // Value row at row = selectedParam
+            // Check if all steps agree on the selected param value (unanimous check)
+            if(~selectedParam == 0 && (~paramPage == 0)) {
+                // Sample param
+                var firstVal = ~tracks[~trackParamTrack][\steps][0][\sample];
+                var unanimous = ~tracks[~trackParamTrack][\steps].every { |step| step[\sample] == firstVal };
+                var curPos = if(unanimous) { firstVal.asInteger } { nil };
+                var numValid = ~numValidPositions.(0, 0, ~trackParamTrack, 0);
+
+                16.do { |col|
+                    if(col != ~trackParamCol && (col != pagePos[\pageCol] || (valueRow != pagePos[\pageRow]))) {
+                        var valIdx = ~valueIdxForCol.(col, ~trackParamCol);
+                        if(valIdx.notNil && (valIdx < numValid)) {
+                            var brightness = if(curPos.notNil && (valIdx == curPos)) {
+                                GridInterface.ledFull
+                            } {
+                                GridInterface.ledDim
+                            };
+                            ~grid.led(col, valueRow, brightness);
+                        };
+                    };
+                };
+            } {
+                var curVal = ~tracks[~trackParamTrack][\steps][0][paramNames[~selectedParam]];
+                var unanimous = ~tracks[~trackParamTrack][\steps].every { |step| step[paramNames[~selectedParam]] == curVal };
+                var curPos = if(unanimous) { ~positionForValue.(~paramPage, ~selectedParam, curVal) } { nil };
+                var numValid = ~numValidPositions.(~paramPage, ~selectedParam, ~trackParamTrack, 0);
+
+                16.do { |col|
+                    if(col != ~trackParamCol && (col != pagePos[\pageCol] || (valueRow != pagePos[\pageRow]))) {
+                        var valIdx = ~valueIdxForCol.(col, ~trackParamCol);
+                        if(valIdx.notNil && (valIdx < numValid)) {
+                            var brightness = if(curPos.notNil && (valIdx == curPos)) {
+                                GridInterface.ledFull
+                            } {
+                                GridInterface.ledDim
+                            };
+                            ~grid.led(col, valueRow, brightness);
+                        };
+                    };
+                };
+            };
+
+            // Page toggle button (P only, no C)
+            ~grid.led(pagePos[\pageCol], pagePos[\pageRow],
+                if(~paramPage == 1) { GridInterface.ledFull } { GridInterface.ledMedium });
+
+            // Background: show other tracks' steps subdued
+            ~numTracks.do { |trackIdx|
+                if(trackIdx != ~trackParamTrack) {
+                    var t = ~tracks[trackIdx];
+                    ~stepsPerTrack.do { |stepIdx|
+                        if(~stepInRange.(stepIdx, t[\startStep], t[\endStep])) {
+                            if(t[\steps][stepIdx][\on]) {
+                                var vel = t[\steps][stepIdx][\velocity];
+                                ~grid.led(stepIdx, trackIdx,
+                                    (GridInterface.ledDim + (vel * (GridInterface.ledMedium - GridInterface.ledDim))).round.asInteger
+                                );
+                            };
+                        };
+                    };
+                };
+            };
+
+        } {
+            if(~utilityOverlayActive) {
             var col = switch(~utilityOverlayType)
                 { \clockDiv } { 1 }
                 { \delayDiv } { 2 }
@@ -190,6 +286,7 @@
                     ~grid.led(9 + i, 7, if(~tracks[i][\muted]) { GridInterface.ledFull } { GridInterface.ledDim });
                 };
             };
+        };
         };
     };
 };

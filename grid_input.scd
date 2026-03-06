@@ -13,6 +13,9 @@
 ~presetHeldSlot = nil;
 ~presetHeldX = nil;
 ~clipboard = nil;
+~trackParamActive = false;
+~trackParamCol = nil;
+~trackParamTrack = nil;
 
 ~paramRowForIndex = { |paramIdx, heldTrack|
     // Maps param index (0-6) to grid row, skipping heldTrack's row.
@@ -60,6 +63,12 @@
     if(col == heldCol) { nil } {
         if(col < heldCol) { col } { col - 1 }
     }
+};
+
+~trackOverlayPagePos = { |heldCol, valueRow|
+    var pageCol = heldCol - 4;
+    var pageRow = if(valueRow != 0) { 0 } { 1 };
+    Dictionary[\pageCol -> pageCol, \pageRow -> pageRow]
 };
 
 ~initGridHandler = {
@@ -166,31 +175,88 @@
                         };
                         };
                     } {
-                        if(y == 7) {
-                            if(x == 0) {
-                                if(~playing) { ~stopTransport.() } { ~startTransport.() };
+                        if(~trackParamActive && ~trackParamCol.notNil && ~trackParamTrack.notNil) {
+                            var paramNames = ~currentParamNames.();
+                            var valueRow = ~selectedParam;
+                            var pagePos = ~trackOverlayPagePos.(~trackParamCol, valueRow);
+
+                            if(x == pagePos[\pageCol] && (y == pagePos[\pageRow])) {
+                                // Page toggle
+                                ~paramPage = 1 - ~paramPage;
+                                ~selectedParam = 0;
+                                "[Gladiola] Track param page -> %".format(~paramPage).postln;
                                 ~updateGridLEDs.();
-                            };
-                            if(x == 3) {
-                                ~globalReverse = ~globalReverse.not;
-                                "[Gladiola] Global reverse -> %".format(~globalReverse).postln;
-                                ~updateGridLEDs.();
-                            };
-                            if(x >= 5 && (x <= 8)) {
-                                ~presetHeldSlot = x - 5;
-                                ~presetHeldX = x;
-                            };
-                            if(x >= 9 && (x <= 15)) {
-                                var trackIdx = x - 9;
-                                ~toggleMuteTrack.(trackIdx);
-                                ~updateGridLEDs.();
+                            } {
+                                if(x == ~trackParamCol && (y < 7)) {
+                                    // Param select
+                                    if(y < paramNames.size) {
+                                        if(y == 0 && (~selectedParam == 0) && (~paramPage == 0)) {
+                                            // Bank cycle: apply to ALL steps
+                                            var numBanks = (~numBanks ? 1).max(1);
+                                            var curBank = ~tracks[~trackParamTrack][\steps][0][\bank];
+                                            var newBank = (curBank + 1) % numBanks;
+                                            ~tracks[~trackParamTrack][\steps].do { |step|
+                                                step[\bank] = newBank;
+                                                step[\sample] = 0;
+                                            };
+                                            "[Gladiola] Track % all steps: bank -> %".format(~trackParamTrack, newBank).postln;
+                                        } {
+                                            ~selectedParam = y;
+                                            "[Gladiola] Track param -> %".format(paramNames[y]).postln;
+                                        };
+                                        ~updateGridLEDs.();
+                                    };
+                                } {
+                                    // Value tap
+                                    if(y == ~selectedParam && (x != ~trackParamCol)) {
+                                        var valIdx = ~valueIdxForCol.(x, ~trackParamCol);
+                                        if(valIdx.notNil) {
+                                            var numValid = ~numValidPositions.(~paramPage, ~selectedParam, ~trackParamTrack, 0);
+                                            if(valIdx < numValid) {
+                                                if(~selectedParam == 0 && (~paramPage == 0)) {
+                                                    ~tracks[~trackParamTrack][\steps].do { |step|
+                                                        step[\sample] = valIdx;
+                                                    };
+                                                    "[Gladiola] Track % all steps: sample -> %".format(~trackParamTrack, valIdx).postln;
+                                                } {
+                                                    var val = ~valueForPosition.(~paramPage, ~selectedParam, valIdx);
+                                                    ~tracks[~trackParamTrack][\steps].do { |step|
+                                                        step[paramNames[~selectedParam]] = val;
+                                                    };
+                                                    "[Gladiola] Track % all steps: % -> %".format(~trackParamTrack, paramNames[~selectedParam], val).postln;
+                                                };
+                                                ~updateGridLEDs.();
+                                            };
+                                        };
+                                    };
+                                };
                             };
                         } {
-                            if(y >= 0 && (y < ~numTracks)) {
-                                var track = ~tracks[y];
-                                if(~stepInRange.(x, track[\startStep], track[\endStep])) {
+                            if(y == 7) {
+                                if(x == 0) {
+                                    if(~playing) { ~stopTransport.() } { ~startTransport.() };
+                                    ~updateGridLEDs.();
+                                };
+                                if(x == 3) {
+                                    ~globalReverse = ~globalReverse.not;
+                                    "[Gladiola] Global reverse -> %".format(~globalReverse).postln;
+                                    ~updateGridLEDs.();
+                                };
+                                if(x >= 5 && (x <= 8)) {
+                                    ~presetHeldSlot = x - 5;
+                                    ~presetHeldX = x;
+                                };
+                                if(x >= 9 && (x <= 15)) {
                                     ~pendingToggle = x;
-                                    ~pendingToggleTrack = y;
+                                    ~pendingToggleTrack = 7;
+                                };
+                            } {
+                                if(y >= 0 && (y < ~numTracks)) {
+                                    var track = ~tracks[y];
+                                    if(~stepInRange.(x, track[\startStep], track[\endStep])) {
+                                        ~pendingToggle = x;
+                                        ~pendingToggleTrack = y;
+                                    };
                                 };
                             };
                         };
@@ -201,7 +267,7 @@
     });
 
     ~grid.hold({ |x, y|
-        if(~paramMenuActive.not && ~lengthModalTrack.isNil && ~lengthModalMode.isNil && ~utilityOverlayActive.not) {
+        if(~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil && ~lengthModalMode.isNil && ~utilityOverlayActive.not) {
             if(y >= 0 && (y < ~numTracks)) {
                 var track = ~tracks[y];
                 if(~stepInRange.(x, track[\startStep], track[\endStep])) {
@@ -260,6 +326,16 @@
                     ~savePreset.(x - 5);
                     ~updateGridLEDs.();
                 };
+                if(x >= 9 && (x <= 15)) {
+                    ~pendingToggle = nil;
+                    ~pendingToggleTrack = nil;
+                    ~trackParamActive = true;
+                    ~trackParamCol = x;
+                    ~trackParamTrack = x - 9;
+                    ~selectedParam = 0;
+                    ~paramPage = 0;
+                    ~updateGridLEDs.();
+                };
             };
         };
     });
@@ -273,31 +349,49 @@
                 ~updateGridLEDs.();
             };
         } {
-            if(~utilityOverlayActive) {
-                if(y == 7 && (x == ~utilityHeldButton)) {
-                    "[Gladiola] Div overlay closed".postln;
-                    ~utilityOverlayActive = false;
-                    ~utilityOverlayType = nil;
-                    ~utilityHeldButton = nil;
+            if(~trackParamActive) {
+                if(x == ~trackParamCol && (y == 7)) {
+                    ~trackParamActive = false;
+                    ~trackParamCol = nil;
+                    ~trackParamTrack = nil;
                     ~updateGridLEDs.();
-                } {
-                    "[Gladiola] Div overlay release ignored: x=%, y=%, expected (%, 7)".format(x, y, ~utilityHeldButton).postln;
                 };
             } {
-                if(y == 7 && (x >= 5) && (x <= 8) && ~presetHeldSlot.notNil && (x == ~presetHeldX)) {
-                    var slot = ~presetHeldSlot;
-                    ~presetHeldSlot = nil;
-                    ~presetHeldX = nil;
-                    ~recallPreset.(slot);
-                    ~updateGridLEDs.();
-                } {
-                    if(~pendingToggle.notNil && ~pendingToggleTrack.notNil) {
-                        var stepIdx = ~pendingToggle;
-                        var trackIdx = ~pendingToggleTrack;
-                        ~pendingToggle = nil;
-                        ~pendingToggleTrack = nil;
-                        ~tracks[trackIdx][\steps][stepIdx][\on] = ~tracks[trackIdx][\steps][stepIdx][\on].not;
+                if(~utilityOverlayActive) {
+                    if(y == 7 && (x == ~utilityHeldButton)) {
+                        "[Gladiola] Div overlay closed".postln;
+                        ~utilityOverlayActive = false;
+                        ~utilityOverlayType = nil;
+                        ~utilityHeldButton = nil;
                         ~updateGridLEDs.();
+                    } {
+                        "[Gladiola] Div overlay release ignored: x=%, y=%, expected (%, 7)".format(x, y, ~utilityHeldButton).postln;
+                    };
+                } {
+                    if(y == 7 && (x >= 5) && (x <= 8) && ~presetHeldSlot.notNil && (x == ~presetHeldX)) {
+                        var slot = ~presetHeldSlot;
+                        ~presetHeldSlot = nil;
+                        ~presetHeldX = nil;
+                        ~recallPreset.(slot);
+                        ~updateGridLEDs.();
+                    } {
+                        if(~pendingToggle.notNil && ~pendingToggleTrack.notNil) {
+                            if(~pendingToggleTrack == 7) {
+                                // Mute toggle (deferred from press)
+                                var trackIdx = ~pendingToggle - 9;
+                                ~pendingToggle = nil;
+                                ~pendingToggleTrack = nil;
+                                ~toggleMuteTrack.(trackIdx);
+                                ~updateGridLEDs.();
+                            } {
+                                var stepIdx = ~pendingToggle;
+                                var trackIdx = ~pendingToggleTrack;
+                                ~pendingToggle = nil;
+                                ~pendingToggleTrack = nil;
+                                ~tracks[trackIdx][\steps][stepIdx][\on] = ~tracks[trackIdx][\steps][stepIdx][\on].not;
+                                ~updateGridLEDs.();
+                            };
+                        };
                     };
                 };
             };
@@ -311,7 +405,7 @@
             ~updateGridLEDs.();
         };
         if(y == 7 && (x >= 5) && (x <= 8)) {
-            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~lengthModalTrack.isNil) {
+            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil) {
                 ~presetHeldSlot = nil;
                 ~presetHeldX = nil;
                 ~clearPreset.(x - 5);
@@ -319,7 +413,7 @@
             };
         };
         if(y >= 0 && (y < ~numTracks)) {
-            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~lengthModalTrack.isNil) {
+            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil) {
                 var track = ~tracks[y];
                 // Undo toggle from first tap's release (only if step was in range)
                 if(~stepInRange.(x, track[\startStep], track[\endStep])) {

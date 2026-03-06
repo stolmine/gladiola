@@ -31,4 +31,5 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 - Clock/delay division and transpose overlays
 - Tempo-synced delay, bitcrush, bipolar filter, pan, probability
 - Start/end points with wrap-around for polymetric patterns
+- Per-track "macro" parameter overlay via mute key hold (apply params to all steps at once)
 - Input mutex system preventing gesture conflicts across modal states

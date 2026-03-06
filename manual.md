@@ -85,7 +85,9 @@ The transpose button lights full when transposed away from unity. Transpose mult
 
 ### Track Mutes
 
-Tap columns 9-15 on the utility row to toggle mute for tracks 1-7. Muted tracks show full brightness on their mute button; active steps on muted tracks display dim.
+Tap columns 9-15 on the utility row to toggle mute for tracks 1-7. Mute toggles fire on release. Muted tracks show full brightness on their mute button; active steps on muted tracks display dim.
+
+Hold a mute key to open the track parameter overlay for that track (see [Track Parameter Overlay](#track-parameter-overlay) below). Release to close.
 
 ### Global Reverse
 
@@ -120,6 +122,18 @@ The action buttons appear at column 14 when the held step is in the left half (c
 - **Paste**: Hold an inactive (off) step — if the clipboard has data, the step is filled with clipboard params and activated. No param menu opens.
 - Holding an active step always opens the param menu normally, regardless of clipboard state
 - The clipboard persists across overlay sessions until overwritten
+
+### Track Parameter Overlay
+
+Hold a mute key (cols 9-15, row 7) to open the track parameter overlay for that track. The overlay closes when the mute key is released. Tapping and releasing quickly still toggles mute — hold to enter the overlay.
+
+- **Param column**: The held mute key's column, rows 0-6. Tap a row to select a parameter.
+- **Value row**: Appears at the selected parameter's row number. Tap a column to set the value.
+- **Page toggle (P)**: Appears at `heldCol - 4`. Switches between page 1 and page 2. No copy button.
+- **Scope**: Value changes apply to ALL steps in the track simultaneously.
+- **Unanimous indicator**: If all steps share the same value for the selected parameter, the current position lights full brightness. If steps have mixed values, no bright indicator is shown.
+
+Cannot open the step param overlay while the track overlay is active, and vice versa.
 
 ### Navigating Parameters
 
