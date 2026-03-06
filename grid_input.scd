@@ -255,7 +255,7 @@
                                     ~pendingToggleTrack = 7;
                                     ~transportPressTime = Main.elapsedTime;
                                     AppClock.sched(0.5, {
-                                        if(~transportPressTime.notNil && ((Main.elapsedTime - ~transportPressTime) >= 0.45)) {
+                                        if(~transportPressTime.notNil) {
                                             ~transportHeld = true;
                                             ~pendingToggle = nil;
                                             ~pendingToggleTrack = nil;

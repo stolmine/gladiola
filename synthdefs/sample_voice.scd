@@ -88,9 +88,8 @@
         crushed = Decimator.ar(sig, 44100 * (1 - (bitcrush * 0.9)), 24 - (bitcrush * 20));
         sig = SelectX.ar(bitcrush, [sig, crushed]);
 
-        filterFreq   = LinExp.kr(filter.abs, 0, 1, 200, 18000);
-        lpf          = RLPF.ar(sig, filterFreq, 0.7);
-        hpf          = RHPF.ar(sig, filterFreq, 0.7);
+        lpf          = RLPF.ar(sig, LinExp.kr(filter.neg.clip(0, 1), 0, 1, 20000, 60), 0.4);
+        hpf          = RHPF.ar(sig, LinExp.kr(filter.clip(0, 1), 0, 1, 20, 12000), 0.4);
         filterSelect = K2A.ar(filter > 0);
         filterSig    = SelectX.ar(filterSelect, [lpf, hpf]);
         sig          = SelectX.ar(filter.abs, [sig, filterSig]);

@@ -231,10 +231,14 @@
 
                 ~numTracks.do { |trackIdx|
                     var track = ~tracks[trackIdx];
+                    var prevStep = (track[\currentStep] - 1) % ~stepsPerTrack;
+                    if(~stepInRange.(prevStep, track[\startStep], track[\endStep]).not) {
+                        prevStep = track[\endStep];
+                    };
                     ~stepsPerTrack.do { |stepIdx|
                         var brightness;
                         if(~stepInRange.(stepIdx, track[\startStep], track[\endStep])) {
-                            if(~playing && (stepIdx == ((track[\currentStep] - 1) % ~stepsPerTrack))) {
+                            if(~playing && (stepIdx == prevStep)) {
                                 brightness = GridInterface.ledFull;
                             } {
                                 if(track[\muted]) {
