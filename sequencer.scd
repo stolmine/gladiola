@@ -25,7 +25,7 @@ var defaultStep = {
 ~bpm           = 120;
 ~fxParams = Dictionary.newFrom([
     \delayDiv, 0.25, \delayFeedback, 0, \delayTone, 0, \delayLevel, 0,
-    \granSize, 0, \granPosition, 0, \granPitch, 0, \granLevel, 0,
+    \granSize, 0, \granPosition, 0, \granPitch, 0, \granLevel, 0, \granModDepth, 0,
     \reverbSize, 0.5, \reverbDamp, 0.5, \reverbLevel, 0,
     \satDepth, 0, \satType, 0, \tilt, 0, \compAmount, 0, \compColor, 0
 ]);
@@ -33,7 +33,14 @@ var defaultStep = {
 ~playing       = false;
 ~transpose     = 1.0;
 ~globalReverse = false;
-~presets       = Array.fill(4, { nil });
+~presets       = Array.fill(49, { nil });
+~presetSlotMap = [0, 1, 2, 3];
+~presetSelectedSlot = nil;
+~presetConfirmMode = true;
+~presetQuantized = false;
+~pendingPresetRecall = nil;
+~pendingPresetButton = nil;
+~lastRecalledSlot = [nil, nil, nil, nil];
 ~clipboard     = nil;
 ~seqClock      = nil;
 
@@ -58,6 +65,24 @@ var defaultStep = {
     } {
         (step >= startStep) || (step <= endStep)
     }
+};
+
+~longestPatternTrack = {
+    var longest = 0;
+    var longestLen = 0;
+    ~numTracks.do { |i|
+        var t = ~tracks[i];
+        var len;
+        if(t[\muted].not) {
+            len = if(t[\startStep] <= t[\endStep]) {
+                t[\endStep] - t[\startStep] + 1
+            } {
+                (~stepsPerTrack - t[\startStep]) + t[\endStep] + 1
+            };
+            if(len > longestLen) { longestLen = len; longest = i };
+        };
+    };
+    longest
 };
 
 ~initSequencer = {
@@ -97,7 +122,8 @@ var defaultStep = {
         \size, ~fxParams[\granSize],
         \position, ~fxParams[\granPosition],
         \pitch, ~fxParams[\granPitch],
-        \level, ~fxParams[\granLevel]
+        \level, ~fxParams[\granLevel],
+        \modDepth, ~fxParams[\granModDepth]
     ], ~fxGroup);
 
     ~reverbSynth = Synth(\gladiolaReverb, [
@@ -137,27 +163,25 @@ var defaultStep = {
         ~numTracks.do { |trackIdx|
             ~seqClock.schedAbs(~seqClock.beats, {
                 if(~playing) {
-                    var track, step, voice, rand, bank, sample, pitch, velocity;
-                    var loopLength, loopRegion, ratchet, buf, stepDur, numBanks, nextStep;
-
-                    track = ~tracks[trackIdx];
-                    step  = track[\steps][track[\currentStep]];
-                    voice = track[\voice];
+                    var track     = ~tracks[trackIdx];
+                    var step      = track[\steps][track[\currentStep]];
+                    var voice     = track[\voice];
+                    var buf, stepDur, numBanks, nextStep;
 
                     if(track[\muted].not && step[\on] && step[\probability].coin) {
-                        rand       = step[\randomness];
-                        bank       = step[\bank];
-                        sample     = step[\sample];
-                        pitch      = step[\pitch];
-                        velocity   = step[\velocity];
-                        loopLength = step[\loopLength];
-                        loopRegion = step[\loopRegion];
-                        ratchet    = step[\ratchet];
+                        var rand       = step[\randomness];
+                        var bank       = step[\bank];
+                        var sample     = step[\sample];
+                        var pitch      = step[\pitch];
+                        var velocity   = step[\velocity];
+                        var loopLength = step[\loopLength];
+                        var loopRegion = step[\loopRegion];
+                        var ratchet    = step[\ratchet];
 
                         if(rand > 0) {
                             pitch      = pitch * rrand(1 - (rand * 0.5), 1 + (rand * 0.5));
                             velocity   = (velocity * rrand(1 - (rand * 0.3), 1 + (rand * 0.3))).clip(0.0, 1.0);
-                            loopLength = (loopLength + (rrand(-0.2, 0.2) * rand)).clip(0.0, 1.0);
+                            loopLength = (loopLength + (rrand(-0.2, 0.2) * rand)).clip(0.0, 8.0);
                             loopRegion = (loopRegion + (rrand(-0.2, 0.2) * rand)).clip(0.0, 1.0);
                             ratchet    = (ratchet + rrand(-2, 2)).clip(1, 8);
 
@@ -189,12 +213,25 @@ var defaultStep = {
                                 \bitcrush,   step[\bitcrush],
                                 \t_trig,     1
                             );
+                            if(step[\delaySend] > 0 && ~granularSynth.notNil) {
+                                ~granularSynth.set(\t_trig, 1);
+                            };
                         };
                     };
 
                     nextStep = (track[\currentStep] + 1) % ~stepsPerTrack;
                     if(~stepInRange.(nextStep, track[\startStep], track[\endStep]).not) {
                         nextStep = track[\startStep];
+                        if(~pendingPresetRecall.notNil && (trackIdx == ~longestPatternTrack.())) {
+                            var recallSlot = ~pendingPresetRecall;
+                            var recallBtn = ~pendingPresetButton;
+                            ~pendingPresetRecall = nil;
+                            ~pendingPresetButton = nil;
+                            ~recallPreset.(recallSlot);
+                            if(recallBtn.notNil) {
+                                ~lastRecalledSlot[recallBtn] = recallSlot;
+                            };
+                        };
                     };
                     track[\currentStep] = nextStep;
 
@@ -229,6 +266,63 @@ var defaultStep = {
         };
     };
     "[Gladiola] All voices silenced.".postln;
+};
+
+~killFxTails = {
+    if(~delaySynth.notNil) { ~delaySynth.free };
+    ~delaySynth = Synth(\gladiolaDelay, [
+        \fxSendBus, ~fxSendBus.index,
+        \delaytime, ~fxParams[\delayDiv] * 60 / ~bpm,
+        \feedback, ~fxParams[\delayFeedback],
+        \tone, ~fxParams[\delayTone],
+        \level, ~fxParams[\delayLevel]
+    ], ~fxGroup);
+
+    if(~granularSynth.notNil) { ~granularSynth.free };
+    ~granularSynth = Synth(\gladiolaGranular, [
+        \fxSendBus, ~fxSendBus.index,
+        \size, ~fxParams[\granSize],
+        \position, ~fxParams[\granPosition],
+        \pitch, ~fxParams[\granPitch],
+        \level, ~fxParams[\granLevel],
+        \modDepth, ~fxParams[\granModDepth]
+    ], ~fxGroup);
+
+    if(~reverbSynth.notNil) { ~reverbSynth.free };
+    ~reverbSynth = Synth(\gladiolaReverb, [
+        \fxSendBus, ~fxSendBus.index,
+        \size, ~fxParams[\reverbSize],
+        \damping, ~fxParams[\reverbDamp],
+        \level, ~fxParams[\reverbLevel]
+    ], ~fxGroup);
+
+    "[Gladiola] FX tails killed.".postln;
+};
+
+~previewStep = { |trackIdx, stepIdx|
+    var track = ~tracks[trackIdx];
+    var step = track[\steps][stepIdx];
+    var voice = track[\voice];
+    var buf = ~getSample.(step[\bank], step[\sample]);
+
+    if(buf.notNil && voice.notNil) {
+        voice.set(
+            \bufnum,     buf.bufnum,
+            \rate,       step[\pitch] * ~transpose,
+            \amp,        step[\velocity],
+            \loopLength, step[\loopLength],
+            \loopRegion, step[\loopRegion],
+            \ratchet,    step[\ratchet],
+            \stepDur,    track[\clockDiv] * 60 / ~bpm,
+            \gateLength, step[\gateLength],
+            \reverse,    (step[\reverse].asBoolean xor: ~globalReverse).asInteger,
+            \filter,     step[\filter],
+            \pan,        step[\pan],
+            \delaySend,  step[\delaySend],
+            \bitcrush,   step[\bitcrush],
+            \t_trig,     1
+        );
+    };
 };
 
 ~setTrackStart = { |trackIdx, step|
@@ -308,6 +402,7 @@ var defaultStep = {
     { \granPosition }  { if(~granularSynth.notNil) { ~granularSynth.set(\position, value) } }
     { \granPitch }     { if(~granularSynth.notNil) { ~granularSynth.set(\pitch, value) } }
     { \granLevel }     { if(~granularSynth.notNil) { ~granularSynth.set(\level, value) } }
+    { \granModDepth }  { if(~granularSynth.notNil) { ~granularSynth.set(\modDepth, value) } }
     { \reverbSize }    { if(~reverbSynth.notNil) { ~reverbSynth.set(\size, value) } }
     { \reverbDamp }    { if(~reverbSynth.notNil) { ~reverbSynth.set(\damping, value) } }
     { \reverbLevel }   { if(~reverbSynth.notNil) { ~reverbSynth.set(\level, value) } }
@@ -380,7 +475,7 @@ var defaultStep = {
                 ~setFxParam.(key, val);
             };
         } {
-            // Backward compat: old preset with only delayDiv
+            // legacy preset: reset fx to defaults then apply delayDiv if present
             ~fxParamDefaults.keysValuesDo { |key, val|
                 ~setFxParam.(key, val);
             };

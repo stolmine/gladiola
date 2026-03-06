@@ -53,7 +53,7 @@
         bufFrames  = BufFrames.kr(bufnum);
         bufRate    = BufRateScale.kr(bufnum);
         startFrame = loopRegion * bufFrames;
-        loopFrames = loopLength * bufFrames;
+        loopFrames = loopLength * stepDur * SampleRate.ir;
 
         oneShot = (loopLength <= 0);
 

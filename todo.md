@@ -45,7 +45,7 @@
 - [x] bank brightness indicator on param column
 - [x] playhead LED clearly brighter than active steps
 - [x] grid split into grid_params.scd, grid_leds.scd, grid_input.scd
-- [x] 4-slot preset system (cols 5-8 row 7): tap to recall, hold to save, double-tap to clear
+- [x] 4-slot preset system (cols 5-8 row 7): tap to recall, hold to save, double-tap to clear — superseded by 49-slot matrix
 - [x] presets capture full state: steps, params, start/end, mutes, clockDiv, delayDiv, transpose, globalReverse
 - [x] global reverse toggle (col 3 row 7): XOR inversion of per-step reverse settings
 - [x] input mutex system: modal guards on doubleTap handler block length modal/preset clear during overlays
@@ -61,6 +61,14 @@
 - [x] Server.sync after ~freeSamples in sample_loader.scd to prevent buffer exhaustion on session load
 - [x] ~basePath stored globally in main.scd; ~sessionsDir set to ~/gladiola-sessions/ with auto-create
 - [x] session GUI auto-opens on boot
+- [x] double-tap transport panic kills FX tails (frees and recreates send FX synths)
+- [x] step audition: A button in param overlay toggles auto-preview on param changes (transport stopped only)
+- [x] granular (MiClouds) improvements: 1.5× input boost, step-triggered S&H modulation via Latch.kr, user-controllable mod depth (\granModDepth param)
+- [x] loop length changed from buffer-relative to step-relative (clock-scaled): 0=one-shot, 1/16-1.0=sub-step fractions, 2/4/8=multi-step loops
+- [x] session GUI: Grid connection button + live status indicator
+- [x] 49-slot preset matrix overlay (7×7) replacing 4-slot system: hold populated preset button to open matrix, select/save/clear slots, confirm mode, quantized switching (fires on longest-pattern wrap)
+- [x] preset utility LEDs differentiate active (full) vs populated-not-active (medium) vs empty (off)
+- [x] double-tap preset clear removed (clearing via matrix overlay only)
 
 ## ideas
 
@@ -72,3 +80,4 @@
 - [ ] pattern chaining / song mode
 - [ ] sample slice mode (auto-chop breaks)
 - [ ] per-track sample lock (all steps in a track share one sample)
+- [ ] subsequencers: in step overlay, a 3×3 grid of dim keys represents sub-steps. Sub-sequence advances each time playhead passes over the parent step. User can select any sub-step and set params specific to it. Traversal: left-to-right, top-to-bottom (9 sub-steps max per step).

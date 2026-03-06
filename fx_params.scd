@@ -1,5 +1,4 @@
 (
-// FX parameter keys in column order (16 params for 16 columns)
 ~fxParamKeys = [
     \delayDiv, \delayFeedback, \delayTone, \delayLevel,
     \granSize, \granPosition, \granPitch, \granLevel,
@@ -9,7 +8,6 @@
     \compAmount, \compColor
 ];
 
-// 7-element value arrays per parameter (rows 0-6)
 ~fxParamValues = Dictionary.newFrom([
     \delayDiv,       [1.0, 0.5, 0.25, 0.1875, 0.125, 0.09375, 0.0625],
     \delayFeedback,  [0.95, 0.9, 0.8, 0.6, 0.4, 0.2, 0],
@@ -26,16 +24,15 @@
     \satType,        [1.0, 0.83, 0.67, 0.5, 0.33, 0.17, 0],
     \tilt,           [1, 0.67, 0.33, 0, -0.33, -0.67, -1],
     \compAmount,     [1.0, 0.85, 0.7, 0.5, 0.3, 0.15, 0],
-    \compColor,      [1.0, 0.83, 0.67, 0.5, 0.33, 0.17, 0]
+    \compColor,      [1.0, 0.83, 0.67, 0.5, 0.33, 0.17, 0],
+    \granModDepth,   [0.8, 0.4, 0.2, 0.1, 0.05, 0.02, 0]
 ]);
 
-// Look up value from tables: col index, row index -> value
 ~fxValueForPosition = { |col, row|
     var key = ~fxParamKeys[col];
     ~fxParamValues[key][row.clip(0, 6)]
 };
 
-// Nearest-match reverse lookup: col index, value -> row index
 ~fxPositionForValue = { |col, value|
     var key = ~fxParamKeys[col];
     var values = ~fxParamValues[key];
@@ -46,7 +43,6 @@
     bestIdx
 };
 
-// Check if any FX param differs from default
 ~fxHasNonDefault = {
     var nonDefault = false;
     ~fxParamKeys.do { |key|

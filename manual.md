@@ -43,7 +43,7 @@ Tap a step on any track row to toggle it on/off. Active steps show LED brightnes
 ### Transport
 
 - **Tap** (0, 7): Toggle start/stop
-- **Double-tap** (0, 7): Stop transport and immediately silence all voices (panic)
+- **Double-tap** (0, 7): Stop transport, silence all voices, and kill FX tails (panic)
 - **Hold** (0, 7) for 500ms: Enter tempo nudge mode
 
 ### Tempo Nudge
@@ -124,6 +124,8 @@ Default state: all send levels at 0 (delay/granular/reverb silent), saturation o
 
 The per-step "Delay Send" parameter (page 2) controls how much of each voice is sent to the shared FX bus. The three parallel effects (delay, granular, reverb) all read from this bus.
 
+The granular effect (MiClouds) receives a 1.5× input boost and step-triggered sample-and-hold modulation. When a step fires with delay send > 0, a trigger is sent to the granular synth, latching new random values for position, size, and density. Mod depth is controlled via `~setFxParam.(\granModDepth, value)` (7 values from 0 to 0.8).
+
 ### Transpose
 
 - **Tap** col 4: Swap between the current transpose value and the previous one (the value before the last overlay selection).
@@ -156,26 +158,46 @@ Hold a mute key to open the track parameter overlay for that track (see [Track P
 
 ### Presets
 
-Four preset slots (columns 5-8 on the utility row) can save and recall the full groovebox state.
+Four preset buttons (columns 5-8 on the utility row) map to a 49-slot preset matrix (7×7). Each button can be remapped to any slot in the matrix.
 
-- **Tap**: Recall saved preset
-- **Hold**: Save current state to preset slot
-- **Double-tap**: Clear preset slot
+- **Tap** (populated slot): Recall preset (or queue if quantized switching is enabled)
+- **Hold** (empty slot): Save current state to the button's default slot
+- **Hold** (populated slot): Open preset matrix overlay
 
 Each preset captures: all track steps and parameters, start/end points, track mutes, clock division, FX parameters, transpose, and global reverse state.
 
-Preset slots show full brightness when occupied, off when empty. Presets are blocked during overlays and modals to prevent accidental changes.
+LED brightness: active (last recalled) preset = full, populated but not active = medium, empty = off. A pending quantized recall flashes the button.
+
+### Preset Matrix Overlay
+
+Hold a populated preset button to open the 7×7 matrix overlay. Slots appear on cols 0-6, rows 0-6. Action keys on col 8:
+
+| Row | Action |
+|-----|--------|
+| 0 | **Save** — save current state to selected slot (confirm-armed if slot is occupied and confirm mode is on) |
+| 2 | **Clear** — clear selected slot (confirm-armed if confirm mode is on) |
+| 4 | **Confirm toggle** — enable/disable overwrite protection (full = on) |
+| 6 | **Quantize toggle** — enable/disable quantized preset switching (full = on) |
+
+- Tap a slot to select it (bright). Populated unselected slots show medium, empty show off.
+- Confirm-armed actions flash — tap again to execute, or tap a different action to cancel.
+- On release of the held utility button: the button remaps to the selected slot, and the selected preset is recalled (or queued if quantized).
+
+### Quantized Preset Switching
+
+When the quantize toggle is enabled, preset recalls are queued instead of firing immediately. The queued preset executes when the longest unmuted track's playhead wraps back to its start step — ensuring pattern-aligned transitions.
 
 ## Parameter Overlay
 
 Hold any active step to open the parameter overlay. The held step lights full brightness. The held step's column shows parameter selectors on all other rows (0-7). The selected parameter's row shows value positions.
 
-Two action buttons (P and C) appear on the far side of the grid, dynamically positioned to avoid the held step:
+Three action buttons (P, C, and A) appear on the far side of the grid, dynamically positioned to avoid the held step:
 
 - **P (Page toggle)**: Switches between param page 1 and page 2. Medium brightness = page 1, full = page 2.
 - **C (Copy)**: Copies all params from the held step to the clipboard. Dim = clipboard empty, bright = clipboard has data.
+- **A (Audition)**: Toggles step preview. When enabled (full brightness), any parameter change triggers a one-shot playback of the step. Tapping A also previews the step immediately. Only active when transport is stopped. Resets to off when the overlay closes.
 
-The action buttons appear at column 14 when the held step is in the left half (cols 0-7), or column 1 when in the right half (cols 8-15). Vertically, P is always above C with a 1-row gap between them and the held step's row.
+The action buttons appear at column 14 when the held step is in the left half (cols 0-7), or column 1 when in the right half (cols 8-15). P, C, and A are spaced vertically with collision avoidance against the held step and value rows.
 
 ### Copy/Paste
 
@@ -210,7 +232,7 @@ Cannot open the step param overlay while the track overlay is active, and vice v
 | Bank | 0-15 | Tap again when selected to cycle banks |
 | Pitch | 0.125× - 4.0× | 15 preset values |
 | Velocity | 1/15 - 1.0 | Affects LED brightness |
-| Loop Length | 0.0 - 1.0 | 0 = one-shot, >0 = loop region |
+| Loop Length | 0 - 8.0 | 0 = one-shot, 1/16-1.0 = sub-step fractions, 2/4/8 = multi-step loops. Clock-relative: scales with tempo and clock division. |
 | Loop Region | 0.0 - 1.0 | Start position in buffer |
 | Ratchet | 1-8 | Subdivisions per step |
 | Randomness | 0.0 - 1.0 | Mutates params per trigger |
@@ -237,17 +259,19 @@ The session manager window provides:
 
 - **BPM display**: Current tempo, updated live
 - **Samples display**: Folder name of the loaded sample directory
+- **Grid status**: Shows "Grid: connected" or "Grid: —", updated live
 - **Stereo level meters**: Amplitude of the main output bus (L/R), updated at 20Hz with peak hold
 - **New**: Prompt for a session name and a folder picker for the sample directory, then initialize a blank session
 - **Save**: Save to the current session name; prompts for a name first if none is set
 - **Save As**: Prompt for a new name and save a copy
 - **Load**: List all `.gladiola` files in `~/gladiola-sessions/` and load the selected one
+- **Grid**: Connect to serialosc grid controller
 
 ### What Sessions Capture
 
 - All 7 tracks: steps and per-step parameters, start/end points, mute state
 - BPM, clock division, FX parameters, transpose, global reverse
-- All 4 preset slots
+- All 49 preset slots, slot map, confirm mode, quantize mode
 - Sample directory path
 
 ### Session Functions
@@ -282,9 +306,9 @@ Loading a session stops transport, frees existing buffers (with a server sync to
 | `~unmuteTrack.(idx)` | Unmute track |
 | `~loadSamples.(path, mode)` | Load samples (subdirectory/random/sequential) |
 | `~clearPattern.()` | Clear all steps |
-| `~savePreset.(slot)` | Save full state to preset slot (0-3) |
-| `~recallPreset.(slot)` | Recall state from preset slot (0-3) |
-| `~clearPreset.(slot)` | Clear preset slot (0-3) |
+| `~savePreset.(slot)` | Save full state to preset slot (0-48) |
+| `~recallPreset.(slot)` | Recall state from preset slot (0-48) |
+| `~clearPreset.(slot)` | Clear preset slot (0-48) |
 | `~buildSessionSnapshot.()` | Build snapshot Dictionary of current state |
 | `~saveSession.()` | Save current session |
 | `~saveSessionAs.(name)` | Save session under new name |

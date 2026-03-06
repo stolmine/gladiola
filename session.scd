@@ -41,6 +41,10 @@
 			copy
 		} { nil }
 	};
+	snapshot[\presetSlotMap] = ~presetSlotMap.copy;
+	snapshot[\presetConfirmMode] = ~presetConfirmMode;
+	snapshot[\presetQuantized] = ~presetQuantized;
+	snapshot[\lastRecalledSlot] = ~lastRecalledSlot.copy;
 	snapshot
 };
 
@@ -130,6 +134,18 @@
 						copy
 					} { nil }
 				};
+				if(~presets.size < 49) {
+					var old = ~presets;
+					~presets = Array.fill(49, { nil });
+					old.do { |p, i| ~presets[i] = p };
+				};
+				~presetSlotMap = snapshot[\presetSlotMap] ?? { [0, 1, 2, 3] };
+				~presetConfirmMode = snapshot[\presetConfirmMode] ?? { true };
+				~presetQuantized = snapshot[\presetQuantized] ?? { false };
+				~lastRecalledSlot = snapshot[\lastRecalledSlot] ?? { [nil, nil, nil, nil] };
+				~pendingPresetRecall = nil;
+				~pendingPresetButton = nil;
+				~presetSelectedSlot = nil;
 
 				~sessionName = name;
 				~sessionPath = path;
@@ -155,7 +171,14 @@
 		~globalReverse = false;
 		~setTempo.(~bpm);
 
-		~presets = Array.fill(4, { nil });
+		~presets = Array.fill(49, { nil });
+		~presetSlotMap = [0, 1, 2, 3];
+		~presetSelectedSlot = nil;
+		~presetConfirmMode = true;
+		~presetQuantized = false;
+		~pendingPresetRecall = nil;
+		~pendingPresetButton = nil;
+		~lastRecalledSlot = [nil, nil, nil, nil];
 
 		~sessionName = name;
 		~sessionPath = ~sessionsDir +/+ name ++ ".gladiola";
@@ -170,13 +193,14 @@
 	if(~sessionWindow.notNil && { ~sessionWindow.isClosed.not }) {
 		~sessionWindow.front;
 	} {
-		var bpmLabel, sampleDirLabel, meterL, meterR, updateTask, meterSynth, meterBus, meterResp;
+		var bpmLabel, sampleDirLabel, gridStatusLabel, meterL, meterR, updateTask, meterSynth, meterBus;
 
 		~sessionWindow = Window("Gladiola", Rect(100, 100, 400, 130), resizable: false)
 		.alwaysOnTop_(true);
 
 		bpmLabel = StaticText().string_("BPM: %".format(~bpm));
 		sampleDirLabel = StaticText().string_("Samples: %".format(~sampleDir ? "—"));
+		gridStatusLabel = StaticText().string_(if(~grid.notNil) { "Grid: connected" } { "Grid: —" });
 		meterL = LevelIndicator().style_(\continuous).drawsPeak_(true).warning_(0.7).critical_(0.9);
 		meterR = LevelIndicator().style_(\continuous).drawsPeak_(true).warning_(0.7).critical_(0.9);
 
@@ -192,14 +216,15 @@
 				meterBus.getn(2, { |vals|
 					{
 						if(~sessionWindow.notNil && { ~sessionWindow.isClosed.not }) {
-							meterL.value = vals[0].ampdb.linlin(-40, 0, 0, 1).clip(0, 1);
-							meterL.peakLevel = vals[0].ampdb.linlin(-40, 0, 0, 1).clip(0, 1);
-							meterR.value = vals[1].ampdb.linlin(-40, 0, 0, 1).clip(0, 1);
-							meterR.peakLevel = vals[1].ampdb.linlin(-40, 0, 0, 1).clip(0, 1);
+							var l = vals[0].ampdb.linlin(-40, 0, 0, 1).clip(0, 1);
+							var r = vals[1].ampdb.linlin(-40, 0, 0, 1).clip(0, 1);
+							meterL.value = l; meterL.peakLevel = l;
+							meterR.value = r; meterR.peakLevel = r;
 							bpmLabel.string = "BPM: %".format(~bpm);
 							sampleDirLabel.string = "Samples: %".format(
 								if(~sampleDir.notNil) { PathName(~sampleDir).folderName } { "—" }
 							);
+							gridStatusLabel.string = if(~grid.notNil) { "Grid: connected" } { "Grid: —" };
 						};
 					}.defer;
 				});
@@ -210,6 +235,8 @@
 		~sessionWindow.layout_(VLayout(
 			HLayout(
 				bpmLabel,
+				nil,
+				gridStatusLabel,
 				nil,
 				sampleDirLabel
 			),
@@ -280,6 +307,9 @@
 						));
 						dlg.front;
 					};
+				}),
+				Button().states_([["Grid"]]).action_({
+					~connectSerialosc.();
 				})
 			)
 		));

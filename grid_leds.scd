@@ -11,10 +11,8 @@
 
         ~grid.clear;
 
-        // Held step bright
         ~grid.led(~heldStepIdx, ~heldTrack, GridInterface.ledFull);
 
-        // Param column: rows 0-7 except heldTrack (7 params = 6 track rows + row 7)
         8.do { |row|
             if(row != ~heldTrack) {
                 var paramIdx = ~paramIndexForRow.(row, ~heldTrack);
@@ -36,7 +34,6 @@
             };
         };
 
-        // Value row for selected param
         if(~selectedParam == 0 && (~paramPage == 0)) {
             curVal = step[\sample];
             curPos = curVal.asInteger;
@@ -50,7 +47,7 @@
         16.do { |col|
             if(col != ~heldStepIdx) {
                 // Skip action button cells to avoid visual collision
-                if((col == actionPos[\pageCol]) && ((valueRow == actionPos[\pageRow]) || (valueRow == actionPos[\copyRow]))) {
+                if((col == actionPos[\pageCol]) && ((valueRow == actionPos[\pageRow]) || (valueRow == actionPos[\copyRow]) || (valueRow == actionPos[\auditionRow]))) {
                 } {
                     var valIdx = if(col < ~heldStepIdx) { col } { col - 1 };
                     if(valIdx < numValid) {
@@ -70,11 +67,12 @@
             };
         };
 
-        // Action buttons: P (page toggle) and C (copy)
         ~grid.led(actionPos[\pageCol], actionPos[\pageRow],
             if(~paramPage == 1) { GridInterface.ledFull } { GridInterface.ledMedium });
         ~grid.led(actionPos[\copyCol], actionPos[\copyRow],
             if(~clipboard.notNil) { GridInterface.ledBright } { GridInterface.ledDim });
+        ~grid.led(actionPos[\auditionCol], actionPos[\auditionRow],
+            if(~auditionEnabled) { GridInterface.ledFull } { GridInterface.ledDim });
 
     } {
         if(~trackParamActive && ~trackParamCol.notNil && ~trackParamTrack.notNil) {
@@ -85,15 +83,12 @@
 
             ~grid.clear;
 
-            // Held mute key bright
             ~grid.led(~trackParamCol, 7, GridInterface.ledFull);
 
-            // Param column: rows 0-6 at trackParamCol
             7.do { |row|
                 if(row < numParams) {
                     var brightness;
                     if(row == 0 && (~paramPage == 0)) {
-                        // Bank param: gradient based on bank value
                         var bankVal = ~tracks[~trackParamTrack][\steps][0][\bank];
                         var numBanks = (~numBanks ? 1).max(1);
                         brightness = (GridInterface.ledDim + ((bankVal + 1) / numBanks * (GridInterface.ledFull - GridInterface.ledDim))).round.asInteger.clip(GridInterface.ledDim, GridInterface.ledFull);
@@ -108,10 +103,7 @@
                 };
             };
 
-            // Value row at row = selectedParam
-            // Check if all steps agree on the selected param value (unanimous check)
             if(~selectedParam == 0 && (~paramPage == 0)) {
-                // Sample param
                 var firstVal = ~tracks[~trackParamTrack][\steps][0][\sample];
                 var unanimous = ~tracks[~trackParamTrack][\steps].every { |step| step[\sample] == firstVal };
                 var curPos = if(unanimous) { firstVal.asInteger } { nil };
@@ -156,58 +148,78 @@
                 };
             };
 
-            // Page toggle button (P only, no C)
             ~grid.led(pagePos[\pageCol], pagePos[\pageRow],
                 if(~paramPage == 1) { GridInterface.ledFull } { GridInterface.ledMedium });
 
-
         } {
             if(~utilityOverlayActive) {
-            ~grid.clear;
+                ~grid.clear;
 
-            if(~utilityOverlayType == \clockDiv) {
-                var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
-                ~numTracks.do { |trackIdx|
-                    var trackDiv = ~tracks[trackIdx][\clockDiv];
-                    divValues.do { |div, colIdx|
-                        var brightness = if(div == trackDiv) {
-                            GridInterface.ledFull
-                        } {
-                            GridInterface.ledDim
-                        };
-                        ~grid.led(colIdx, trackIdx, brightness);
-                    };
-                };
-            } {
-                if(~utilityOverlayType == \fxMatrix) {
-                    // FX matrix: 16 columns, fader style (up=more)
-                    // Current value = full, below = half, above = quarter
-                    16.do { |col|
-                        var key = ~fxParamKeys[col];
-                        var currentRow = ~fxPositionForValue.(col, ~fxParams[key]);
-                        7.do { |row|
-                            var brightness = if(row == currentRow) {
+                if(~utilityOverlayType == \clockDiv) {
+                    var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
+                    ~numTracks.do { |trackIdx|
+                        var trackDiv = ~tracks[trackIdx][\clockDiv];
+                        divValues.do { |div, colIdx|
+                            var brightness = if(div == trackDiv) {
                                 GridInterface.ledFull
                             } {
-                                if(row > currentRow) {
-                                    GridInterface.ledMedium
-                                } {
-                                    GridInterface.ledDim
-                                }
+                                GridInterface.ledDim
                             };
-                            ~grid.led(col, row, brightness);
+                            ~grid.led(colIdx, trackIdx, brightness);
                         };
                     };
                 } {
-                    // Transpose overlay
-                    var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];
-                    transposeValues.do { |val, i|
-                        var brightness = if(val == ~transpose) {
-                            GridInterface.ledFull
-                        } {
-                            GridInterface.ledDim
+                    if(~utilityOverlayType == \fxMatrix) {
+                        16.do { |col|
+                            var key = ~fxParamKeys[col];
+                            var currentRow = ~fxPositionForValue.(col, ~fxParams[key]);
+                            7.do { |row|
+                                var brightness = if(row == currentRow) {
+                                    GridInterface.ledFull
+                                } {
+                                    if(row > currentRow) {
+                                        GridInterface.ledMedium
+                                    } {
+                                        GridInterface.ledDim
+                                    }
+                                };
+                                ~grid.led(col, row, brightness);
+                            };
                         };
-                        ~grid.led(4, i, brightness);
+                    } {
+                        if(~utilityOverlayType == \transpose) {
+                            var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];
+                            transposeValues.do { |val, i|
+                                var brightness = if(val == ~transpose) {
+                                    GridInterface.ledFull
+                                } {
+                                    GridInterface.ledDim
+                                };
+                                ~grid.led(4, i, brightness);
+                            };
+                        } {
+                            if(~utilityOverlayType == \preset) {
+                                7.do { |row|
+                                    7.do { |col|
+                                        var slotIdx = row * 7 + col;
+                                        var brightness = if(slotIdx == ~presetSelectedSlot) {
+                                            GridInterface.ledFull
+                                        } {
+                                            if(~presets[slotIdx].notNil) {
+                                                GridInterface.ledMedium
+                                            } {
+                                                GridInterface.ledOff
+                                            }
+                                        };
+                                        ~grid.led(col, row, brightness);
+                                    };
+                                };
+                                ~grid.led(8, 0, if(~presetConfirmArmed == \save) { GridInterface.ledFull } { GridInterface.ledDim });
+                                ~grid.led(8, 2, if(~presetConfirmArmed == \clear) { GridInterface.ledFull } { GridInterface.ledDim });
+                                ~grid.led(8, 4, if(~presetConfirmMode) { GridInterface.ledFull } { GridInterface.ledDim });
+                                ~grid.led(8, 6, if(~presetQuantized) { GridInterface.ledFull } { GridInterface.ledDim });
+                            };
+                        };
                     };
                 };
             };
@@ -221,13 +233,11 @@
                 ~grid.clear;
 
                 if(~lengthModalMode == \setEnd) {
-                    // Selecting end: all columns available, start point bright
                     16.do { |col|
                         ~grid.led(col, row, GridInterface.ledDim);
                     };
                     ~grid.led(startS, row, GridInterface.ledFull);
                 } {
-                    // Selecting start: show current range, end point bright
                     16.do { |col|
                         var brightness = if(~stepInRange.(col, startS, endS)) {
                             GridInterface.ledDim
@@ -255,7 +265,6 @@
                     };
                 };
             } {
-                // Normal view
                 ~grid.clear;
 
                 ~numTracks.do { |trackIdx|
@@ -290,21 +299,35 @@
                     };
                 };
 
-                // Row 7: utility
                 ~grid.led(0, 7, if(~playing) { GridInterface.ledFull } { GridInterface.ledDim });
                 ~grid.led(1, 7, GridInterface.ledDim);
                 ~grid.led(2, 7, if(~fxHasNonDefault.()) { GridInterface.ledFull } { GridInterface.ledDim });
                 ~grid.led(3, 7, if(~globalReverse) { GridInterface.ledFull } { GridInterface.ledDim });
                 ~grid.led(4, 7, if(~transpose != 1.0) { GridInterface.ledFull } { GridInterface.ledDim });
                 4.do { |i|
-                    ~grid.led(5 + i, 7, if(~presets[i].notNil) { GridInterface.ledFull } { GridInterface.ledOff });
+                    var mappedSlot = ~presetSlotMap[i];
+                    var brightness;
+                    if(~pendingPresetRecall.notNil && (~pendingPresetButton == i)) {
+                        ~presetFlashState = ~presetFlashState.not;
+                        brightness = if(~presetFlashState) { GridInterface.ledFull } { GridInterface.ledOff };
+                    } {
+                        if(~presets[mappedSlot].notNil) {
+                            brightness = if(~lastRecalledSlot[i] == mappedSlot) {
+                                GridInterface.ledFull
+                            } {
+                                GridInterface.ledMedium
+                            };
+                        } {
+                            brightness = GridInterface.ledOff;
+                        };
+                    };
+                    ~grid.led(5 + i, 7, brightness);
                 };
                 ~numTracks.do { |i|
                     ~grid.led(9 + i, 7, if(~tracks[i][\muted]) { GridInterface.ledFull } { GridInterface.ledDim });
                 };
                 if(~transportHeld == true) {
                     ~grid.led(0, 7, GridInterface.ledFull);
-                    // Column 0 rows 0-6: BPM nudge (+10,+5,+1,reset,-1,-5,-10)
                     7.do { |row|
                         var brightness = if(row == 3) { GridInterface.ledBright } { GridInterface.ledDim };
                         ~grid.led(0, row, brightness);

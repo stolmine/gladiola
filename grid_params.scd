@@ -1,6 +1,6 @@
 (
 var pitchValues = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 3.5, 4.0, 0.125, 0.33, 0.66];
-var loopLengthValues = [0.0, 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.75, 0.875, 0.9375, 1.0];
+var loopLengthValues = [0, 1/16, 1/8, 1/4, 3/8, 1/2, 5/8, 3/4, 7/8, 1.0, 2.0, 4.0, 8.0, 8.0, 8.0];
 // 1/16 step → full sustain (100 = sentinel for "no gate")
 var gateLengthValues = [0.0625, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.625, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 100];
 
@@ -100,7 +100,6 @@ var gateLengthValues = [0.0625, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.625, 0.75, 1.
 };
 
 // Center position for bipolar params (nil = no center)
-// Page 2 idx 2 = filter, idx 3 = pan; both centered at position 7
 ~paramCenterPos = { |paramPage, paramIdx|
     if(paramPage == 1 && ((paramIdx == 2) || (paramIdx == 3))) { 7 } { nil }
 };
