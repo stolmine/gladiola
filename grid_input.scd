@@ -23,6 +23,7 @@
 ~auditionEnabled = true;
 ~presetConfirmArmed = nil;
 ~presetFlashState = false;
+~presetPulsePhase = 0;
 
 ~paramRowForIndex = { |paramIdx, heldTrack|
     var row = if(paramIdx < heldTrack) { paramIdx } { paramIdx + 1 };
@@ -439,7 +440,6 @@
                         ~presetHeldX = nil;
                         ~presetSlotMap[btnIdx] = btnIdx;
                         ~savePreset.(btnIdx);
-                        ~lastRecalledSlot[btnIdx] = btnIdx;
                         ~updateGridLEDs.();
                     } {
                         ~presetHeldSlot = nil;
@@ -510,16 +510,6 @@
                             ~presetConfirmArmed = nil;
                             if(~presetSelectedSlot.notNil) {
                                 ~presetSlotMap[btnIdx] = ~presetSelectedSlot;
-                                if(~presets[~presetSelectedSlot].notNil) {
-                                    if(~presetQuantized) {
-                                        ~pendingPresetRecall = ~presetSelectedSlot;
-                                        ~pendingPresetButton = btnIdx;
-                                        "[Gladiola] Preset % queued (matrix).".format(~presetSelectedSlot).postln;
-                                    } {
-                                        ~recallPreset.(~presetSelectedSlot);
-                                        ~lastRecalledSlot[btnIdx] = ~presetSelectedSlot;
-                                    };
-                                };
                             };
                             "[Gladiola] Preset overlay closed, btn % -> slot %".format(btnIdx, ~presetSlotMap[btnIdx]).postln;
                             ~updateGridLEDs.();
@@ -546,7 +536,7 @@
                                 "[Gladiola] Preset % queued for quantized recall.".format(mappedSlot).postln;
                             } {
                                 ~recallPreset.(mappedSlot);
-                                ~lastRecalledSlot[btnIdx] = mappedSlot;
+                                ~activePresetButton = btnIdx;
                             };
                         };
                         ~updateGridLEDs.();

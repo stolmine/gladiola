@@ -40,7 +40,7 @@ var defaultStep = {
 ~presetQuantized = false;
 ~pendingPresetRecall = nil;
 ~pendingPresetButton = nil;
-~lastRecalledSlot = [nil, nil, nil, nil];
+~activePresetButton = nil;
 ~clipboard     = nil;
 ~seqClock      = nil;
 
@@ -222,15 +222,15 @@ var defaultStep = {
                     nextStep = (track[\currentStep] + 1) % ~stepsPerTrack;
                     if(~stepInRange.(nextStep, track[\startStep], track[\endStep]).not) {
                         nextStep = track[\startStep];
-                        if(~pendingPresetRecall.notNil && (trackIdx == ~longestPatternTrack.())) {
-                            var recallSlot = ~pendingPresetRecall;
-                            var recallBtn = ~pendingPresetButton;
-                            ~pendingPresetRecall = nil;
-                            ~pendingPresetButton = nil;
-                            ~recallPreset.(recallSlot);
-                            if(recallBtn.notNil) {
-                                ~lastRecalledSlot[recallBtn] = recallSlot;
-                            };
+                    };
+                    if(nextStep == track[\startStep] && ~pendingPresetRecall.notNil && (trackIdx == ~longestPatternTrack.())) {
+                        var recallSlot = ~pendingPresetRecall;
+                        var recallBtn = ~pendingPresetButton;
+                        ~pendingPresetRecall = nil;
+                        ~pendingPresetButton = nil;
+                        ~recallPreset.(recallSlot);
+                        if(recallBtn.notNil) {
+                            ~activePresetButton = recallBtn;
                         };
                     };
                     track[\currentStep] = nextStep;

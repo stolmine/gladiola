@@ -69,6 +69,11 @@
 - [x] 49-slot preset matrix overlay (7×7) replacing 4-slot system: hold populated preset button to open matrix, select/save/clear slots, confirm mode, quantized switching (fires on longest-pattern wrap)
 - [x] preset utility LEDs differentiate active (full) vs populated-not-active (medium) vs empty (off)
 - [x] double-tap preset clear removed (clearing via matrix overlay only)
+- [x] fixed preset matrix overlay LED rendering: extra `};` brace broke if/else structure in grid_leds.scd, preventing overlay LEDs from displaying
+- [x] fixed quantized preset switching: wrap detection now works for all pattern lengths including full 0-15, not just sub-ranges
+- [x] fixed utility row preset lighting: replaced per-button ~lastRecalledSlot with single ~activePresetButton; only most-recently-recalled slot shows full brightness
+- [x] removed auto-recall on overlay release: closing preset matrix overlay remaps button only; user taps to recall
+- [x] pulse animation for queued presets and armed save/clear buttons in matrix overlay (dim→full→dim instead of flash)
 
 ## ideas
 

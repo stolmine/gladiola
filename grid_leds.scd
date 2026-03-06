@@ -214,8 +214,22 @@
                                         ~grid.led(col, row, brightness);
                                     };
                                 };
-                                ~grid.led(8, 0, if(~presetConfirmArmed == \save) { GridInterface.ledFull } { GridInterface.ledDim });
-                                ~grid.led(8, 2, if(~presetConfirmArmed == \clear) { GridInterface.ledFull } { GridInterface.ledDim });
+                                ~grid.led(8, 0, if(~presetConfirmArmed == \save) {
+                                    ~presetPulsePhase = (~presetPulsePhase + 1) % 16;
+                                    if(~presetPulsePhase < 8) {
+                                        GridInterface.ledDim + ((~presetPulsePhase / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
+                                    } {
+                                        GridInterface.ledFull - (((~presetPulsePhase - 8) / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
+                                    }
+                                } { GridInterface.ledDim });
+                                ~grid.led(8, 2, if(~presetConfirmArmed == \clear) {
+                                    ~presetPulsePhase = (~presetPulsePhase + 1) % 16;
+                                    if(~presetPulsePhase < 8) {
+                                        GridInterface.ledDim + ((~presetPulsePhase / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
+                                    } {
+                                        GridInterface.ledFull - (((~presetPulsePhase - 8) / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
+                                    }
+                                } { GridInterface.ledDim });
                                 ~grid.led(8, 4, if(~presetConfirmMode) { GridInterface.ledFull } { GridInterface.ledDim });
                                 ~grid.led(8, 6, if(~presetQuantized) { GridInterface.ledFull } { GridInterface.ledDim });
                                 if(~utilityHeldButton.notNil) {
@@ -225,7 +239,6 @@
                         };
                     };
                 };
-            };
         } {
             if(~lengthModalTrack.notNil) {
                 var track = ~tracks[~lengthModalTrack];
@@ -311,11 +324,15 @@
                     var mappedSlot = ~presetSlotMap[i];
                     var brightness;
                     if(~pendingPresetRecall.notNil && (~pendingPresetButton == i)) {
-                        ~presetFlashState = ~presetFlashState.not;
-                        brightness = if(~presetFlashState) { GridInterface.ledFull } { GridInterface.ledOff };
+                        ~presetPulsePhase = (~presetPulsePhase + 1) % 16;
+                        brightness = if(~presetPulsePhase < 8) {
+                            GridInterface.ledDim + ((~presetPulsePhase / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
+                        } {
+                            GridInterface.ledFull - (((~presetPulsePhase - 8) / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
+                        };
                     } {
                         if(~presets[mappedSlot].notNil) {
-                            brightness = if(~lastRecalledSlot[i] == mappedSlot) {
+                            brightness = if(~activePresetButton == i) {
                                 GridInterface.ledFull
                             } {
                                 GridInterface.ledMedium

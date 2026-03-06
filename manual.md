@@ -166,7 +166,7 @@ Four preset buttons (columns 5-8 on the utility row) map to a 49-slot preset mat
 
 Each preset captures: all track steps and parameters, start/end points, track mutes, clock division, FX parameters, transpose, and global reverse state.
 
-LED brightness: active (last recalled) preset = full, populated but not active = medium, empty = off. A pending quantized recall flashes the button.
+LED brightness: active (last recalled) preset = full, populated but not active = medium, empty = off. Only one button shows full brightness at a time — the most recently recalled slot. A pending quantized recall pulses the button (dim→full→dim).
 
 ### Preset Matrix Overlay
 
@@ -180,8 +180,8 @@ Hold a populated preset button to open the 7×7 matrix overlay. Slots appear on 
 | 6 | **Quantize toggle** — enable/disable quantized preset switching (full = on) |
 
 - Tap a slot to select it (bright). Populated unselected slots show medium, empty show off.
-- Confirm-armed actions flash — tap again to execute, or tap a different action to cancel.
-- On release of the held utility button: the button remaps to the selected slot, and the selected preset is recalled (or queued if quantized).
+- Confirm-armed Save and Clear buttons pulse (dim→full→dim) — tap again to execute, or tap a different action to cancel.
+- On release of the held utility button: the button remaps to the selected slot. Tap the button to recall (or queue if quantized).
 
 ### Quantized Preset Switching
 

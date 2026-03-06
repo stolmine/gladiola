@@ -44,7 +44,7 @@
 	snapshot[\presetSlotMap] = ~presetSlotMap.copy;
 	snapshot[\presetConfirmMode] = ~presetConfirmMode;
 	snapshot[\presetQuantized] = ~presetQuantized;
-	snapshot[\lastRecalledSlot] = ~lastRecalledSlot.copy;
+	snapshot[\activePresetButton] = ~activePresetButton;
 	snapshot
 };
 
@@ -142,7 +142,7 @@
 				~presetSlotMap = snapshot[\presetSlotMap] ?? { [0, 1, 2, 3] };
 				~presetConfirmMode = snapshot[\presetConfirmMode] ?? { true };
 				~presetQuantized = snapshot[\presetQuantized] ?? { false };
-				~lastRecalledSlot = snapshot[\lastRecalledSlot] ?? { [nil, nil, nil, nil] };
+				~activePresetButton = snapshot[\activePresetButton];
 				~pendingPresetRecall = nil;
 				~pendingPresetButton = nil;
 				~presetSelectedSlot = nil;
@@ -178,7 +178,7 @@
 		~presetQuantized = false;
 		~pendingPresetRecall = nil;
 		~pendingPresetButton = nil;
-		~lastRecalledSlot = [nil, nil, nil, nil];
+		~activePresetButton = nil;
 
 		~sessionName = name;
 		~sessionPath = ~sessionsDir +/+ name ++ ".gladiola";
