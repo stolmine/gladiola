@@ -321,17 +321,17 @@
         if(y >= 0 && (y < ~numTracks)) {
             if(~utilityOverlayActive.not && ~paramMenuActive.not && ~lengthModalTrack.isNil) {
                 var track = ~tracks[y];
+                // Undo toggle from first tap's release (only if step was in range)
                 if(~stepInRange.(x, track[\startStep], track[\endStep])) {
-                    // Undo the step toggle from first tap's release
                     track[\steps][x][\on] = track[\steps][x][\on].not;
-                    ~setTrackStart.(y, x);
-                    ~pendingToggle = nil;
-                    ~pendingToggleTrack = nil;
-                    ~lengthModalTrack = y;
-                    ~lengthModalMode = \setEnd;
-                    "[Gladiola] Track %: start -> %, select end".format(y, x).postln;
-                    ~updateGridLEDs.();
                 };
+                ~setTrackStart.(y, x);
+                ~pendingToggle = nil;
+                ~pendingToggleTrack = nil;
+                ~lengthModalTrack = y;
+                ~lengthModalMode = \setEnd;
+                "[Gladiola] Track %: start -> %, select end".format(y, x).postln;
+                ~updateGridLEDs.();
             };
         };
     });

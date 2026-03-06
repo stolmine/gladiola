@@ -111,19 +111,22 @@
 
                 ~grid.clear;
 
-                16.do { |col|
-                    var brightness;
-                    if(~stepInRange.(col, startS, endS)) {
-                        brightness = GridInterface.ledDim;
-                    } {
-                        brightness = GridInterface.ledOff;
-                    };
-                    ~grid.led(col, row, brightness);
-                };
-
                 if(~lengthModalMode == \setEnd) {
+                    // Selecting end: all columns available, start point bright
+                    16.do { |col|
+                        ~grid.led(col, row, GridInterface.ledDim);
+                    };
                     ~grid.led(startS, row, GridInterface.ledFull);
                 } {
+                    // Selecting start: show current range, end point bright
+                    16.do { |col|
+                        var brightness = if(~stepInRange.(col, startS, endS)) {
+                            GridInterface.ledDim
+                        } {
+                            GridInterface.ledOff
+                        };
+                        ~grid.led(col, row, brightness);
+                    };
                     ~grid.led(endS, row, GridInterface.ledFull);
                 };
 
