@@ -107,9 +107,9 @@ Voice send → FX bus ─┬─ Delay ──→ bus 0
 | 1 | Delay feedback | 0 → 0.95 |
 | 2 | Delay tone | -1 (dark) → +1 (bright) |
 | 3 | Delay level | 0 → 1.0 |
-| 4 | Granular size | 0 → 1.0 |
-| 5 | Granular position | 0 → 1.0 |
-| 6 | Granular pitch | 0 → 1.0 |
+| 4 | Granular size mod | 0 → 1.0 (S&H depth) |
+| 5 | Granular position mod | 0 → 1.0 (S&H depth) |
+| 6 | Granular pitch range | 0 → 1.0 (quantized intervals) |
 | 7 | Granular level | 0 → 1.0 |
 | 8 | Reverb size | 0.1 → 1.0 |
 | 9 | Reverb damping | 0 → 1.0 |
@@ -124,7 +124,7 @@ Default state: all send levels at 0 (delay/granular/reverb silent), saturation o
 
 The per-step "Delay Send" parameter (page 2) controls how much of each voice is sent to the shared FX bus. The three parallel effects (delay, granular, reverb) all read from this bus.
 
-The granular effect (MiClouds) receives a 1.5× input boost and step-triggered sample-and-hold modulation. When a step fires with delay send > 0, a trigger is sent to the granular synth, latching new random values for position, size, and density. Mod depth is controlled via `~setFxParam.(\granModDepth, value)` (7 values from 0 to 0.8).
+The granular effect (MiClouds) receives a 1.5× input boost and per-parameter sample-and-hold modulation. When a step fires with delay send > 0, a trigger is sent to the granular synth, latching new random values. Columns 4-6 control modulation depth independently: size mod (random grain size variation around 0.5), position mod (random position variation around 0.5), and pitch range (quantized to musical intervals: unison, ±fifth, ±octave, ±octave+fifth). At 0 all parameters are fixed; raising the value increases the random spread per trigger. Density modulation is derived from the average of size and position mod depths.
 
 ### Transpose
 
@@ -166,7 +166,7 @@ Four preset buttons (columns 5-8 on the utility row) map to a 49-slot preset mat
 
 Each preset captures: all track steps and parameters, start/end points, track mutes, clock division, FX parameters, transpose, and global reverse state.
 
-LED brightness: active (last recalled) preset = full, populated but not active = medium, empty = off. Only one button shows full brightness at a time — the most recently recalled slot. A pending quantized recall pulses the button (dim→full→dim).
+LED brightness: active (last recalled) preset = full, populated but not active = medium, empty = off. Only one button shows full brightness at a time — the most recently recalled slot. Clearing the active preset's slot resets the active indicator. A pending quantized recall pulses the button at 1/4 the slowest pattern's period.
 
 ### Preset Matrix Overlay
 
@@ -179,8 +179,8 @@ Hold a populated preset button to open the 7×7 matrix overlay. Slots appear on 
 | 4 | **Confirm toggle** — enable/disable overwrite protection (full = on) |
 | 6 | **Quantize toggle** — enable/disable quantized preset switching (full = on) |
 
-- Tap a slot to select it (bright). Populated unselected slots show medium, empty show off.
-- Confirm-armed Save and Clear buttons pulse (dim→full→dim) — tap again to execute, or tap a different action to cancel.
+- Tap a slot to select it. Populated selected = full, populated unselected = medium, empty selected = medium, empty unselected = dim.
+- Confirm-armed Save and Clear buttons pulse at 1/4 the slowest pattern's period — tap again to execute, or tap a different action to cancel.
 - On release of the held utility button: the button remaps to the selected slot. Tap the button to recall (or queue if quantized).
 
 ### Quantized Preset Switching

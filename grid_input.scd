@@ -171,6 +171,9 @@
                                                     if(~presetConfirmArmed == \clear) {
                                                         ~clearPreset.(~presetSelectedSlot);
                                                         ~presetConfirmArmed = nil;
+                                                        if(~activePresetButton.notNil && (~presetSlotMap[~activePresetButton] == ~presetSelectedSlot)) {
+                                                            ~activePresetButton = nil;
+                                                        };
                                                         "[Gladiola] Preset % cleared (confirmed).".format(~presetSelectedSlot).postln;
                                                     } {
                                                         ~presetConfirmArmed = \clear;
@@ -179,6 +182,9 @@
                                                 } {
                                                     ~clearPreset.(~presetSelectedSlot);
                                                     ~presetConfirmArmed = nil;
+                                                    if(~activePresetButton.notNil && (~presetSlotMap[~activePresetButton] == ~presetSelectedSlot)) {
+                                                        ~activePresetButton = nil;
+                                                    };
                                                 };
                                                 ~updateGridLEDs.();
                                             };

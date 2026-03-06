@@ -1,7 +1,7 @@
 (
 ~fxParamKeys = [
     \delayDiv, \delayFeedback, \delayTone, \delayLevel,
-    \granSize, \granPosition, \granPitch, \granLevel,
+    \granSizeMod, \granPosMod, \granPitchRange, \granLevel,
     \reverbSize, \reverbDamp, \reverbLevel,
     \satDepth, \satType,
     \tilt,
@@ -13,9 +13,9 @@
     \delayFeedback,  [0.95, 0.9, 0.8, 0.6, 0.4, 0.2, 0],
     \delayTone,      [1, 0.67, 0.33, 0, -0.33, -0.67, -1],
     \delayLevel,     [1.0, 0.85, 0.7, 0.5, 0.3, 0.15, 0],
-    \granSize,       [1.0, 0.83, 0.67, 0.5, 0.33, 0.17, 0],
-    \granPosition,   [1.0, 0.83, 0.67, 0.5, 0.33, 0.17, 0],
-    \granPitch,      [1.0, 0.83, 0.67, 0.5, 0.33, 0.17, 0],
+    \granSizeMod,    [1.0, 0.83, 0.67, 0.5, 0.33, 0.17, 0],
+    \granPosMod,     [1.0, 0.83, 0.67, 0.5, 0.33, 0.17, 0],
+    \granPitchRange, [1.0, 0.83, 0.67, 0.5, 0.33, 0.17, 0],
     \granLevel,      [1.0, 0.85, 0.7, 0.5, 0.3, 0.15, 0],
     \reverbSize,     [1.0, 0.85, 0.7, 0.55, 0.4, 0.25, 0.1],
     \reverbDamp,     [1.0, 0.83, 0.67, 0.5, 0.33, 0.17, 0],
@@ -25,7 +25,7 @@
     \tilt,           [1, 0.67, 0.33, 0, -0.33, -0.67, -1],
     \compAmount,     [1.0, 0.85, 0.7, 0.5, 0.3, 0.15, 0],
     \compColor,      [1.0, 0.83, 0.67, 0.5, 0.33, 0.17, 0],
-    \granModDepth,   [0.8, 0.4, 0.2, 0.1, 0.05, 0.02, 0]
+    \granModDepth,   [0.8, 0.4, 0.2, 0.1, 0.05, 0.02, 0]  // legacy, kept for old session compat
 ]);
 
 ~fxValueForPosition = { |col, row|

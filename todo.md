@@ -74,6 +74,9 @@
 - [x] fixed utility row preset lighting: replaced per-button ~lastRecalledSlot with single ~activePresetButton; only most-recently-recalled slot shows full brightness
 - [x] removed auto-recall on overlay release: closing preset matrix overlay remaps button only; user taps to recall
 - [x] pulse animation for queued presets and armed save/clear buttons in matrix overlay (dim→full→dim instead of flash)
+- [x] granular FX rework: per-parameter S&H mod depth (size, position, pitch) replacing single modDepth + direct control; pitch quantized to musical intervals (±fifth, ±octave, ±oct+fifth)
+- [x] pulse animation rate synced to 1/4 slowest pattern period (clock-derived phase instead of per-call increment)
+- [x] preset clear resets activePresetButton when clearing mapped slot; matrix shows empty-selected as medium instead of full
 
 ## ideas
 

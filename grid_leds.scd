@@ -1,5 +1,33 @@
 (
 ~updateGridLEDs = {
+    var pulsePhase, pulseBright, longestDur, pulsePeriod;
+
+    longestDur = 4;
+    ~numTracks.do { |i|
+        var t = ~tracks[i];
+        var len, dur;
+        len = if(t[\startStep] <= t[\endStep]) {
+            t[\endStep] - t[\startStep] + 1
+        } {
+            (~stepsPerTrack - t[\startStep]) + t[\endStep] + 1
+        };
+        dur = len * t[\clockDiv];
+        if(dur > longestDur) { longestDur = dur };
+    };
+    pulsePeriod = longestDur / 4;
+
+    if(~seqClock.notNil && ~playing) {
+        pulsePhase = ((~seqClock.beats % pulsePeriod) / pulsePeriod * 16).asInteger;
+    } {
+        ~presetPulsePhase = (~presetPulsePhase + 1) % 16;
+        pulsePhase = ~presetPulsePhase;
+    };
+    pulseBright = if(pulsePhase < 8) {
+        GridInterface.ledDim + ((pulsePhase / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
+    } {
+        GridInterface.ledFull - (((pulsePhase - 8) / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
+    };
+
     if(~paramMenuActive && ~heldTrack.notNil && ~heldStepIdx.notNil) {
         var track = ~tracks[~heldTrack];
         var step = track[\steps][~heldStepIdx];
@@ -202,10 +230,14 @@
                                 7.do { |row|
                                     7.do { |col|
                                         var slotIdx = row * 7 + col;
-                                        var brightness = if(slotIdx == ~presetSelectedSlot) {
-                                            GridInterface.ledFull
+                                        var brightness = if(~presets[slotIdx].notNil) {
+                                            if(slotIdx == ~presetSelectedSlot) {
+                                                GridInterface.ledFull
+                                            } {
+                                                GridInterface.ledMedium
+                                            }
                                         } {
-                                            if(~presets[slotIdx].notNil) {
+                                            if(slotIdx == ~presetSelectedSlot) {
                                                 GridInterface.ledMedium
                                             } {
                                                 GridInterface.ledDim
@@ -214,22 +246,8 @@
                                         ~grid.led(col, row, brightness);
                                     };
                                 };
-                                ~grid.led(8, 0, if(~presetConfirmArmed == \save) {
-                                    ~presetPulsePhase = (~presetPulsePhase + 1) % 16;
-                                    if(~presetPulsePhase < 8) {
-                                        GridInterface.ledDim + ((~presetPulsePhase / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
-                                    } {
-                                        GridInterface.ledFull - (((~presetPulsePhase - 8) / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
-                                    }
-                                } { GridInterface.ledDim });
-                                ~grid.led(8, 2, if(~presetConfirmArmed == \clear) {
-                                    ~presetPulsePhase = (~presetPulsePhase + 1) % 16;
-                                    if(~presetPulsePhase < 8) {
-                                        GridInterface.ledDim + ((~presetPulsePhase / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
-                                    } {
-                                        GridInterface.ledFull - (((~presetPulsePhase - 8) / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
-                                    }
-                                } { GridInterface.ledDim });
+                                ~grid.led(8, 0, if(~presetConfirmArmed == \save) { pulseBright } { GridInterface.ledDim });
+                                ~grid.led(8, 2, if(~presetConfirmArmed == \clear) { pulseBright } { GridInterface.ledDim });
                                 ~grid.led(8, 4, if(~presetConfirmMode) { GridInterface.ledFull } { GridInterface.ledDim });
                                 ~grid.led(8, 6, if(~presetQuantized) { GridInterface.ledFull } { GridInterface.ledDim });
                                 if(~utilityHeldButton.notNil) {
@@ -324,12 +342,7 @@
                     var mappedSlot = ~presetSlotMap[i];
                     var brightness;
                     if(~pendingPresetRecall.notNil && (~pendingPresetButton == i)) {
-                        ~presetPulsePhase = (~presetPulsePhase + 1) % 16;
-                        brightness = if(~presetPulsePhase < 8) {
-                            GridInterface.ledDim + ((~presetPulsePhase / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
-                        } {
-                            GridInterface.ledFull - (((~presetPulsePhase - 8) / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
-                        };
+                        brightness = pulseBright;
                     } {
                         if(~presets[mappedSlot].notNil) {
                             brightness = if(~activePresetButton == i) {

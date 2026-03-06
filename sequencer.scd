@@ -25,7 +25,7 @@ var defaultStep = {
 ~bpm           = 120;
 ~fxParams = Dictionary.newFrom([
     \delayDiv, 0.25, \delayFeedback, 0, \delayTone, 0, \delayLevel, 0,
-    \granSize, 0, \granPosition, 0, \granPitch, 0, \granLevel, 0, \granModDepth, 0,
+    \granSizeMod, 0, \granPosMod, 0, \granPitchRange, 0, \granLevel, 0,
     \reverbSize, 0.5, \reverbDamp, 0.5, \reverbLevel, 0,
     \satDepth, 0, \satType, 0, \tilt, 0, \compAmount, 0, \compColor, 0
 ]);
@@ -119,11 +119,10 @@ var defaultStep = {
 
     ~granularSynth = Synth(\gladiolaGranular, [
         \fxSendBus, ~fxSendBus.index,
-        \size, ~fxParams[\granSize],
-        \position, ~fxParams[\granPosition],
-        \pitch, ~fxParams[\granPitch],
-        \level, ~fxParams[\granLevel],
-        \modDepth, ~fxParams[\granModDepth]
+        \sizeMod, ~fxParams[\granSizeMod],
+        \posMod, ~fxParams[\granPosMod],
+        \pitchRange, ~fxParams[\granPitchRange],
+        \level, ~fxParams[\granLevel]
     ], ~fxGroup);
 
     ~reverbSynth = Synth(\gladiolaReverb, [
@@ -281,11 +280,10 @@ var defaultStep = {
     if(~granularSynth.notNil) { ~granularSynth.free };
     ~granularSynth = Synth(\gladiolaGranular, [
         \fxSendBus, ~fxSendBus.index,
-        \size, ~fxParams[\granSize],
-        \position, ~fxParams[\granPosition],
-        \pitch, ~fxParams[\granPitch],
-        \level, ~fxParams[\granLevel],
-        \modDepth, ~fxParams[\granModDepth]
+        \sizeMod, ~fxParams[\granSizeMod],
+        \posMod, ~fxParams[\granPosMod],
+        \pitchRange, ~fxParams[\granPitchRange],
+        \level, ~fxParams[\granLevel]
     ], ~fxGroup);
 
     if(~reverbSynth.notNil) { ~reverbSynth.free };
@@ -398,11 +396,10 @@ var defaultStep = {
     { \delayFeedback } { if(~delaySynth.notNil) { ~delaySynth.set(\feedback, value) } }
     { \delayTone }     { if(~delaySynth.notNil) { ~delaySynth.set(\tone, value) } }
     { \delayLevel }    { if(~delaySynth.notNil) { ~delaySynth.set(\level, value) } }
-    { \granSize }      { if(~granularSynth.notNil) { ~granularSynth.set(\size, value) } }
-    { \granPosition }  { if(~granularSynth.notNil) { ~granularSynth.set(\position, value) } }
-    { \granPitch }     { if(~granularSynth.notNil) { ~granularSynth.set(\pitch, value) } }
+    { \granSizeMod }   { if(~granularSynth.notNil) { ~granularSynth.set(\sizeMod, value) } }
+    { \granPosMod }    { if(~granularSynth.notNil) { ~granularSynth.set(\posMod, value) } }
+    { \granPitchRange }{ if(~granularSynth.notNil) { ~granularSynth.set(\pitchRange, value) } }
     { \granLevel }     { if(~granularSynth.notNil) { ~granularSynth.set(\level, value) } }
-    { \granModDepth }  { if(~granularSynth.notNil) { ~granularSynth.set(\modDepth, value) } }
     { \reverbSize }    { if(~reverbSynth.notNil) { ~reverbSynth.set(\size, value) } }
     { \reverbDamp }    { if(~reverbSynth.notNil) { ~reverbSynth.set(\damping, value) } }
     { \reverbLevel }   { if(~reverbSynth.notNil) { ~reverbSynth.set(\level, value) } }
