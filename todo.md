@@ -83,6 +83,11 @@
   - contiguous row placement including row 7, dynamic repositioning when selectedParam changes
   - backward-compatible session/preset migration for old data
   - deep copy support for step copy/paste with sub-step data
+- [x] fixed transpose hold: holding col 4 now only opens the overlay; tap (deferred to release) performs the swap — hold no longer fires both
+- [x] fixed queued preset immediate recall: tapping an already-queued preset in quantized mode cancels the queue and recalls immediately
+- [x] fixed preset timing: longestPatternTrack computes duration (steps × clockDiv) not raw step count; quantized recall uses deferred scheduling with handoff delay so the last step plays fully; all tracks reset to startStep on recall
+- [x] fixed sub-step hold detection: active sub-step toggle deferred to release so holding enters edit mode rather than toggling off
+- [x] fixed mute silences voice: muting a track immediately sets amp=0 on the running voice, stopping long gates and looping sounds
 
 ## ideas
 

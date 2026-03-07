@@ -147,7 +147,7 @@ The transpose button lights full when transposed away from unity. Transpose mult
 
 ### Track Mutes
 
-Tap columns 9-15 on the utility row to toggle mute for tracks 1-7. Mute toggles fire on release. Muted tracks show full brightness on their mute button; active steps on muted tracks display dim.
+Tap columns 9-15 on the utility row to toggle mute for tracks 1-7. Mute toggles fire on release. Muted tracks show full brightness on their mute button; active steps on muted tracks display dim. Muting a track immediately silences its voice — long gates and looping sounds cut off at the moment of mute.
 
 Hold a mute key to open the track parameter overlay for that track (see [Track Parameter Overlay](#track-parameter-overlay) below). Release to close.
 
@@ -185,7 +185,9 @@ Hold a populated preset button to open the 7×7 matrix overlay. Slots appear on 
 
 ### Quantized Preset Switching
 
-When the quantize toggle is enabled, preset recalls are queued instead of firing immediately. The queued preset executes when the longest unmuted track's playhead wraps back to its start step — ensuring pattern-aligned transitions.
+When the quantize toggle is enabled, preset recalls are queued instead of firing immediately. The queued preset executes when the longest unmuted track's playhead wraps back to its start step — ensuring pattern-aligned transitions. All tracks reset to their start step on recall so patterns stay locked after the switch.
+
+Tapping an already-queued preset cancels the queue and recalls it immediately.
 
 ## Parameter Overlay
 
@@ -265,9 +267,10 @@ The 3x3 sub-grid appears in the parameter overlay when holding a step. The 9 cel
 
 | Action | What happens |
 |--------|-------------|
-| **Tap** sub-step cell | Toggle active on/off |
-| **Hold** sub-step cell | Enter edit mode (cell pulses) |
-| **Release** sub-step cell | Stays in edit mode |
+| **Tap** active sub-step | Toggle active off (deferred to release) |
+| **Tap** inactive sub-step | Toggle active on |
+| **Hold** active sub-step | Enter edit mode instead of toggling off (cell pulses) |
+| **Release** sub-step in edit mode | Stays in edit mode |
 | Edit params freely | Changes apply to the sub-step, not the parent |
 | **Tap** pulsing sub-step | Exit edit mode |
 | **Double-tap** sub-step | Clear all overrides (reset to parent) |

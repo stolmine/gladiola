@@ -73,17 +73,18 @@ var defaultStep = {
 
 ~longestPatternTrack = {
     var longest = 0;
-    var longestLen = 0;
+    var longestDur = 0;
     ~numTracks.do { |i|
         var t = ~tracks[i];
-        var len;
+        var len, dur;
         if(t[\muted].not) {
             len = if(t[\startStep] <= t[\endStep]) {
                 t[\endStep] - t[\startStep] + 1
             } {
                 (~stepsPerTrack - t[\startStep]) + t[\endStep] + 1
             };
-            if(len > longestLen) { longestLen = len; longest = i };
+            dur = len * t[\clockDiv];
+            if(dur > longestDur) { longestDur = dur; longest = i };
         };
     };
     longest
@@ -250,12 +251,15 @@ var defaultStep = {
                     if(nextStep == track[\startStep] && ~pendingPresetRecall.notNil && (trackIdx == ~longestPatternTrack.())) {
                         var recallSlot = ~pendingPresetRecall;
                         var recallBtn = ~pendingPresetButton;
+                        var handoffDelay = track[\clockDiv] - 0.001;
                         ~pendingPresetRecall = nil;
                         ~pendingPresetButton = nil;
-                        ~recallPreset.(recallSlot);
-                        if(recallBtn.notNil) {
-                            ~activePresetButton = recallBtn;
-                        };
+                        ~seqClock.schedAbs(~seqClock.beats + handoffDelay, {
+                            ~recallPreset.(recallSlot);
+                            ~numTracks.do { |i| ~tracks[i][\currentStep] = ~tracks[i][\startStep] };
+                            if(recallBtn.notNil) { ~activePresetButton = recallBtn };
+                            nil;
+                        });
                     };
                     track[\currentStep] = nextStep;
 
@@ -373,6 +377,9 @@ var defaultStep = {
 ~muteTrack = { |idx|
     if((idx >= 0) && (idx < ~numTracks)) {
         ~tracks[idx][\muted] = true;
+        if(~tracks[idx][\voice].notNil) {
+            ~tracks[idx][\voice].set(\amp, 0, \t_trig, 0);
+        };
         "[Gladiola] Track % muted.".format(idx).postln;
     };
 };
@@ -387,6 +394,9 @@ var defaultStep = {
 ~toggleMuteTrack = { |idx|
     if((idx >= 0) && (idx < ~numTracks)) {
         ~tracks[idx][\muted] = ~tracks[idx][\muted].not;
+        if(~tracks[idx][\muted] && ~tracks[idx][\voice].notNil) {
+            ~tracks[idx][\voice].set(\amp, 0, \t_trig, 0);
+        };
         "[Gladiola] Track %: muted -> %".format(idx, ~tracks[idx][\muted]).postln;
     };
 };

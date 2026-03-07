@@ -31,6 +31,7 @@
 ~subStepParamPage = 0;
 ~savedParamPage = nil;
 ~savedSelectedParam = nil;
+~pendingSubToggle = nil;
 
 ~paramRowForIndex = { |paramIdx, heldTrack|
     var row = if(paramIdx < heldTrack) { paramIdx } { paramIdx + 1 };
@@ -269,7 +270,7 @@
                             } {
                                 if(~subStepEditing.not) {
                                     if(subIdx != 0) {
-                                        step[\subActive][subIdx] = step[\subActive][subIdx].not;
+                                        ~pendingSubToggle = subIdx;
                                     };
                                 };
                             };
@@ -436,13 +437,8 @@
                                     ~updateGridLEDs.();
                                 };
                                 if(x == 4) {
-                                    if(~prevTranspose.notNil) {
-                                        var swap = ~transpose;
-                                        ~transpose = ~prevTranspose;
-                                        ~prevTranspose = swap;
-                                        "[Gladiola] Transpose swap -> %".format(~transpose).postln;
-                                        ~updateGridLEDs.();
-                                    };
+                                    ~pendingToggle = 4;
+                                    ~pendingToggleTrack = 7;
                                 };
                                 if(x >= 5 && (x <= 8)) {
                                     ~presetHeldSlot = x - 5;
@@ -476,6 +472,7 @@
             var subPos = ~subGridPosition.(~heldStepIdx, ~heldTrack, valueRow);
             var subIdx = ~subIdxFromGrid.(x, y, subPos);
             if(subIdx.notNil && step[\subActive][subIdx]) {
+                ~pendingSubToggle = nil;
                 ~subStepEditing = true;
                 ~subStepEditIdx = subIdx;
 
@@ -601,11 +598,23 @@
                 ~auditionEnabled = true;
                 ~subStepEditing = false;
                 ~subStepEditIdx = nil;
-                
-                
+                ~pendingSubToggle = nil;
+
                 ~savedParamPage = nil;
                 ~savedSelectedParam = nil;
                 ~updateGridLEDs.();
+            } {
+                if(~pendingSubToggle.notNil && ~heldTrack.notNil && ~heldStepIdx.notNil) {
+                    var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
+                    var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
+                    var subPos = ~subGridPosition.(~heldStepIdx, ~heldTrack, valueRow);
+                    var subIdx = ~subIdxFromGrid.(x, y, subPos);
+                    if(subIdx.notNil && (subIdx == ~pendingSubToggle)) {
+                        step[\subActive][subIdx] = step[\subActive][subIdx].not;
+                        ~pendingSubToggle = nil;
+                        ~updateGridLEDs.();
+                    };
+                };
             };
         } {
             if(~trackParamActive) {
@@ -647,9 +656,17 @@
                         ~presetHeldX = nil;
                         if(~presets[mappedSlot].notNil) {
                             if(~presetQuantized) {
-                                ~pendingPresetRecall = mappedSlot;
-                                ~pendingPresetButton = btnIdx;
-                                "[Gladiola] Preset % queued for quantized recall.".format(mappedSlot).postln;
+                                if(~pendingPresetRecall == mappedSlot) {
+                                    ~pendingPresetRecall = nil;
+                                    ~pendingPresetButton = nil;
+                                    ~recallPreset.(mappedSlot);
+                                    ~activePresetButton = btnIdx;
+                                    "[Gladiola] Preset % immediate recall (was queued).".format(mappedSlot).postln;
+                                } {
+                                    ~pendingPresetRecall = mappedSlot;
+                                    ~pendingPresetButton = btnIdx;
+                                    "[Gladiola] Preset % queued for quantized recall.".format(mappedSlot).postln;
+                                };
                             } {
                                 ~recallPreset.(mappedSlot);
                                 ~activePresetButton = btnIdx;
@@ -664,6 +681,17 @@
                                 if(~playing) { ~stopTransport.() } { ~startTransport.() };
                                 ~updateGridLEDs.();
                             } {
+                                if(~pendingToggleTrack == 7 && (~pendingToggle == 4)) {
+                                    ~pendingToggle = nil;
+                                    ~pendingToggleTrack = nil;
+                                    if(~prevTranspose.notNil) {
+                                        var swap = ~transpose;
+                                        ~transpose = ~prevTranspose;
+                                        ~prevTranspose = swap;
+                                        "[Gladiola] Transpose swap -> %".format(~transpose).postln;
+                                    };
+                                    ~updateGridLEDs.();
+                                } {
                                 if(~pendingToggleTrack == 7) {
                                     var trackIdx = ~pendingToggle - 9;
                                     ~pendingToggle = nil;
@@ -678,6 +706,7 @@
                                     ~tracks[trackIdx][\steps][stepIdx][\on] = ~tracks[trackIdx][\steps][stepIdx][\on].not;
                                     ~updateGridLEDs.();
                                 };
+                            };
                             };
                         };
                     };
