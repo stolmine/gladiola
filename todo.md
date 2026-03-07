@@ -100,16 +100,19 @@
 - [x] fixed SC && non-short-circuit crash: step[\subActive][subIdx] evaluated even when subIdx was nil; changed to nested if
 - [x] quantized preset switching bypasses queue when transport is stopped (instant recall, setting preserved for playback)
 - [x] session manager quit button with confirmation dialog: stops transport, silences voices, kills FX tails, clears/frees grid, quits server
+- [x] three-state copy key LED in param overlay: dim = clipboard empty, subtle glow (6) = clipboard populated but differs from held step, bright (12) = clipboard matches held step; scalar params compared via ~clipboardMatchesStep helper (array types skipped)
 
 ## ideas
+
+[0] = abandoned
 
 - [ ] time stretching infrastructure for loop/break support
 - [ ] copy/paste step regions (multi-step copy)
 - [ ] swing / groove templates
 - [ ] clock sync (MIDI clock, Link)
 - [ ] audio output routing options (bus selection)
-- [ ] pattern chaining / song mode
+- [0] pattern chaining / song mode - i think we will stick to manual preset switching
 - [ ] sample slice mode (auto-chop breaks)
-- [ ] per-track sample lock (all steps in a track share one sample)
-- [ ] add variation on copy key state when clipboard is populated but selected step data varies from it
+- [0] per-track sample lock (all steps in a track share one sample) - already accomplished with global track overlays
 - [ ] legato mode for preset switching: the program will attempt to start presets from the same place the previous one was on given instant preset switching is enabled instead of resetting to start (clock div interpolation would be goofy here but worth a try)
+- [ ] BUG: when audition is on and sub step editing mode is enabled, audition only plays the sample of the parent step when selecting new samples

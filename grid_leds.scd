@@ -116,8 +116,16 @@
             var ep = if(~subStepEditing) { ~subStepParamPage } { ~paramPage };
             if(ep == 1) { GridInterface.ledFull } { GridInterface.ledMedium }
         }.value);
-        ~grid.led(layout[\copyCol], layout[\copyRow],
-            if(~clipboard.notNil) { GridInterface.ledBright } { GridInterface.ledDim });
+        ~grid.led(layout[\copyCol], layout[\copyRow], {
+            if(~clipboard.isNil) { GridInterface.ledDim } {
+                var step = if(~subStepEditing) {
+                    ~tracks[~heldTrack][\steps][~heldStepIdx][\subSteps][~subStepEditIdx]
+                } {
+                    ~tracks[~heldTrack][\steps][~heldStepIdx]
+                };
+                if(~clipboardMatchesStep.(step)) { GridInterface.ledBright } { 6 }
+            }
+        }.value);
         ~grid.led(layout[\auditionCol], layout[\auditionRow],
             if(~auditionEnabled) { GridInterface.ledFull } { GridInterface.ledDim });
         ~grid.led(layout[\latchCol], layout[\latchRow],

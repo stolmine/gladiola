@@ -207,7 +207,7 @@ Two 3×3 grids appear side-by-side on the far side of the held step:
 ```
 
 - **P (Page toggle)**: Switches between param page 1 and page 2. Medium = page 1, full = page 2.
-- **C (Copy)**: Copies all params from the held step to the clipboard. Dim = empty, bright = has data.
+- **C (Copy)**: Copies all params from the held step to the clipboard. Three brightness states: dim = clipboard empty, subtle glow = clipboard has data but differs from the held step, bright = clipboard matches the held step exactly.
 - **A (Audition)**: Toggles step preview. Full = enabled. Only active when transport is stopped.
 - **L (Latch)**: Keeps the overlay open after releasing the held step. Pulses when engaged. Tap again to disengage and close the overlay.
 

@@ -121,5 +121,17 @@ var gateLengthValues = [0.0625, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.625, 0.75, 1.
 
 ~deepCopyStep = { |step| step.deepCopy };
 
+~clipboardMatchesStep = { |step|
+    if(~clipboard.isNil) { false } {
+        var match = true;
+        ~clipboard.keysValuesDo { |key, val|
+            if(val.isKindOf(Array).not) {
+                if(step[key] != val) { match = false };
+            };
+        };
+        match
+    }
+};
+
 "[Gladiola] grid_params.scd loaded.".postln;
 )
