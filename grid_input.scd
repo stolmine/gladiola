@@ -492,7 +492,7 @@
                     if(~clipboard.notNil && (step[\on] == false)) {
                         ~pendingToggle = nil;
                         ~pendingToggleTrack = nil;
-                        ~clipboard.keysValuesDo { |key, val|
+                        ~deepCopyStep.(~clipboard).keysValuesDo { |key, val|
                             step[key] = val;
                         };
                         step[\on] = true;
