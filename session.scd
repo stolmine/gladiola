@@ -13,7 +13,7 @@
 	snapshot[\tracks] = ~numTracks.collect { |i|
 		var t = ~tracks[i];
 		Dictionary[
-			\steps -> t[\steps].collect { |s| s.copy },
+			\steps -> t[\steps].collect { |s| ~deepCopyStep.(s) },
 			\startStep -> t[\startStep],
 			\endStep -> t[\endStep],
 			\muted -> t[\muted],
@@ -25,7 +25,7 @@
 			var copy = Dictionary.new;
 			copy[\tracks] = p[\tracks].collect { |t|
 				var td = Dictionary[
-					\steps -> t[\steps].collect { |s| s.copy },
+					\steps -> t[\steps].collect { |s| ~deepCopyStep.(s) },
 					\startStep -> t[\startStep],
 					\endStep -> t[\endStep],
 					\muted -> t[\muted]
@@ -84,7 +84,14 @@
 
 				~numTracks.do { |i|
 					var saved = snapshot[\tracks][i];
-					~tracks[i][\steps] = saved[\steps].collect { |s| s.copy };
+					saved[\steps].do { |step|
+						if(step[\subSteps].isNil) {
+							step[\subSteps] = Array.fill(9, { nil });
+							step[\subActive] = Array.fill(9, { |i| i == 0 });
+							step[\subIdx] = 0;
+						};
+					};
+					~tracks[i][\steps] = saved[\steps].collect { |s| ~deepCopyStep.(s) };
 					~tracks[i][\startStep] = saved[\startStep];
 					~tracks[i][\endStep] = saved[\endStep];
 					~tracks[i][\muted] = saved[\muted];
@@ -117,8 +124,16 @@
 					if(p.notNil) {
 						var copy = Dictionary.new;
 						copy[\tracks] = p[\tracks].collect { |t|
-							var td = Dictionary[
-								\steps -> t[\steps].collect { |s| s.copy },
+							var td;
+							t[\steps].do { |step|
+								if(step[\subSteps].isNil) {
+									step[\subSteps] = Array.fill(9, { nil });
+									step[\subActive] = Array.fill(9, { |i| i == 0 });
+									step[\subIdx] = 0;
+								};
+							};
+							td = Dictionary[
+								\steps -> t[\steps].collect { |s| ~deepCopyStep.(s) },
 								\startStep -> t[\startStep],
 								\endStep -> t[\endStep],
 								\muted -> t[\muted]

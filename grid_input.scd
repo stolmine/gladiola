@@ -24,6 +24,13 @@
 ~presetConfirmArmed = nil;
 ~presetFlashState = false;
 ~presetPulsePhase = 0;
+~subStepEditing = false;
+~subStepEditIdx = nil;
+
+
+~subStepParamPage = 0;
+~savedParamPage = nil;
+~savedSelectedParam = nil;
 
 ~paramRowForIndex = { |paramIdx, heldTrack|
     var row = if(paramIdx < heldTrack) { paramIdx } { paramIdx + 1 };
@@ -75,6 +82,40 @@
     var pageCol = heldCol - 4;
     var pageRow = if(valueRow != 0) { 0 } { 1 };
     Dictionary[\pageCol -> pageCol, \pageRow -> pageRow]
+};
+
+~subGridPosition = { |heldStepIdx, heldTrack, valueRow|
+    var cols = if(heldStepIdx >= 8) { [0, 1, 2] } { [13, 14, 15] };
+    var candidates = [[0,1,2], [1,2,3], [2,3,4], [3,4,5], [4,5,6], [5,6,7]];
+    var valid = candidates.select { |block|
+        block.includes(heldTrack).not && block.includes(valueRow).not
+    };
+    var gapped = valid.select { |block|
+        block.every { |r| (r - valueRow).abs >= 2 }
+    };
+    var rows;
+    if(gapped.notEmpty) {
+        rows = gapped[0];
+    } {
+        if(valid.notEmpty) {
+            rows = valid[0];
+        } {
+            rows = candidates.select { |block|
+                block.includes(heldTrack).not
+            }[0];
+        };
+    };
+    [cols, rows]
+};
+
+~subIdxFromGrid = { |x, y, subPos|
+    var result = nil;
+    subPos[0].do { |c, ci|
+        subPos[1].do { |r, ri|
+            if(x == c && (y == r)) { result = ri * 3 + ci };
+        };
+    };
+    result
 };
 
 ~initGridHandler = {
@@ -206,11 +247,34 @@
                     };
                 } {
                     if(~paramMenuActive && ~heldTrack.notNil && ~heldStepIdx.notNil) {
-                        var paramNames = ~currentParamNames.();
+                        var effectivePage = if(~subStepEditing) { ~subStepParamPage } { ~paramPage };
+                        var paramNames = if(effectivePage == 0) { ~paramNamesPage1 } { ~paramNamesPage2 };
                         var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
                         var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
                         var actionPos = ~overlayActionPositions.(~heldTrack, ~heldStepIdx, valueRow);
+                        var subPos = ~subGridPosition.(~heldStepIdx, ~heldTrack, valueRow);
+                        var subIdx = ~subIdxFromGrid.(x, y, subPos);
 
+                        if(subIdx.notNil) {
+                            if(~subStepEditing && (subIdx == ~subStepEditIdx)) {
+                                ~subStepEditing = false;
+                                ~subStepEditIdx = nil;
+                                
+                                
+                                ~paramPage = ~savedParamPage ? 0;
+                                ~selectedParam = ~savedSelectedParam ? 0;
+                                ~savedParamPage = nil;
+                                ~savedSelectedParam = nil;
+                                "[Gladiola] Sub-step editing exited".postln;
+                            } {
+                                if(~subStepEditing.not) {
+                                    if(subIdx != 0) {
+                                        step[\subActive][subIdx] = step[\subActive][subIdx].not;
+                                    };
+                                };
+                            };
+                            ~updateGridLEDs.();
+                        } {
                         if(x == actionPos[\auditionCol] && (y == actionPos[\auditionRow])) {
                             ~auditionEnabled = ~auditionEnabled.not;
                             "[Gladiola] Audition -> %".format(~auditionEnabled).postln;
@@ -220,13 +284,18 @@
                             ~updateGridLEDs.();
                         } {
                         if(x == actionPos[\pageCol] && (y == actionPos[\pageRow])) {
-                            ~paramPage = 1 - ~paramPage;
+                            if(~subStepEditing) {
+                                ~subStepParamPage = 1 - ~subStepParamPage;
+                                "[Gladiola] Sub-step param page -> %".format(~subStepParamPage).postln;
+                            } {
+                                ~paramPage = 1 - ~paramPage;
+                                "[Gladiola] Param page -> %".format(~paramPage).postln;
+                            };
                             ~selectedParam = 0;
-                            "[Gladiola] Param page -> %".format(~paramPage).postln;
                             ~updateGridLEDs.();
                         } {
                         if(x == actionPos[\copyCol] && (y == actionPos[\copyRow])) {
-                            ~clipboard = step.copy;
+                            ~clipboard = ~deepCopyStep.(step);
                             ~clipboard.removeAt(\on);
                             "[Gladiola] Copied step params from track % step %".format(~heldTrack, ~heldStepIdx).postln;
                             ~updateGridLEDs.();
@@ -234,12 +303,16 @@
                             if(x == ~heldStepIdx && (y != ~heldTrack)) {
                                 var paramIdx = ~paramIndexForRow.(y, ~heldTrack);
                                 if(paramIdx.notNil && (paramIdx < paramNames.size)) {
-                                    if(paramIdx == 0 && (~selectedParam == 0) && (~paramPage == 0)) {
+                                    if(paramIdx == 0 && (~selectedParam == 0) && (effectivePage == 0)) {
                                         var numBanks = (~numBanks ? 1).max(1);
-                                        var curBank = step[\bank];
+                                        var target = if(~subStepEditing && ~subStepEditIdx.notNil) {
+                                            if(step[\subSteps][~subStepEditIdx].isNil) { step[\subSteps][~subStepEditIdx] = Dictionary.new };
+                                            step[\subSteps][~subStepEditIdx]
+                                        } { step };
+                                        var curBank = target[\bank] ?? { step[\bank] };
                                         var newBank = (curBank + 1) % numBanks;
-                                        step[\bank] = newBank;
-                                        step[\sample] = 0;
+                                        target[\bank] = newBank;
+                                        target[\sample] = 0;
                                         "[Gladiola] Track % step %: bank -> %".format(~heldTrack, ~heldStepIdx, newBank).postln;
                                     } {
                                         ~selectedParam = paramIdx;
@@ -252,15 +325,27 @@
                                 if(y == valueRow && (x != ~heldStepIdx)) {
                                     var valIdx = ~valueIdxForCol.(x, ~heldStepIdx);
                                     if(valIdx.notNil) {
-                                        var numValid = ~numValidPositions.(~paramPage, ~selectedParam, ~heldTrack, ~heldStepIdx);
+                                        var numValid = ~numValidPositions.(effectivePage, ~selectedParam, ~heldTrack, ~heldStepIdx);
                                         if(valIdx < numValid) {
-                                            if(~selectedParam == 0 && (~paramPage == 0)) {
-                                                step[\sample] = valIdx;
-                                                "[Gladiola] Track % step %: sample -> %".format(~heldTrack, ~heldStepIdx, valIdx).postln;
+                                            if(~subStepEditing && ~subStepEditIdx.notNil) {
+                                                if(step[\subSteps][~subStepEditIdx].isNil) { step[\subSteps][~subStepEditIdx] = Dictionary.new };
+                                                if(~selectedParam == 0 && (effectivePage == 0)) {
+                                                    step[\subSteps][~subStepEditIdx][\sample] = valIdx;
+                                                    "[Gladiola] Sub-step %: sample -> %".format(~subStepEditIdx, valIdx).postln;
+                                                } {
+                                                    var val = ~valueForPosition.(effectivePage, ~selectedParam, valIdx);
+                                                    step[\subSteps][~subStepEditIdx][paramNames[~selectedParam]] = val;
+                                                    "[Gladiola] Sub-step %: % -> %".format(~subStepEditIdx, paramNames[~selectedParam], val).postln;
+                                                };
                                             } {
-                                                var val = ~valueForPosition.(~paramPage, ~selectedParam, valIdx);
-                                                step[paramNames[~selectedParam]] = val;
-                                                "[Gladiola] Track % step %: % -> %".format(~heldTrack, ~heldStepIdx, paramNames[~selectedParam], val).postln;
+                                                if(~selectedParam == 0 && (effectivePage == 0)) {
+                                                    step[\sample] = valIdx;
+                                                    "[Gladiola] Track % step %: sample -> %".format(~heldTrack, ~heldStepIdx, valIdx).postln;
+                                                } {
+                                                    var val = ~valueForPosition.(effectivePage, ~selectedParam, valIdx);
+                                                    step[paramNames[~selectedParam]] = val;
+                                                    "[Gladiola] Track % step %: % -> %".format(~heldTrack, ~heldStepIdx, paramNames[~selectedParam], val).postln;
+                                                };
                                             };
                                             if(~auditionEnabled && ~playing.not) {
                                                 ~previewStep.(~heldTrack, ~heldStepIdx);
@@ -270,6 +355,7 @@
                                     };
                                 };
                             };
+                        };
                         };
                         };
                         };
@@ -384,6 +470,23 @@
     });
 
     ~grid.hold({ |x, y|
+        if(~paramMenuActive && ~subStepEditing.not && ~heldTrack.notNil && ~heldStepIdx.notNil) {
+            var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
+            var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
+            var subPos = ~subGridPosition.(~heldStepIdx, ~heldTrack, valueRow);
+            var subIdx = ~subIdxFromGrid.(x, y, subPos);
+            if(subIdx.notNil && step[\subActive][subIdx]) {
+                ~subStepEditing = true;
+                ~subStepEditIdx = subIdx;
+
+                ~savedParamPage = ~paramPage;
+                ~savedSelectedParam = ~selectedParam;
+                ~subStepParamPage = ~paramPage;
+                if(step[\subSteps][subIdx].isNil) { step[\subSteps][subIdx] = Dictionary.new };
+                "[Gladiola] Sub-step % editing".format(subIdx).postln;
+                ~updateGridLEDs.();
+            };
+        } {
         if(~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil && ~lengthModalMode.isNil && ~utilityOverlayActive.not && ~transportHeld.not) {
             if(y >= 0 && (y < ~numTracks)) {
                 var track = ~tracks[y];
@@ -472,6 +575,7 @@
                 };
             };
         };
+        };
     });
 
     ~grid.release({ |x, y|
@@ -495,6 +599,12 @@
                 ~heldTrack = nil;
                 ~heldStepIdx = nil;
                 ~auditionEnabled = true;
+                ~subStepEditing = false;
+                ~subStepEditIdx = nil;
+                
+                
+                ~savedParamPage = nil;
+                ~savedSelectedParam = nil;
                 ~updateGridLEDs.();
             };
         } {
@@ -582,6 +692,17 @@
             ~panicVoices.();
             ~killFxTails.();
             ~updateGridLEDs.();
+        };
+        if(~paramMenuActive && ~subStepEditing.not && ~heldTrack.notNil && ~heldStepIdx.notNil) {
+            var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
+            var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
+            var subPos = ~subGridPosition.(~heldStepIdx, ~heldTrack, valueRow);
+            var subIdx = ~subIdxFromGrid.(x, y, subPos);
+            if(subIdx.notNil) {
+                step[\subSteps][subIdx] = nil;
+                "[Gladiola] Sub-step % overrides cleared".format(subIdx).postln;
+                ~updateGridLEDs.();
+            };
         };
         if(y >= 0 && (y < ~numTracks)) {
             if(~utilityOverlayActive.not && ~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil) {

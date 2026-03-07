@@ -19,14 +19,14 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 | `synthdefs/fx_chain.scd` | FX chain SynthDefs (delay, granular, reverb, saturation, tilt, compressor, limiter) |
 | `fx_params.scd` | FX parameter definitions, value tables, lookup functions |
 | `sample_loader.scd` | Bank-based sample loading (16 banks × 15 samples) |
-| `grid_params.scd` | Parameter definitions, value tables, mapping |
+| `grid_params.scd` | Parameter definitions, value tables, mapping, sub-step resolution helpers |
 | `grid_leds.scd` | LED rendering for all display modes |
 | `grid_input.scd` | Grid input handling, gesture recognition, modal state |
 | `session.scd` | Session save/load/new, GUI window with metering |
 
 ## Key Features
 
-- 7 tracks × 16 steps with per-step parameters (2 pages, 14 params)
+- 7 tracks × 16 steps with per-step parameters (2 pages, 14 params) and per-step sub-sequencing (up to 9 sub-steps per step)
 - Hold-to-reveal parameter overlay with bank/sample selection
 - Step copy/paste with dynamically positioned overlay action buttons
 - 49-slot preset matrix with confirm mode and quantized switching

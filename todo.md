@@ -77,6 +77,12 @@
 - [x] granular FX rework: per-parameter S&H mod depth (size, position, pitch) replacing single modDepth + direct control; pitch quantized to musical intervals (±fifth, ±octave, ±oct+fifth)
 - [x] pulse animation rate synced to 1/4 slowest pattern period (clock-derived phase instead of per-call increment)
 - [x] preset clear resets activePresetButton when clearing mapped slot; matrix shows empty-selected as medium instead of full
+- [x] per-step sub-sequencing: 3×3 grid of up to 9 sub-steps per step, override/inherit model, cycle on parent step fire
+  - sub-step toggle (tap), edit mode (hold to enter, tap to exit with pulse animation), double-tap to clear overrides
+  - 4-brightness LED levels (full=active+overrides, medium-high=active+inherit, medium=inactive+overrides, dim=empty)
+  - contiguous row placement including row 7, dynamic repositioning when selectedParam changes
+  - backward-compatible session/preset migration for old data
+  - deep copy support for step copy/paste with sub-step data
 
 ## ideas
 
@@ -88,4 +94,3 @@
 - [ ] pattern chaining / song mode
 - [ ] sample slice mode (auto-chop breaks)
 - [ ] per-track sample lock (all steps in a track share one sample)
-- [ ] subsequencers: in step overlay, a 3×3 grid of dim keys represents sub-steps. Sub-sequence advances each time playhead passes over the parent step. User can select any sub-step and set params specific to it. Traversal: left-to-right, top-to-bottom (9 sub-steps max per step).

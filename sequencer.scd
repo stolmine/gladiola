@@ -16,7 +16,10 @@ var defaultStep = {
         \pan,         0.0,
         \probability, 1.0,
         \delaySend,   0.0,
-        \bitcrush,    0.0
+        \bitcrush,    0.0,
+        \subSteps,    Array.fill(9, { nil }),
+        \subActive,   Array.fill(9, { |i| i == 0 }),
+        \subIdx,      0
     ])
 };
 
@@ -172,14 +175,32 @@ var defaultStep = {
                     var buf, stepDur, numBanks, nextStep;
 
                     if(track[\muted].not && step[\on] && step[\probability].coin) {
-                        var rand       = step[\randomness];
-                        var bank       = step[\bank];
-                        var sample     = step[\sample];
-                        var pitch      = step[\pitch];
-                        var velocity   = step[\velocity];
-                        var loopLength = step[\loopLength];
-                        var loopRegion = step[\loopRegion];
-                        var ratchet    = step[\ratchet];
+                        var activeSubs, lastActive, subLen, curSub;
+                        var rand, bank, sample, pitch, velocity, loopLength, loopRegion, ratchet;
+                        var resolvedGateLength, resolvedReverse, resolvedFilter;
+                        var resolvedPan, resolvedDelaySend, resolvedBitcrush;
+
+                        lastActive = 0;
+                        step[\subActive].do { |active, i| if(active) { lastActive = i } };
+                        subLen = lastActive + 1;
+                        curSub = step[\subIdx] % subLen;
+
+                        rand       = ~resolveSubStepParam.(step, curSub, \randomness);
+                        bank       = ~resolveSubStepParam.(step, curSub, \bank);
+                        sample     = ~resolveSubStepParam.(step, curSub, \sample);
+                        pitch      = ~resolveSubStepParam.(step, curSub, \pitch);
+                        velocity   = ~resolveSubStepParam.(step, curSub, \velocity);
+                        loopLength = ~resolveSubStepParam.(step, curSub, \loopLength);
+                        loopRegion = ~resolveSubStepParam.(step, curSub, \loopRegion);
+                        ratchet    = ~resolveSubStepParam.(step, curSub, \ratchet);
+                        resolvedGateLength = ~resolveSubStepParam.(step, curSub, \gateLength);
+                        resolvedReverse    = ~resolveSubStepParam.(step, curSub, \reverse);
+                        resolvedFilter     = ~resolveSubStepParam.(step, curSub, \filter);
+                        resolvedPan        = ~resolveSubStepParam.(step, curSub, \pan);
+                        resolvedDelaySend  = ~resolveSubStepParam.(step, curSub, \delaySend);
+                        resolvedBitcrush   = ~resolveSubStepParam.(step, curSub, \bitcrush);
+
+                        step[\subIdx] = step[\subIdx] + 1;
 
                         if(rand > 0) {
                             pitch      = pitch * rrand(1 - (rand * 0.5), 1 + (rand * 0.5));
@@ -208,15 +229,15 @@ var defaultStep = {
                                 \loopRegion, loopRegion,
                                 \ratchet,    ratchet,
                                 \stepDur,    stepDur,
-                                \gateLength, step[\gateLength],
-                                \reverse,    (step[\reverse].asBoolean xor: ~globalReverse).asInteger,
-                                \filter,     step[\filter],
-                                \pan,        step[\pan],
-                                \delaySend,  step[\delaySend],
-                                \bitcrush,   step[\bitcrush],
+                                \gateLength, resolvedGateLength,
+                                \reverse,    (resolvedReverse.asBoolean xor: ~globalReverse).asInteger,
+                                \filter,     resolvedFilter,
+                                \pan,        resolvedPan,
+                                \delaySend,  resolvedDelaySend,
+                                \bitcrush,   resolvedBitcrush,
                                 \t_trig,     1
                             );
-                            if(step[\delaySend] > 0 && ~granularSynth.notNil) {
+                            if(resolvedDelaySend > 0 && ~granularSynth.notNil) {
                                 ~granularSynth.set(\t_trig, 1);
                             };
                         };
@@ -444,7 +465,7 @@ var defaultStep = {
     snapshot[\tracks] = ~numTracks.collect { |i|
         var t = ~tracks[i];
         Dictionary[
-            \steps -> t[\steps].collect { |s| s.copy },
+            \steps -> t[\steps].collect { |s| ~deepCopyStep.(s) },
             \startStep -> t[\startStep],
             \endStep -> t[\endStep],
             \muted -> t[\muted],
@@ -463,7 +484,14 @@ var defaultStep = {
     if(snapshot.notNil) {
         ~numTracks.do { |i|
             var saved = snapshot[\tracks][i];
-            ~tracks[i][\steps] = saved[\steps].collect { |s| s.copy };
+            saved[\steps].do { |step|
+                if(step[\subSteps].isNil) {
+                    step[\subSteps] = Array.fill(9, { nil });
+                    step[\subActive] = Array.fill(9, { |i| i == 0 });
+                    step[\subIdx] = 0;
+                };
+            };
+            ~tracks[i][\steps] = saved[\steps].collect { |s| ~deepCopyStep.(s) };
             ~tracks[i][\startStep] = saved[\startStep];
             ~tracks[i][\endStep] = saved[\endStep];
             ~tracks[i][\muted] = saved[\muted];

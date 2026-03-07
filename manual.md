@@ -249,6 +249,45 @@ Cannot open the step param overlay while the track overlay is active, and vice v
 | Delay Send | 0.0 - 1.0 | Amount sent to FX bus (delay, granular, reverb) |
 | Bitcrush | 0.0 - 1.0 | Sample rate and bit depth reduction |
 
+## Sub-Sequencing
+
+Each of the 16 steps per track has a 3x3 grid of up to 9 sub-steps. Sub-steps cycle each time the parent step fires, adding variation without using more steps.
+
+### How It Works
+
+- Sub-steps use an **override/inherit** model: they only store parameters that differ from the parent step. Unset params inherit from the parent.
+- Length is determined by the last **active** (toggled-on) sub-step position + 1. All positions in range play — active cells use their overrides, inactive cells play parent params.
+- Cell [0] is always active (minimum length 1). A step with no sub-step edits behaves exactly as before.
+
+### Grid Interaction
+
+The 3x3 sub-grid appears in the parameter overlay when holding a step. The 9 cells are placed contiguously across the grid rows (including row 7), repositioning dynamically to avoid collisions with the selected parameter.
+
+| Action | What happens |
+|--------|-------------|
+| **Tap** sub-step cell | Toggle active on/off |
+| **Hold** sub-step cell | Enter edit mode (cell pulses) |
+| **Release** sub-step cell | Stays in edit mode |
+| Edit params freely | Changes apply to the sub-step, not the parent |
+| **Tap** pulsing sub-step | Exit edit mode |
+| **Double-tap** sub-step | Clear all overrides (reset to parent) |
+| Release parent step | Close overlay |
+
+### LED Brightness
+
+Sub-step cells use 4 brightness levels:
+
+- **Full**: Active with overrides (customized)
+- **Medium-high**: Active, no overrides (inherits parent)
+- **Medium**: Inactive with overrides
+- **Dim**: Inactive, no overrides (empty slot)
+
+The currently-editing sub-step pulses. The value display resolves through the sub-step's overrides when in edit mode.
+
+### Session Compatibility
+
+Old sessions and presets without sub-step data load normally — missing fields are initialized to defaults during migration.
+
 ## Session Manager
 
 Sessions persist the complete groovebox state to disk as `.gladiola` archives stored in `~/gladiola-sessions/`. The session manager GUI opens automatically on boot.
@@ -269,7 +308,7 @@ The session manager window provides:
 
 ### What Sessions Capture
 
-- All 7 tracks: steps and per-step parameters, start/end points, mute state
+- All 7 tracks: steps, per-step parameters, sub-step data, start/end points, mute state
 - BPM, clock division, FX parameters, transpose, global reverse
 - All 49 preset slots, slot map, confirm mode, quantize mode
 - Sample directory path

@@ -31,7 +31,9 @@
     if(~paramMenuActive && ~heldTrack.notNil && ~heldStepIdx.notNil) {
         var track = ~tracks[~heldTrack];
         var step = track[\steps][~heldStepIdx];
-        var paramNames = ~currentParamNames.();
+        var paramNames = if(~subStepEditing) {
+            if(~subStepParamPage == 0) { ~paramNamesPage1 } { ~paramNamesPage2 }
+        } { ~currentParamNames.() };
         var numParams = paramNames.size;
         var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
         var actionPos = ~overlayActionPositions.(~heldTrack, ~heldStepIdx, valueRow);
@@ -46,7 +48,7 @@
                 var paramIdx = ~paramIndexForRow.(row, ~heldTrack);
                 if(paramIdx.notNil && (paramIdx < numParams)) {
                     var brightness;
-                    if(paramIdx == 0 && (~paramPage == 0)) {
+                    if(paramIdx == 0 && (if(~subStepEditing) { ~subStepParamPage } { ~paramPage } == 0)) {
                         var bankVal = step[\bank];
                         var numBanks = (~numBanks ? 1).max(1);
                         brightness = (GridInterface.ledDim + ((bankVal + 1) / numBanks * (GridInterface.ledFull - GridInterface.ledDim))).round.asInteger.clip(GridInterface.ledDim, GridInterface.ledFull);
@@ -62,14 +64,29 @@
             };
         };
 
-        if(~selectedParam == 0 && (~paramPage == 0)) {
-            curVal = step[\sample];
-            curPos = curVal.asInteger;
-            numValid = ~numValidPositions.(0, 0, ~heldTrack, ~heldStepIdx);
+        if(~subStepEditing && ~subStepEditIdx.notNil) {
+            var effectivePage = ~subStepParamPage;
+            var effectiveParamNames = if(effectivePage == 0) { ~paramNamesPage1 } { ~paramNamesPage2 };
+            if(~selectedParam == 0 && (effectivePage == 0)) {
+                curVal = ~resolveSubStepParam.(step, ~subStepEditIdx, \sample);
+                curPos = curVal.asInteger;
+                numValid = ~numValidPositions.(0, 0, ~heldTrack, ~heldStepIdx);
+            } {
+                var resolvedVal = ~resolveSubStepParam.(step, ~subStepEditIdx, effectiveParamNames[~selectedParam]);
+                curVal = resolvedVal;
+                curPos = ~positionForValue.(effectivePage, ~selectedParam, curVal);
+                numValid = ~numValidPositions.(effectivePage, ~selectedParam, ~heldTrack, ~heldStepIdx);
+            };
         } {
-            curVal = step[paramNames[~selectedParam]];
-            curPos = ~positionForValue.(~paramPage, ~selectedParam, curVal);
-            numValid = ~numValidPositions.(~paramPage, ~selectedParam, ~heldTrack, ~heldStepIdx);
+            if(~selectedParam == 0 && (~paramPage == 0)) {
+                curVal = step[\sample];
+                curPos = curVal.asInteger;
+                numValid = ~numValidPositions.(0, 0, ~heldTrack, ~heldStepIdx);
+            } {
+                curVal = step[paramNames[~selectedParam]];
+                curPos = ~positionForValue.(~paramPage, ~selectedParam, curVal);
+                numValid = ~numValidPositions.(~paramPage, ~selectedParam, ~heldTrack, ~heldStepIdx);
+            };
         };
 
         16.do { |col|
@@ -79,7 +96,7 @@
                 } {
                     var valIdx = if(col < ~heldStepIdx) { col } { col - 1 };
                     if(valIdx < numValid) {
-                        var centerPos = ~paramCenterPos.(~paramPage, ~selectedParam);
+                        var centerPos = ~paramCenterPos.(if(~subStepEditing) { ~subStepParamPage } { ~paramPage }, ~selectedParam);
                         var brightness = if(valIdx == curPos) {
                             GridInterface.ledFull
                         } {
@@ -95,12 +112,53 @@
             };
         };
 
-        ~grid.led(actionPos[\pageCol], actionPos[\pageRow],
-            if(~paramPage == 1) { GridInterface.ledFull } { GridInterface.ledMedium });
+        ~grid.led(actionPos[\pageCol], actionPos[\pageRow], {
+            var ep = if(~subStepEditing) { ~subStepParamPage } { ~paramPage };
+            if(ep == 1) { GridInterface.ledFull } { GridInterface.ledMedium }
+        }.value);
         ~grid.led(actionPos[\copyCol], actionPos[\copyRow],
             if(~clipboard.notNil) { GridInterface.ledBright } { GridInterface.ledDim });
         ~grid.led(actionPos[\auditionCol], actionPos[\auditionRow],
             if(~auditionEnabled) { GridInterface.ledFull } { GridInterface.ledDim });
+
+        {
+            var subPos = ~subGridPosition.(~heldStepIdx, ~heldTrack, valueRow);
+            var subCols = subPos[0];
+            var subRows = subPos[1];
+            var subLen, playheadSub;
+
+            subLen = 1;
+            step[\subActive].do { |active, i| if(active) { subLen = i + 1 } };
+
+            playheadSub = if(step[\subIdx] > 0) {
+                (step[\subIdx] - 1) % subLen
+            } { 0 };
+
+            3.do { |ri|
+                3.do { |ci|
+                    var pos = ri * 3 + ci;
+                    var brightness;
+                    if(pos < subLen) {
+                        if(~subStepEditing && (pos == ~subStepEditIdx)) {
+                            brightness = pulseBright;
+                        } {
+                            if(playheadSub.notNil && (pos == playheadSub)) {
+                                brightness = GridInterface.ledFull;
+                            } {
+                                if(step[\subActive][pos]) {
+                                    brightness = GridInterface.ledMedium;
+                                } {
+                                    brightness = GridInterface.ledDim;
+                                };
+                            };
+                        };
+                    } {
+                        brightness = GridInterface.ledDim;
+                    };
+                    ~grid.led(subCols[ci], subRows[ri], brightness);
+                };
+            };
+        }.value;
 
     } {
         if(~trackParamActive && ~trackParamCol.notNil && ~trackParamTrack.notNil) {

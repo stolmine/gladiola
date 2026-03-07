@@ -104,5 +104,29 @@ var gateLengthValues = [0.0625, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.625, 0.75, 1.
     if(paramPage == 1 && ((paramIdx == 2) || (paramIdx == 3))) { 7 } { nil }
 };
 
+~resolveSubStepParam = { |step, subIdx, paramName|
+    if(step[\subActive][subIdx]) {
+        var sub = step[\subSteps][subIdx];
+        if(sub.notNil) {
+            if(sub[paramName].notNil) { sub[paramName] } { step[paramName] }
+        } { step[paramName] }
+    } { step[paramName] }
+};
+
+~subSeqLength = { |step|
+    var last = 0;
+    step[\subActive].do { |active, i| if(active) { last = i } };
+    last + 1
+};
+
+~deepCopyStep = { |step|
+    var copy = step.copy;
+    if(copy[\subSteps].notNil) {
+        copy[\subSteps] = copy[\subSteps].collect { |s| if(s.notNil) { s.copy } { nil } };
+        copy[\subActive] = copy[\subActive].copy;
+    };
+    copy
+};
+
 "[Gladiola] grid_params.scd loaded.".postln;
 )
