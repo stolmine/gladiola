@@ -88,6 +88,18 @@
 - [x] fixed preset timing: longestPatternTrack computes duration (steps × clockDiv) not raw step count; quantized recall uses deferred scheduling with handoff delay so the last step plays fully; all tracks reset to startStep on recall
 - [x] fixed sub-step hold detection: active sub-step toggle deferred to release so holding enters edit mode rather than toggling off
 - [x] fixed mute silences voice: muting a track immediately sets amp=0 on the running voice, stopping long gates and looping sounds
+- [x] overlay layout refactor: replaced ad-hoc single-column action buttons and separate sub-grid positioning with unified ~overlayLayout function
+  - sub-seq and action 3×3 grids placed side-by-side on same rows, far side from held step
+  - action grid uses corner keys: page (TL), copy (TR), audition (BL), latch (BR)
+  - fixed column positions per side: steps 0-7 use cols 9-11 + 13-15, steps 8-15 use cols 0-2 + 4-6
+  - minimax row scoring maximises gap from value row only (heldTrack not considered occupied)
+  - post-placement nudge (±1 or ±2 rows) with sum-of-distances tiebreaker
+  - fallback allows value row overlap when no block avoids it (grids overwrite cosmetically)
+- [x] latch key: keeps param overlay open after releasing held step, pulses when engaged
+- [x] pulse animation routine (~startPulseRoutine/~stopPulseRoutine): 20fps AppClock refresh drives latch and sub-step edit pulse indicators even when transport is stopped
+- [x] fixed SC && non-short-circuit crash: step[\subActive][subIdx] evaluated even when subIdx was nil; changed to nested if
+- [x] quantized preset switching bypasses queue when transport is stopped (instant recall, setting preserved for playback)
+- [x] session manager quit button with confirmation dialog: stops transport, silences voices, kills FX tails, clears/frees grid, quits server
 
 ## ideas
 
@@ -99,4 +111,5 @@
 - [ ] pattern chaining / song mode
 - [ ] sample slice mode (auto-chop breaks)
 - [ ] per-track sample lock (all steps in a track share one sample)
-- [ ] refactor overlay action keys into 3×3 grid layout: action keys in corners (4 keys, unoccupied center/edges), vertically aligned with sub-seq 3×3 grid, 1-row gap enforced between all overlay elements (action grid, sub-seq grid, value row, held track), grids can split to opposite sides of param column when space is tight
+- [ ] add variation on copy key state when clipboard is populated but selected step data varies from it
+- [ ] legato mode for preset switching: the program will attempt to start presets from the same place the previous one was on given instant preset switching is enabled instead of resetting to start (clock div interpolation would be goofy here but worth a try)
