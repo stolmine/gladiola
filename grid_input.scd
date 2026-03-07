@@ -33,6 +33,25 @@
 ~savedSelectedParam = nil;
 ~pendingSubToggle = nil;
 ~latchActive = false;
+~pulseRoutine = nil;
+
+~startPulseRoutine = {
+    if(~pulseRoutine.isNil) {
+        ~pulseRoutine = Routine({
+            loop {
+                0.05.wait;
+                { ~updateGridLEDs.() }.defer;
+            };
+        }).play(AppClock);
+    };
+};
+
+~stopPulseRoutine = {
+    if(~pulseRoutine.notNil) {
+        ~pulseRoutine.stop;
+        ~pulseRoutine = nil;
+    };
+};
 
 ~paramRowForIndex = { |paramIdx, heldTrack|
     var row = if(paramIdx < heldTrack) { paramIdx } { paramIdx + 1 };
@@ -49,33 +68,92 @@
     }
 };
 
-~overlayActionPositions = { |heldTrack, heldStepIdx, valueRow|
-    var actionCol = if(heldStepIdx <= 7) { (heldStepIdx + 4).min(15) } { (heldStepIdx - 4).max(0) };
-    var pRow, cRow, aRow, lRow;
-    if(heldTrack <= 1) { pRow = heldTrack + 2; cRow = heldTrack + 4; aRow = heldTrack + 6; lRow = (heldTrack + 6).min(7) };
-    if(heldTrack >= 2 && (heldTrack <= 3)) { pRow = heldTrack - 2; cRow = heldTrack + 2; aRow = heldTrack + 4; lRow = 0 };
-    if(heldTrack == 4) { pRow = heldTrack - 2; cRow = heldTrack + 2; aRow = 0; lRow = 7 };
-    if(heldTrack >= 5) { pRow = heldTrack - 4; cRow = heldTrack - 2; aRow = 7; lRow = 0 };
-    // Dodge value row collisions
-    if(valueRow.notNil) {
-        if(pRow == valueRow) {
-            if((pRow - 1) >= 0 && ((pRow - 1) != heldTrack)) { pRow = pRow - 1 }
-            { if((pRow + 1) <= 7 && ((pRow + 1) != heldTrack) && ((pRow + 1) != cRow)) { pRow = pRow + 1 } };
-        };
-        if(cRow == valueRow) {
-            if((cRow + 1) <= 7 && ((cRow + 1) != heldTrack)) { cRow = cRow + 1 }
-            { if((cRow - 1) >= 0 && ((cRow - 1) != heldTrack) && ((cRow - 1) != pRow)) { cRow = cRow - 1 } };
-        };
-        if(aRow == valueRow) {
-            if((aRow + 1) <= 7 && ((aRow + 1) != heldTrack) && ((aRow + 1) != pRow) && ((aRow + 1) != cRow)) { aRow = aRow + 1 }
-            { if((aRow - 1) >= 0 && ((aRow - 1) != heldTrack) && ((aRow - 1) != pRow) && ((aRow - 1) != cRow)) { aRow = aRow - 1 } };
-        };
-        if(lRow == valueRow) {
-            if((lRow + 1) <= 7 && ((lRow + 1) != heldTrack) && ((lRow + 1) != pRow) && ((lRow + 1) != cRow) && ((lRow + 1) != aRow)) { lRow = lRow + 1 }
-            { if((lRow - 1) >= 0 && ((lRow - 1) != heldTrack) && ((lRow - 1) != pRow) && ((lRow - 1) != cRow) && ((lRow - 1) != aRow)) { lRow = lRow - 1 } };
+~overlayLayout = { |heldStepIdx, heldTrack, valueRow|
+    var subCols, actionCols, rows;
+    var allBlocks, valid, bestBlock, bestScore;
+
+    // Columns: two 3-col groups side by side on far side from param column
+    if(heldStepIdx < 8) {
+        subCols = [13,14,15];
+        actionCols = [9,10,11];
+    } {
+        subCols = [0,1,2];
+        actionCols = [4,5,6];
+    };
+
+    // Rows: single 3-row block shared by both grids, maximise gap from occupied rows
+    allBlocks = [[0,1,2],[1,2,3],[2,3,4],[3,4,5],[4,5,6],[5,6,7]];
+    valid = allBlocks.select { |block|
+        block.includes(heldTrack).not && block.includes(valueRow).not
+    };
+    // Fallback: if heldTrack and valueRow are far apart, no block avoids both.
+    // Relax to only exclude heldTrack (value row collision is cosmetic — grids overwrite it).
+    if(valid.isEmpty) {
+        valid = allBlocks.select { |block|
+            block.includes(heldTrack).not
         };
     };
-    Dictionary[\pageCol -> actionCol, \pageRow -> pRow, \copyCol -> actionCol, \copyRow -> cRow, \auditionCol -> actionCol, \auditionRow -> aRow, \latchCol -> actionCol, \latchRow -> lRow]
+
+    bestBlock = valid[0];
+    bestScore = -1;
+    valid.do { |block|
+        var minDist = 99;
+        block.do { |r|
+            [heldTrack, valueRow].do { |occ|
+                if((r - occ).abs < minDist) { minDist = (r - occ).abs };
+            };
+        };
+        if(minDist > bestScore) {
+            bestScore = minDist;
+            bestBlock = block;
+        };
+    };
+
+    rows = bestBlock;
+
+    // Post-placement fix: nudge away from collision or adjacency
+    if(rows.includes(valueRow)) {
+        "[Layout DBG] COLLISION: rows % contain valueRow %, nudging".format(rows, valueRow).postln;
+        if(valueRow <= 3) {
+            if((rows[2] + 1) <= 7) { rows = rows.collect { |r| r + 1 } }
+        } {
+            if((rows[0] - 1) >= 0) { rows = rows.collect { |r| r - 1 } }
+        };
+        "[Layout DBG]   -> nudged to %".format(rows).postln;
+    } {
+        var adjVR = rows.any { |r| (r - valueRow).abs == 1 };
+        var adjHT = rows.any { |r| (r - heldTrack).abs == 1 };
+        if(adjVR || adjHT) {
+            var nudgeUp = (rows[0] - 1) >= 0 && rows.collect { |r| r - 1 }.includes(heldTrack).not;
+            var nudgeDown = (rows[2] + 1) <= 7 && rows.collect { |r| r + 1 }.includes(heldTrack).not;
+            "[Layout DBG] ADJACENT: rows % adj-vr=% adj-ht=% nudgeUp=% nudgeDown=%".format(rows, adjVR, adjHT, nudgeUp, nudgeDown).postln;
+            if(nudgeUp && nudgeDown) {
+                var upDist = rows.collect { |r| [((r-1) - heldTrack).abs, ((r-1) - valueRow).abs].minItem }.minItem;
+                var downDist = rows.collect { |r| [((r+1) - heldTrack).abs, ((r+1) - valueRow).abs].minItem }.minItem;
+                "[Layout DBG]   upDist=% downDist=%".format(upDist, downDist).postln;
+                if(upDist >= downDist) {
+                    rows = rows.collect { |r| r - 1 }
+                } {
+                    rows = rows.collect { |r| r + 1 }
+                };
+            } {
+                if(nudgeUp) { rows = rows.collect { |r| r - 1 } };
+                if(nudgeDown) { rows = rows.collect { |r| r + 1 } };
+            };
+            "[Layout DBG]   -> nudged to %".format(rows).postln;
+        };
+    };
+
+    "[Layout DBG] step=% track=% vRow=% -> rows=% subCols=% actCols=%".format(heldStepIdx, heldTrack, valueRow, rows, subCols, actionCols).postln;
+
+    Dictionary[
+        \subCols -> subCols, \subRows -> rows,
+        \actionCols -> actionCols, \actionRows -> rows,
+        \pageCol -> actionCols[0], \pageRow -> rows[0],
+        \copyCol -> actionCols[2], \copyRow -> rows[0],
+        \auditionCol -> actionCols[0], \auditionRow -> rows[2],
+        \latchCol -> actionCols[2], \latchRow -> rows[2]
+    ]
 };
 
 ~valueIdxForCol = { |col, heldCol|
@@ -90,29 +168,6 @@
     Dictionary[\pageCol -> pageCol, \pageRow -> pageRow]
 };
 
-~subGridPosition = { |heldStepIdx, heldTrack, valueRow|
-    var cols = if(heldStepIdx >= 8) { [0, 1, 2] } { [13, 14, 15] };
-    var candidates = [[0,1,2], [1,2,3], [2,3,4], [3,4,5], [4,5,6], [5,6,7]];
-    var valid = candidates.select { |block|
-        block.includes(heldTrack).not && block.includes(valueRow).not
-    };
-    var gapped = valid.select { |block|
-        block.every { |r| (r - valueRow).abs >= 2 }
-    };
-    var rows;
-    if(gapped.notEmpty) {
-        rows = gapped[0];
-    } {
-        if(valid.notEmpty) {
-            rows = valid[0];
-        } {
-            rows = candidates.select { |block|
-                block.includes(heldTrack).not
-            }[0];
-        };
-    };
-    [cols, rows]
-};
 
 ~subIdxFromGrid = { |x, y, subPos|
     var result = nil;
@@ -257,16 +312,14 @@
                         var paramNames = if(effectivePage == 0) { ~paramNamesPage1 } { ~paramNamesPage2 };
                         var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
                         var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
-                        var actionPos = ~overlayActionPositions.(~heldTrack, ~heldStepIdx, valueRow);
-                        var subPos = ~subGridPosition.(~heldStepIdx, ~heldTrack, valueRow);
-                        var subIdx = ~subIdxFromGrid.(x, y, subPos);
+                        var layout = ~overlayLayout.(~heldStepIdx, ~heldTrack, valueRow);
+                        var subIdx = ~subIdxFromGrid.(x, y, [layout[\subCols], layout[\subRows]]);
 
                         if(subIdx.notNil) {
                             if(~subStepEditing && (subIdx == ~subStepEditIdx)) {
                                 ~subStepEditing = false;
                                 ~subStepEditIdx = nil;
-                                
-                                
+                                if(~latchActive.not) { ~stopPulseRoutine.() };
                                 ~paramPage = ~savedParamPage ? 0;
                                 ~selectedParam = ~savedSelectedParam ? 0;
                                 ~savedParamPage = nil;
@@ -281,7 +334,7 @@
                             };
                             ~updateGridLEDs.();
                         } {
-                        if(x == actionPos[\auditionCol] && (y == actionPos[\auditionRow])) {
+                        if(x == layout[\auditionCol] && (y == layout[\auditionRow])) {
                             ~auditionEnabled = ~auditionEnabled.not;
                             "[Gladiola] Audition -> %".format(~auditionEnabled).postln;
                             if(~auditionEnabled && ~playing.not) {
@@ -289,7 +342,7 @@
                             };
                             ~updateGridLEDs.();
                         } {
-                        if(x == actionPos[\pageCol] && (y == actionPos[\pageRow])) {
+                        if(x == layout[\pageCol] && (y == layout[\pageRow])) {
                             if(~subStepEditing) {
                                 ~subStepParamPage = 1 - ~subStepParamPage;
                                 "[Gladiola] Sub-step param page -> %".format(~subStepParamPage).postln;
@@ -300,15 +353,16 @@
                             ~selectedParam = 0;
                             ~updateGridLEDs.();
                         } {
-                        if(x == actionPos[\copyCol] && (y == actionPos[\copyRow])) {
+                        if(x == layout[\copyCol] && (y == layout[\copyRow])) {
                             ~clipboard = ~deepCopyStep.(step);
                             ~clipboard.removeAt(\on);
                             "[Gladiola] Copied step params from track % step %".format(~heldTrack, ~heldStepIdx).postln;
                             ~updateGridLEDs.();
                         } {
-                        if(x == actionPos[\latchCol] && (y == actionPos[\latchRow])) {
+                        if(x == layout[\latchCol] && (y == layout[\latchRow])) {
                             if(~latchActive) {
                                 ~latchActive = false;
+                                ~stopPulseRoutine.();
                                 ~paramMenuActive = false;
                                 ~heldTrack = nil;
                                 ~heldStepIdx = nil;
@@ -322,6 +376,7 @@
                                 ~updateGridLEDs.();
                             } {
                                 ~latchActive = true;
+                                ~startPulseRoutine.();
                                 "[Gladiola] Latch engaged".postln;
                                 ~updateGridLEDs.();
                             };
@@ -495,12 +550,13 @@
         if(~paramMenuActive && ~subStepEditing.not && ~heldTrack.notNil && ~heldStepIdx.notNil) {
             var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
             var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
-            var subPos = ~subGridPosition.(~heldStepIdx, ~heldTrack, valueRow);
-            var subIdx = ~subIdxFromGrid.(x, y, subPos);
-            if(subIdx.notNil && step[\subActive][subIdx]) {
+            var layout = ~overlayLayout.(~heldStepIdx, ~heldTrack, valueRow);
+            var subIdx = ~subIdxFromGrid.(x, y, [layout[\subCols], layout[\subRows]]);
+            if(subIdx.notNil) { if(step[\subActive][subIdx]) {
                 ~pendingSubToggle = nil;
                 ~subStepEditing = true;
                 ~subStepEditIdx = subIdx;
+                ~startPulseRoutine.();
 
                 ~savedParamPage = ~paramPage;
                 ~savedSelectedParam = ~selectedParam;
@@ -508,7 +564,7 @@
                 if(step[\subSteps][subIdx].isNil) { step[\subSteps][subIdx] = Dictionary.new };
                 "[Gladiola] Sub-step % editing".format(subIdx).postln;
                 ~updateGridLEDs.();
-            };
+            } };
         } {
         if(~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil && ~lengthModalMode.isNil && ~utilityOverlayActive.not && ~transportHeld.not) {
             if(y >= 0 && (y < ~numTracks)) {
@@ -619,6 +675,7 @@
                 if(~latchActive) {
                     // Latch is engaged — keep overlay open after releasing parent step
                 } {
+                    ~stopPulseRoutine.();
                     ~paramMenuActive = false;
                     ~heldTrack = nil;
                     ~heldStepIdx = nil;
@@ -635,8 +692,8 @@
                 if(~pendingSubToggle.notNil && ~heldTrack.notNil && ~heldStepIdx.notNil) {
                     var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
                     var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
-                    var subPos = ~subGridPosition.(~heldStepIdx, ~heldTrack, valueRow);
-                    var subIdx = ~subIdxFromGrid.(x, y, subPos);
+                    var layout = ~overlayLayout.(~heldStepIdx, ~heldTrack, valueRow);
+                    var subIdx = ~subIdxFromGrid.(x, y, [layout[\subCols], layout[\subRows]]);
                     if(subIdx.notNil && (subIdx == ~pendingSubToggle)) {
                         step[\subActive][subIdx] = step[\subActive][subIdx].not;
                         ~pendingSubToggle = nil;
@@ -683,7 +740,7 @@
                         ~presetHeldSlot = nil;
                         ~presetHeldX = nil;
                         if(~presets[mappedSlot].notNil) {
-                            if(~presetQuantized) {
+                            if(~presetQuantized && ~playing) {
                                 if(~pendingPresetRecall == mappedSlot) {
                                     ~pendingPresetRecall = nil;
                                     ~pendingPresetButton = nil;
@@ -753,8 +810,8 @@
         if(~paramMenuActive && ~subStepEditing.not && ~heldTrack.notNil && ~heldStepIdx.notNil) {
             var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
             var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
-            var subPos = ~subGridPosition.(~heldStepIdx, ~heldTrack, valueRow);
-            var subIdx = ~subIdxFromGrid.(x, y, subPos);
+            var layout = ~overlayLayout.(~heldStepIdx, ~heldTrack, valueRow);
+            var subIdx = ~subIdxFromGrid.(x, y, [layout[\subCols], layout[\subRows]]);
             if(subIdx.notNil) {
                 step[\subSteps][subIdx] = nil;
                 "[Gladiola] Sub-step % overrides cleared".format(subIdx).postln;

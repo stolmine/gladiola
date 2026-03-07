@@ -325,6 +325,28 @@
 				}),
 				Button().states_([["Grid"]]).action_({
 					~connectSerialosc.();
+				}),
+				Button().states_([["Quit", Color.white, Color(0.6, 0.2, 0.2)]]).action_({
+					var dlg = Window("Quit Gladiola?", Rect(200, 200, 250, 60), resizable: false);
+					dlg.layout_(HLayout(
+						Button().states_([["Cancel"]]).action_({ dlg.close }),
+						Button().states_([["Quit", Color.white, Color(0.6, 0.2, 0.2)]]).action_({
+							dlg.close;
+							"[Gladiola] Shutting down...".postln;
+							if(~playing) { ~stopTransport.() };
+							~stopPulseRoutine.();
+							~panicVoices.();
+							~killFxTails.();
+							if(~grid.notNil) {
+								~grid.clear;
+								~grid.free;
+							};
+							~sessionWindow.close;
+							Server.default.quit;
+							"[Gladiola] Goodbye.".postln;
+						})
+					));
+					dlg.front;
 				})
 			)
 		));

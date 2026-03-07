@@ -36,7 +36,7 @@
         } { ~currentParamNames.() };
         var numParams = paramNames.size;
         var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
-        var actionPos = ~overlayActionPositions.(~heldTrack, ~heldStepIdx, valueRow);
+        var layout = ~overlayLayout.(~heldStepIdx, ~heldTrack, valueRow);
         var curVal, curPos, numValid;
 
         ~grid.clear;
@@ -91,8 +91,8 @@
 
         16.do { |col|
             if(col != ~heldStepIdx) {
-                // Skip action button cells to avoid visual collision
-                if((col == actionPos[\pageCol]) && ((valueRow == actionPos[\pageRow]) || (valueRow == actionPos[\copyRow]) || (valueRow == actionPos[\auditionRow]))) {
+                // Skip grid cells to avoid visual collision
+                if((layout[\actionCols].includes(col) || layout[\subCols].includes(col)) && layout[\actionRows].includes(valueRow)) {
                 } {
                     var valIdx = if(col < ~heldStepIdx) { col } { col - 1 };
                     if(valIdx < numValid) {
@@ -112,21 +112,20 @@
             };
         };
 
-        ~grid.led(actionPos[\pageCol], actionPos[\pageRow], {
+        ~grid.led(layout[\pageCol], layout[\pageRow], {
             var ep = if(~subStepEditing) { ~subStepParamPage } { ~paramPage };
             if(ep == 1) { GridInterface.ledFull } { GridInterface.ledMedium }
         }.value);
-        ~grid.led(actionPos[\copyCol], actionPos[\copyRow],
+        ~grid.led(layout[\copyCol], layout[\copyRow],
             if(~clipboard.notNil) { GridInterface.ledBright } { GridInterface.ledDim });
-        ~grid.led(actionPos[\auditionCol], actionPos[\auditionRow],
+        ~grid.led(layout[\auditionCol], layout[\auditionRow],
             if(~auditionEnabled) { GridInterface.ledFull } { GridInterface.ledDim });
-        ~grid.led(actionPos[\latchCol], actionPos[\latchRow],
+        ~grid.led(layout[\latchCol], layout[\latchRow],
             if(~latchActive) { pulseBright } { GridInterface.ledDim });
 
         {
-            var subPos = ~subGridPosition.(~heldStepIdx, ~heldTrack, valueRow);
-            var subCols = subPos[0];
-            var subRows = subPos[1];
+            var subCols = layout[\subCols];
+            var subRows = layout[\subRows];
             var subLen, playheadSub;
 
             subLen = 1;
