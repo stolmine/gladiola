@@ -99,3 +99,4 @@
 - [ ] pattern chaining / song mode
 - [ ] sample slice mode (auto-chop breaks)
 - [ ] per-track sample lock (all steps in a track share one sample)
+- [ ] refactor overlay action keys into 3×3 grid layout: action keys in corners (4 keys, unoccupied center/edges), vertically aligned with sub-seq 3×3 grid, 1-row gap enforced between all overlay elements (action grid, sub-seq grid, value row, held track), grids can split to opposite sides of param column when space is tight

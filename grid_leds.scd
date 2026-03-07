@@ -120,6 +120,8 @@
             if(~clipboard.notNil) { GridInterface.ledBright } { GridInterface.ledDim });
         ~grid.led(actionPos[\auditionCol], actionPos[\auditionRow],
             if(~auditionEnabled) { GridInterface.ledFull } { GridInterface.ledDim });
+        ~grid.led(actionPos[\latchCol], actionPos[\latchRow],
+            if(~latchActive) { pulseBright } { GridInterface.ledDim });
 
         {
             var subPos = ~subGridPosition.(~heldStepIdx, ~heldTrack, valueRow);

@@ -32,6 +32,7 @@
 ~savedParamPage = nil;
 ~savedSelectedParam = nil;
 ~pendingSubToggle = nil;
+~latchActive = false;
 
 ~paramRowForIndex = { |paramIdx, heldTrack|
     var row = if(paramIdx < heldTrack) { paramIdx } { paramIdx + 1 };
@@ -50,11 +51,11 @@
 
 ~overlayActionPositions = { |heldTrack, heldStepIdx, valueRow|
     var actionCol = if(heldStepIdx <= 7) { (heldStepIdx + 4).min(15) } { (heldStepIdx - 4).max(0) };
-    var pRow, cRow, aRow;
-    if(heldTrack <= 1) { pRow = heldTrack + 2; cRow = heldTrack + 4; aRow = heldTrack + 6 };
-    if(heldTrack >= 2 && (heldTrack <= 3)) { pRow = heldTrack - 2; cRow = heldTrack + 2; aRow = heldTrack + 4 };
-    if(heldTrack == 4) { pRow = heldTrack - 2; cRow = heldTrack + 2; aRow = 0 };
-    if(heldTrack >= 5) { pRow = heldTrack - 4; cRow = heldTrack - 2; aRow = 7 };
+    var pRow, cRow, aRow, lRow;
+    if(heldTrack <= 1) { pRow = heldTrack + 2; cRow = heldTrack + 4; aRow = heldTrack + 6; lRow = (heldTrack + 6).min(7) };
+    if(heldTrack >= 2 && (heldTrack <= 3)) { pRow = heldTrack - 2; cRow = heldTrack + 2; aRow = heldTrack + 4; lRow = 0 };
+    if(heldTrack == 4) { pRow = heldTrack - 2; cRow = heldTrack + 2; aRow = 0; lRow = 7 };
+    if(heldTrack >= 5) { pRow = heldTrack - 4; cRow = heldTrack - 2; aRow = 7; lRow = 0 };
     // Dodge value row collisions
     if(valueRow.notNil) {
         if(pRow == valueRow) {
@@ -69,8 +70,12 @@
             if((aRow + 1) <= 7 && ((aRow + 1) != heldTrack) && ((aRow + 1) != pRow) && ((aRow + 1) != cRow)) { aRow = aRow + 1 }
             { if((aRow - 1) >= 0 && ((aRow - 1) != heldTrack) && ((aRow - 1) != pRow) && ((aRow - 1) != cRow)) { aRow = aRow - 1 } };
         };
+        if(lRow == valueRow) {
+            if((lRow + 1) <= 7 && ((lRow + 1) != heldTrack) && ((lRow + 1) != pRow) && ((lRow + 1) != cRow) && ((lRow + 1) != aRow)) { lRow = lRow + 1 }
+            { if((lRow - 1) >= 0 && ((lRow - 1) != heldTrack) && ((lRow - 1) != pRow) && ((lRow - 1) != cRow) && ((lRow - 1) != aRow)) { lRow = lRow - 1 } };
+        };
     };
-    Dictionary[\pageCol -> actionCol, \pageRow -> pRow, \copyCol -> actionCol, \copyRow -> cRow, \auditionCol -> actionCol, \auditionRow -> aRow]
+    Dictionary[\pageCol -> actionCol, \pageRow -> pRow, \copyCol -> actionCol, \copyRow -> cRow, \auditionCol -> actionCol, \auditionRow -> aRow, \latchCol -> actionCol, \latchRow -> lRow]
 };
 
 ~valueIdxForCol = { |col, heldCol|
@@ -301,6 +306,26 @@
                             "[Gladiola] Copied step params from track % step %".format(~heldTrack, ~heldStepIdx).postln;
                             ~updateGridLEDs.();
                         } {
+                        if(x == actionPos[\latchCol] && (y == actionPos[\latchRow])) {
+                            if(~latchActive) {
+                                ~latchActive = false;
+                                ~paramMenuActive = false;
+                                ~heldTrack = nil;
+                                ~heldStepIdx = nil;
+                                ~auditionEnabled = true;
+                                ~subStepEditing = false;
+                                ~subStepEditIdx = nil;
+                                ~pendingSubToggle = nil;
+                                ~savedParamPage = nil;
+                                ~savedSelectedParam = nil;
+                                "[Gladiola] Latch disengaged, overlay closed".postln;
+                                ~updateGridLEDs.();
+                            } {
+                                ~latchActive = true;
+                                "[Gladiola] Latch engaged".postln;
+                                ~updateGridLEDs.();
+                            };
+                        } {
                             if(x == ~heldStepIdx && (y != ~heldTrack)) {
                                 var paramIdx = ~paramIndexForRow.(y, ~heldTrack);
                                 if(paramIdx.notNil && (paramIdx < paramNames.size)) {
@@ -356,6 +381,7 @@
                                     };
                                 };
                             };
+                        };
                         };
                         };
                         };
@@ -590,17 +616,21 @@
         };
         if(~paramMenuActive) {
             if(~heldTrack.notNil && (x == ~heldStepIdx) && (y == ~heldTrack)) {
-                ~paramMenuActive = false;
-                ~heldTrack = nil;
-                ~heldStepIdx = nil;
-                ~auditionEnabled = true;
-                ~subStepEditing = false;
-                ~subStepEditIdx = nil;
-                ~pendingSubToggle = nil;
-
-                ~savedParamPage = nil;
-                ~savedSelectedParam = nil;
-                ~updateGridLEDs.();
+                if(~latchActive) {
+                    // Latch is engaged — keep overlay open after releasing parent step
+                } {
+                    ~paramMenuActive = false;
+                    ~heldTrack = nil;
+                    ~heldStepIdx = nil;
+                    ~auditionEnabled = true;
+                    ~subStepEditing = false;
+                    ~subStepEditIdx = nil;
+                    ~pendingSubToggle = nil;
+                    ~latchActive = false;
+                    ~savedParamPage = nil;
+                    ~savedSelectedParam = nil;
+                    ~updateGridLEDs.();
+                };
             } {
                 if(~pendingSubToggle.notNil && ~heldTrack.notNil && ~heldStepIdx.notNil) {
                     var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
