@@ -81,68 +81,51 @@
         actionCols = [4,5,6];
     };
 
-    // Rows: single 3-row block shared by both grids, maximise gap from occupied rows
+    // Rows: single 3-row block shared by both grids, maximise gap from valueRow
+    // heldTrack is NOT considered occupied — param selector skips that row
     allBlocks = [[0,1,2],[1,2,3],[2,3,4],[3,4,5],[4,5,6],[5,6,7]];
     valid = allBlocks.select { |block|
-        block.includes(heldTrack).not && block.includes(valueRow).not
-    };
-    // Fallback: if heldTrack and valueRow are far apart, no block avoids both.
-    // Relax to only exclude heldTrack (value row collision is cosmetic — grids overwrite it).
-    if(valid.isEmpty) {
-        valid = allBlocks.select { |block|
-            block.includes(heldTrack).not
-        };
+        block.includes(valueRow).not
     };
 
     bestBlock = valid[0];
     bestScore = -1;
-    valid.do { |block|
-        var minDist = 99;
-        block.do { |r|
-            [heldTrack, valueRow].do { |occ|
-                if((r - occ).abs < minDist) { minDist = (r - occ).abs };
+    {   var bestSum = -1;
+        valid.do { |block|
+            var minDist = 99, sumDist = 0;
+            block.do { |r|
+                var rd = (r - valueRow).abs;
+                if(rd < minDist) { minDist = rd };
+                sumDist = sumDist + rd;
+            };
+            if((minDist > bestScore) || ((minDist == bestScore) && (sumDist > bestSum))) {
+                bestScore = minDist;
+                bestSum = sumDist;
+                bestBlock = block;
             };
         };
-        if(minDist > bestScore) {
-            bestScore = minDist;
-            bestBlock = block;
-        };
-    };
+    }.value;
 
     rows = bestBlock;
 
-    // Post-placement fix: nudge away from collision or adjacency
-    if(rows.includes(valueRow)) {
-        "[Layout DBG] COLLISION: rows % contain valueRow %, nudging".format(rows, valueRow).postln;
-        if(valueRow <= 3) {
-            if((rows[2] + 1) <= 7) { rows = rows.collect { |r| r + 1 } }
-        } {
-            if((rows[0] - 1) >= 0) { rows = rows.collect { |r| r - 1 } }
-        };
-        "[Layout DBG]   -> nudged to %".format(rows).postln;
-    } {
-        var adjVR = rows.any { |r| (r - valueRow).abs == 1 };
-        var adjHT = rows.any { |r| (r - heldTrack).abs == 1 };
-        if(adjVR || adjHT) {
-            var nudgeUp = (rows[0] - 1) >= 0 && rows.collect { |r| r - 1 }.includes(heldTrack).not;
-            var nudgeDown = (rows[2] + 1) <= 7 && rows.collect { |r| r + 1 }.includes(heldTrack).not;
-            "[Layout DBG] ADJACENT: rows % adj-vr=% adj-ht=% nudgeUp=% nudgeDown=%".format(rows, adjVR, adjHT, nudgeUp, nudgeDown).postln;
-            if(nudgeUp && nudgeDown) {
-                var upDist = rows.collect { |r| [((r-1) - heldTrack).abs, ((r-1) - valueRow).abs].minItem }.minItem;
-                var downDist = rows.collect { |r| [((r+1) - heldTrack).abs, ((r+1) - valueRow).abs].minItem }.minItem;
-                "[Layout DBG]   upDist=% downDist=%".format(upDist, downDist).postln;
-                if(upDist >= downDist) {
-                    rows = rows.collect { |r| r - 1 }
-                } {
-                    rows = rows.collect { |r| r + 1 }
+    // Post-placement fix: try nudging ±1 or ±2 to maximise gap from valueRow
+    {
+        var minGap = rows.collect { |r| (r - valueRow).abs }.minItem;
+        if(minGap < 2) {
+            var bestRows = rows, bestGap = minGap;
+            [-2, -1, 1, 2].do { |offset|
+                var candidate = rows.collect { |r| r + offset };
+                if((candidate[0] >= 0) && (candidate[2] <= 7) && candidate.includes(valueRow).not) {
+                    var gap = candidate.collect { |r| (r - valueRow).abs }.minItem;
+                    if(gap > bestGap) { bestGap = gap; bestRows = candidate };
                 };
-            } {
-                if(nudgeUp) { rows = rows.collect { |r| r - 1 } };
-                if(nudgeDown) { rows = rows.collect { |r| r + 1 } };
             };
-            "[Layout DBG]   -> nudged to %".format(rows).postln;
+            if(bestRows != rows) {
+                "[Layout DBG] NUDGE: % -> % (gap % -> %)".format(rows, bestRows, minGap, bestGap).postln;
+                rows = bestRows;
+            };
         };
-    };
+    }.value;
 
     "[Layout DBG] step=% track=% vRow=% -> rows=% subCols=% actCols=%".format(heldStepIdx, heldTrack, valueRow, rows, subCols, actionCols).postln;
 

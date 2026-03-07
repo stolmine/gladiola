@@ -22,13 +22,13 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 | `grid_params.scd` | Parameter definitions, value tables, mapping, sub-step resolution helpers |
 | `grid_leds.scd` | LED rendering for all display modes |
 | `grid_input.scd` | Grid input handling, gesture recognition, modal state |
-| `session.scd` | Session save/load/new, GUI window with metering |
+| `session.scd` | Session save/load/new, GUI window with metering and quit button |
 
 ## Key Features
 
 - 7 tracks × 16 steps with per-step parameters (2 pages, 14 params) and per-step sub-sequencing (up to 9 sub-steps per step)
-- Hold-to-reveal parameter overlay with bank/sample selection
-- Step copy/paste with dynamically positioned overlay action buttons
+- Hold-to-reveal parameter overlay with bank/sample selection, latch mode for hands-free editing
+- Step copy/paste via side-by-side sub-seq and action grids (3×3 each, same rows, far side from held step)
 - 49-slot preset matrix with confirm mode and quantized switching
 - Global reverse toggle (XOR with per-step reverse)
 - Clock division, FX matrix, and transpose overlays

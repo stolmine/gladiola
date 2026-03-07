@@ -185,7 +185,9 @@ Hold a populated preset button to open the 7×7 matrix overlay. Slots appear on 
 
 ### Quantized Preset Switching
 
-When the quantize toggle is enabled, preset recalls are queued instead of firing immediately. The queued preset executes when the longest unmuted track's playhead wraps back to its start step — ensuring pattern-aligned transitions. All tracks reset to their start step on recall so patterns stay locked after the switch.
+When the quantize toggle is enabled and the transport is playing, preset recalls are queued instead of firing immediately. The queued preset executes when the longest unmuted track's playhead wraps back to its start step — ensuring pattern-aligned transitions. All tracks reset to their start step on recall so patterns stay locked after the switch.
+
+When the transport is stopped, presets always recall instantly regardless of the quantize setting. The quantize LED and state are preserved — quantized switching resumes when playback starts.
 
 Tapping an already-queued preset cancels the queue and recalls it immediately.
 
@@ -193,13 +195,23 @@ Tapping an already-queued preset cancels the queue and recalls it immediately.
 
 Hold any active step to open the parameter overlay. The held step lights full brightness. The held step's column shows parameter selectors on all other rows (0-7). The selected parameter's row shows value positions.
 
-Three action buttons (P, C, and A) appear on the far side of the grid, dynamically positioned to avoid the held step:
+Two 3×3 grids appear side-by-side on the far side of the held step:
 
-- **P (Page toggle)**: Switches between param page 1 and page 2. Medium brightness = page 1, full = page 2.
-- **C (Copy)**: Copies all params from the held step to the clipboard. Dim = clipboard empty, bright = clipboard has data.
-- **A (Audition)**: Toggles step preview. When enabled (full brightness), any parameter change triggers a one-shot playback of the step. Tapping A also previews the step immediately. Only active when transport is stopped. Resets to off when the overlay closes.
+- **Sub-seq grid** (cols 13-15 or 0-2): Shows the 9 sub-step cells for the held step
+- **Action grid** (cols 9-11 or 4-6): Four corner keys:
 
-The action buttons appear at column 14 when the held step is in the left half (cols 0-7), or column 1 when in the right half (cols 8-15). P, C, and A are spaced vertically with collision avoidance against the held step and value rows.
+```
+[P] [ ] [C]    P = Page toggle     C = Copy
+[ ] [ ] [ ]
+[A] [ ] [L]    A = Audition        L = Latch
+```
+
+- **P (Page toggle)**: Switches between param page 1 and page 2. Medium = page 1, full = page 2.
+- **C (Copy)**: Copies all params from the held step to the clipboard. Dim = empty, bright = has data.
+- **A (Audition)**: Toggles step preview. Full = enabled. Only active when transport is stopped.
+- **L (Latch)**: Keeps the overlay open after releasing the held step. Pulses when engaged. Tap again to disengage and close the overlay.
+
+Both grids share the same 3 rows, positioned to maximise gap from the value row. When the held step is in cols 0-7, grids appear on the right (cols 9-15). When in cols 8-15, grids appear on the left (cols 0-6).
 
 ### Copy/Paste
 
@@ -263,7 +275,7 @@ Each of the 16 steps per track has a 3x3 grid of up to 9 sub-steps. Sub-steps cy
 
 ### Grid Interaction
 
-The 3x3 sub-grid appears in the parameter overlay when holding a step. The 9 cells are placed contiguously across the grid rows (including row 7), repositioning dynamically to avoid collisions with the selected parameter.
+The 3×3 sub-grid appears in the parameter overlay as part of the side-by-side grid layout (see [Parameter Overlay](#parameter-overlay)). Both the sub-seq and action grids share the same rows, positioned to avoid the value row.
 
 | Action | What happens |
 |--------|-------------|
@@ -308,6 +320,7 @@ The session manager window provides:
 - **Save As**: Prompt for a new name and save a copy
 - **Load**: List all `.gladiola` files in `~/gladiola-sessions/` and load the selected one
 - **Grid**: Connect to serialosc grid controller
+- **Quit**: Shutdown with confirmation — stops transport, silences voices, kills FX tails, clears and frees the grid, closes the window, and quits the server
 
 ### What Sessions Capture
 
