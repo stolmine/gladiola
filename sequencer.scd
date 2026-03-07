@@ -332,23 +332,25 @@ var defaultStep = {
     var track = ~tracks[trackIdx];
     var step = track[\steps][stepIdx];
     var voice = track[\voice];
-    var buf = ~getSample.(step[\bank], step[\sample]);
+    var subIdx = if(~subStepEditing && ~subStepEditIdx.notNil) { ~subStepEditIdx } { nil };
+    var r = { |param| if(subIdx.notNil) { ~resolveSubStepParam.(step, subIdx, param) } { step[param] } };
+    var buf = ~getSample.(r.(\bank), r.(\sample));
 
     if(buf.notNil && voice.notNil) {
         voice.set(
             \bufnum,     buf.bufnum,
-            \rate,       step[\pitch] * ~transpose,
-            \amp,        step[\velocity],
-            \loopLength, step[\loopLength],
-            \loopRegion, step[\loopRegion],
-            \ratchet,    step[\ratchet],
+            \rate,       r.(\pitch) * ~transpose,
+            \amp,        r.(\velocity),
+            \loopLength, r.(\loopLength),
+            \loopRegion, r.(\loopRegion),
+            \ratchet,    r.(\ratchet),
             \stepDur,    track[\clockDiv] * 60 / ~bpm,
-            \gateLength, step[\gateLength],
-            \reverse,    (step[\reverse].asBoolean xor: ~globalReverse).asInteger,
-            \filter,     step[\filter],
-            \pan,        step[\pan],
-            \delaySend,  step[\delaySend],
-            \bitcrush,   step[\bitcrush],
+            \gateLength, r.(\gateLength),
+            \reverse,    (r.(\reverse).asBoolean xor: ~globalReverse).asInteger,
+            \filter,     r.(\filter),
+            \pan,        r.(\pan),
+            \delaySend,  r.(\delaySend),
+            \bitcrush,   r.(\bitcrush),
             \t_trig,     1
         );
     };

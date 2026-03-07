@@ -101,6 +101,7 @@
 - [x] quantized preset switching bypasses queue when transport is stopped (instant recall, setting preserved for playback)
 - [x] session manager quit button with confirmation dialog: stops transport, silences voices, kills FX tails, clears/frees grid, quits server
 - [x] three-state copy key LED in param overlay: dim = clipboard empty, subtle glow (6) = clipboard populated but differs from held step, bright (12) = clipboard matches held step; scalar params compared via ~clipboardMatchesStep helper (array types skipped)
+- [x] fixed audition during sub-step editing: ~previewStep now resolves params through ~resolveSubStepParam when ~subStepEditing is active, matching sequencer playback
 
 ## ideas
 
@@ -115,4 +116,3 @@
 - [ ] sample slice mode (auto-chop breaks)
 - [0] per-track sample lock (all steps in a track share one sample) - already accomplished with global track overlays
 - [ ] legato mode for preset switching: the program will attempt to start presets from the same place the previous one was on given instant preset switching is enabled instead of resetting to start (clock div interpolation would be goofy here but worth a try)
-- [ ] BUG: when audition is on and sub step editing mode is enabled, audition only plays the sample of the parent step when selecting new samples
