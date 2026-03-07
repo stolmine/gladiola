@@ -492,10 +492,8 @@
                     if(~clipboard.notNil && (step[\on] == false)) {
                         ~pendingToggle = nil;
                         ~pendingToggleTrack = nil;
-                        ~deepCopyStep.(~clipboard).keysValuesDo { |key, val|
-                            step[key] = val;
-                        };
-                        step[\on] = true;
+                        track[\steps][x] = ~deepCopyStep.(~clipboard);
+                        track[\steps][x][\on] = true;
                         "[Gladiola] Pasted into track % step %".format(y, x).postln;
                         ~updateGridLEDs.();
                     } {

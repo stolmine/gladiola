@@ -119,14 +119,7 @@ var gateLengthValues = [0.0625, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.625, 0.75, 1.
     last + 1
 };
 
-~deepCopyStep = { |step|
-    var copy = step.copy;
-    if(copy[\subSteps].notNil) {
-        copy[\subSteps] = copy[\subSteps].collect { |s| if(s.notNil) { s.copy } { nil } };
-        copy[\subActive] = copy[\subActive].copy;
-    };
-    copy
-};
+~deepCopyStep = { |step| step.deepCopy };
 
 "[Gladiola] grid_params.scd loaded.".postln;
 )
