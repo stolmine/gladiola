@@ -58,14 +58,22 @@
 
     SynthDef(\gladiolaSaturation, {
         arg depth = 0, type = 0, out = 0;
-        var sig, softclipped, tanhed, folded, wet;
+        var sig, dry, wet, dc;
         sig = In.ar(out, 2);
-        softclipped = (sig * 2).softclip;
-        tanhed = (sig * 3).tanh;
-        folded = sig.fold(-0.8, 0.8) * 1.25;
-        // type: 0=softclip, 0.5=tanh, 1.0=fold
-        wet = SelectX.ar(Lag.kr(type, 0.1) * 2, [softclipped, tanhed, folded]);
-        sig = SelectX.ar(Lag.kr(depth, 0.05), [sig, wet]);
+        dry = sig;
+        dc = 0.05;
+        sig = sig + dc;
+        wet = Select.ar(Lag.kr(type, 0.1).round.clip(0, 6), [
+            sig.fold2(1),
+            sig.tanh,
+            sig.softclip,
+            sig.clip2(1),
+            (sig.abs.pow(0.5) * sig.sign),
+            sig.abs,
+            (sig * 8).round / 8
+        ]);
+        wet = LeakDC.ar(wet);
+        sig = SelectX.ar(Lag.kr(depth, 0.05), [dry, wet]);
         ReplaceOut.ar(out, sig);
     }).add;
 
@@ -83,15 +91,17 @@
 
     SynthDef(\gladiolaCompressor, {
         arg amount = 0, color = 0, out = 0;
-        var sig, amtLag, colLag, thresh, ratio, atk, rel, compressed;
+        var sig, amtLag, colLag, thresh, ratio, atk, rel, compressed, makeup;
         sig = In.ar(out, 2);
         amtLag = Lag.kr(amount, 0.1);
         colLag = Lag.kr(color, 0.1);
-        thresh = amtLag.linlin(0, 1, 1.0, 0.1);
-        ratio = amtLag.linlin(0, 1, 1, 0.25);  // 1:1 to 4:1 (reciprocal for Compander)
-        atk = colLag.linexp(0, 1, 0.01, 0.1);   // fast to slow attack
-        rel = colLag.linexp(0, 1, 0.05, 0.5);    // fast to slow release
+        thresh = amtLag.linlin(0, 1, 1.0, 0.3);
+        ratio = amtLag.linlin(0, 1, 1, 0.125);  // 1:1 to 8:1 (reciprocal for Compander)
+        atk = colLag.linexp(0, 1, 0.005, 0.3);   // 5ms to 300ms
+        rel = colLag.linexp(0, 1, 0.03, 1.5);     // 30ms to 1.5s
         compressed = Compander.ar(sig, sig, thresh, 1, ratio, atk, rel);
+        makeup = thresh.reciprocal.pow(1 - ratio);
+        compressed = compressed * makeup;
         sig = SelectX.ar(amtLag, [In.ar(out, 2), compressed]);
         ReplaceOut.ar(out, sig);
     }).add;

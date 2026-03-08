@@ -3,6 +3,7 @@ var pitchValues = [0.125, 0.25, 0.33, 0.5, 0.66, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0
 var loopLengthValues = [0, 1/16, 1/8, 1/4, 3/8, 1/2, 5/8, 3/4, 7/8, 1.0, 2.0, 4.0, 8.0, 8.0, 8.0];
 // 1/16 step → 16 steps (full pattern cycle)
 var gateLengthValues = [0.0625, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.625, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 16];
+var bitcrushValues = [0, 0.08, 0.15, 0.23, 0.32, 0.42, 0.52, 0.62, 0.72, 0.8, 0.86, 0.91, 0.95, 0.98, 1.0];
 
 ~paramNamesPage1 = [\bank, \pitch, \velocity, \loopLength, \loopRegion, \ratchet, \randomness];
 ~paramNamesPage2 = [\gateLength, \reverse, \filter, \pan, \probability, \delaySend, \bitcrush];
@@ -36,7 +37,7 @@ var gateLengthValues = [0.0625, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.625, 0.75, 1.
         { 3 } { (pos - 7) / 7.0 }
         { 4 } { (pos + 1) / 15.0 }
         { 5 } { pos / 14.0 }
-        { 6 } { pos / 14.0 }
+        { 6 } { bitcrushValues[pos] }
     }
 };
 
@@ -70,7 +71,13 @@ var gateLengthValues = [0.0625, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.625, 0.75, 1.
         { 3 } { ((val * 7.0) + 7).round.asInteger.clip(0, 14) }
         { 4 } { ((val * 15.0) - 1).round.asInteger.clip(0, 14) }
         { 5 } { (val * 14.0).round.asInteger.clip(0, 14) }
-        { 6 } { (val * 14.0).round.asInteger.clip(0, 14) }
+        { 6 } {
+            var best = 0;
+            bitcrushValues.do { |bv, i|
+                if((val - bv).abs < (val - bitcrushValues[best]).abs) { best = i }
+            };
+            best
+        }
     }
 };
 

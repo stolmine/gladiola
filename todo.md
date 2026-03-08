@@ -106,6 +106,10 @@
 - [x] kill FX tails button on transport hold page at (2,7): tap to immediately free and recreate send FX synths
 - [x] fixed preset save to mapped slot: holding a preset button mapped to an empty slot now saves to the mapped slot instead of resetting to the button's default slot
 - [x] fixed gate length max: replaced 100 sentinel ("full sustain") with 16 steps (one full pattern cycle), clock-relative to track division — eliminates runaway sample playback
+- [x] double-tap guard after step overlay close: records ~lastOverlayCloseTime on overlay release, double-tap handler checks 300ms cooldown to prevent false triggers
+- [x] bitcrush value curve: replaced linear pos/14.0 mapping with 15-value lookup table (approx quadratic curve), effect noticeable from position 2-3 onward
+- [x] compressor scaling: raised threshold floor (0.3), stronger ratio (8:1), wider attack (5ms-300ms) and release (30ms-1.5s) ranges, added auto makeup gain via thresh.reciprocal.pow(1 - ratio)
+- [x] saturation redesign: 7 discrete types (fold, tanh, softclip, hard clip, sqrt, rectify, quantize) replacing 3-type crossfade; baked-in DC offset (0.05) for asymmetric harmonic character with LeakDC cleanup; satType value table now integer indices 0-6
 
 ## per-track global overlay rework
 
@@ -116,6 +120,7 @@ Currently a simple hold-to-open param editor. Needs to become a proper track con
 - latch: to the right of held key (or left for col 15)
 - page toggle for param pages (existing behavior)
 - we can use a 3x3 like step overlay action cluster, with an additional button at center for modulation or slice toggle
+- mix fader: horizontal fader on row 7 for track volume — more real estate than transport overlay's vertical faders, can be wider
 
 ### per-track LFO modulation system
 - one LFO per track, available to all 14 param destinations via mod depth faders
@@ -153,16 +158,53 @@ Currently a simple hold-to-open param editor. Needs to become a proper track con
 - per-track toggle, lives in per-track global overlay; prerequisite for slicing
 - how would this work when not in slice mode with a locked sample? would everything just get stretched? a problem to consider
 
-## ideas
+## roadmap
 
-[0] = abandoned
+### phase 1 — bug fixes and quick wins (no architectural changes) ✓
+- [x] pitch param ordering — fixed, array reordered ascending
+- [x] double-tap guard after overlay close
+- [x] bitcrush value curve
+- [x] compressor scaling
+- [x] saturation redesign
 
-- [ ] bitcrush scaling — barely audible until last few notches, needs better value curve
-- [ ] compressor scaling — too much loudness, needs tighter param bounds; character macro not very useful
-	- no makeup gain at all — Compander just squashes signal. but loudness issue is likely threshold going down to 0.1, where Compander boosts hot signals above threshold when slopeAbove < 1. combined with SelectX crossfade this can produce louder output than dry signal
-	- color range is too narrow: attack 10ms-100ms, release 50ms-500ms — all "fast" territory, no slow glue compression available
-- [ ] saturation improvements — gentler curve, adapt saturation types from monokit (discontinuity parameter), replace current softclip/tanh/fold toggle
-- [ ] param page reorg: move filter, pan, gate length to page 1 (most-changed params); move looping controls and randomisation to page 2. breaking change for muscle memory — bundle with another major change
+### phase 2 — undo system
+- [ ] fix double-tap (0,7) timing — defer single-tap past double-tap window (same pattern as pendingToggle). prerequisite for undo.
+- [ ] move panic to transport hold page — frees double-tap for undo. add panic button next to kill FX tails.
+- [ ] implement undo — double-tap (0,7) to undo
+  - single layer, no redo — ~undoState holds one `[action_type, target, old_value]` tuple, overwritten on each new undoable action
+  - covered actions:
+    - step toggle on/off
+    - any step param value change (step overlay)
+    - track overlay param changes (stash all 16 old step values as array)
+    - FX matrix param changes
+    - step copy/paste
+    - sub-step toggle/clear
+    - clock division changes
+    - transpose changes
+    - swing changes
+    - track volume changes (mixer faders)
+    - sequence length changes (start/end points)
+  - excluded:
+    - transport start/stop
+    - preset recall/save/clear (save/clear are confirmation-guarded, recall is snapshot-level)
+    - global reverse toggles
+    - mute toggles (performance gestures, quick to re-toggle)
+    - overlay open/close, latch engage/disengage (navigation/UI state)
+    - panics and kills
+  - implementation concerns:
+    - verify (0,7) is accessible in all overlay states — check for conflicts with transport hold, utility overlays, param overlay, track overlay, length modal
+
+cross-cutting change that touches grid_input.scd heavily. do before overlay reworks to avoid retrofitting into new code.
+
+### phase 3 — per-track global overlay rework
+- [ ] overlay structure — action grid (3x3 with corners + center), latch key, horizontal mix fader on row 7. scaffold only, no new features yet.
+- [ ] audition in track overlay — port audition toggle from step overlay
+- [ ] clear track with confirmation — new action key
+
+foundation for phases 4 and 5. get solid and tested before building on top.
+
+### phase 4 — param page reorg + new params
+- [ ] decide replacement params — attack and filter resonance are strongest candidates
 	- if we are going forward with mod system we can nix randomization altogether, it won't be necessary and will in fact just be very coarse compared to mod system
 	- what can we replace it with that we are currently missing?
 		- Filter could be given resonance
@@ -174,11 +216,48 @@ Currently a simple hold-to-open param editor. Needs to become a proper track con
 			- what i envision is that this is set per step and determines how long it takes for given step to assume its own params. maybe this would be better per track than per step, but i think it could be fun either way. discrete things like reverse and sample selection could not be slewed, obv
 			- also would not make much sense when dealing with 16ths that have one step of gate length
 		- anything else I am not thinking of?
-- [ ] pitch param selector currently places lowest options at far right instead of far left
-	- root cause: pitchValues array has 0.125, 0.33, 0.66 appended at indices 12-14 instead of sorted ascending. fix is just reordering the array to [0.125, 0.25, 0.33, 0.5, 0.66, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 3.5, 4.0] — no logic changes needed since valueForPosition and positionForValue both use the array directly
+- [ ] reorg pages — filter, pan, gate length to page 1; looping, ratchet to page 2. drop randomness.
+- [ ] add new params — attack envelope time and/or filter resonance to SynthDef, value tables, overlay rendering
+- [ ] session migration — ensure old sessions/presets load with sensible defaults for new params
+
+bundle as one breaking change. after overlay rework so track overlay has new structure. before mod system so it targets the final param set.
+
+### phase 5 — LFO modulation system
+- [ ] LFO SynthDef — one per track, outputting to control bus. shape selection, rate in 16ths.
+- [ ] voice SynthDef integration — 14 mod depth args reading from control bus, applying offset to step values, clamping. S&H for discrete params.
+- [ ] mod overlay UI — blocking page from track overlay action grid. 14 depth faders, polarity toggles, shape/rate columns, shape-animated LED feedback, hold key, auto-latch.
+- [ ] preset/session persistence — mod settings per track saved and recalled
+
+biggest single feature. SynthDef work and UI work can be developed somewhat in parallel.
+
+### phase 6 — fine fader view
+- [ ] fine fader infrastructure — hold-to-reveal full-grid selector, 127-128 positions, latch key, center dent rendering
+- [ ] integrate across all contexts — step overlay, track overlay, transport, FX, mod page
+  - respects parent page's latch and audition status
+  - interaction flow (step/track overlays):
+    - user enters overlay → holds param selector button in column → detail fader opens
+    - 127 or 128 choices across the full grid
+    - latch key at (0,0) or (0,7) for iterating by ear
+    - if latch off: select value → page closes → return to parent overlay (if latched) or main screen (if unlatched)
+    - if latch on: select value → page stays open for further adjustment
+    - coarse fader on parent page shows closest-fit representation of fine value
+  - center dents represented in fine view for params that have them (filter, pan)
+  - discrete params (reverse, bank) excluded; only continuous values get fine view
+
+do after everything else — universal enhancement that touches every overlay, easier once all overlays are in final form.
+
+### phase 7 — time stretch + slicing (longest horizon)
+- [ ] time stretch SynthDef — per-track toggle, figure out behavior outside slice mode
+- [ ] slice mode — toggle in track overlay, lock sample, 16 equal divisions, step overlay shows slice selection instead of bank/sample
+
+most open design questions and heaviest DSP work. save for last.
+
+### unsequenced (implement whenever)
 - [ ] clock sync (MIDI clock, Link)
 - [ ] audio output routing options (bus selection)
 - [ ] legato mode for preset switching: start presets from the same position the previous one was at instead of resetting to start, given instant switching is enabled (clock div interpolation would be goofy but worth a try)
+
+## abandoned
 - [0] groove templates (swing is implemented; templates would be preset swing curves beyond linear)
 - [0] copy/paste step regions (multi-step copy) - given we have no facility for selecting multiple steps i think we forget this one
 - [0] pattern chaining / song mode - i think we will stick to manual preset switching

@@ -35,6 +35,7 @@
 ~pendingSubToggle = nil;
 ~latchActive = false;
 ~pulseRoutine = nil;
+~lastOverlayCloseTime = nil;
 
 ~startPulseRoutine = {
     if(~pulseRoutine.isNil) {
@@ -738,6 +739,7 @@
                     // Latch is engaged — keep overlay open after releasing parent step
                 } {
                     ~stopPulseRoutine.();
+                    ~lastOverlayCloseTime = Main.elapsedTime;
                     ~paramMenuActive = false;
                     ~heldTrack = nil;
                     ~heldStepIdx = nil;
@@ -885,7 +887,7 @@
             };
         };
         if(y >= 0 && (y < ~numTracks)) {
-            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil && ~transportHeld.not) {
+            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil && ~transportHeld.not && (~lastOverlayCloseTime.isNil || { (Main.elapsedTime - ~lastOverlayCloseTime) > 0.3 })) {
                 var track = ~tracks[y];
                 if(~stepInRange.(x, track[\startStep], track[\endStep])) {
                     track[\steps][x][\on] = track[\steps][x][\on].not;

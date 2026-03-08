@@ -141,7 +141,7 @@ Voice send → FX bus ─┬─ Delay ──→ bus 0
 | 9 | Reverb damping | 0 → 1.0 |
 | 10 | Reverb level | 0 → 1.0 |
 | 11 | Saturation depth | 0 → 1.0 |
-| 12 | Saturation type | softclip → tanh → fold |
+| 12 | Saturation type | fold, tanh, softclip, hard clip, sqrt, rectify, quantize (row 6→0) |
 | 13 | Tilt EQ | -1 (dark) → +1 (bright) |
 | 14 | Compressor amount | 0 → 1.0 |
 | 15 | Compressor color | 0 (fast) → 1.0 (slow) |
