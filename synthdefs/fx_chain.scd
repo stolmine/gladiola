@@ -1,18 +1,18 @@
 ~gladiolaLoadFxSynthDefs = {
 
     SynthDef(\gladiolaDelay, {
-        arg fxSendBus = 0, delaytime = 0.5, feedback = 0.7, tone = 0, level = 0, out = 0;
+        arg fxSendBus = 0, delaytime = 0.5, feedback = 0.7, tone = 0, level = 0;
         var input, delayed, filtered, lpf, hpf;
         input = In.ar(fxSendBus, 2);
         delayed = CombC.ar(input, 2.0, Lag.kr(delaytime, 0.3), delaytime * 12 * Lag.kr(feedback, 0.1));
         lpf = LPF.ar(delayed, LinExp.kr(tone.linlin(-1, 0, 0, 1), 0, 1, 400, 20000));
         hpf = HPF.ar(delayed, LinExp.kr(tone.linlin(0, 1, 0, 1), 0, 1, 20, 8000));
         filtered = SelectX.ar(Lag.kr(tone, 0.1).linlin(-1, 1, 0, 2), [lpf, delayed, hpf]);
-        Out.ar(out, filtered * Lag.kr(level, 0.05));
+        Out.ar(0, filtered * Lag.kr(level, 0.05));
     }).add;
 
     SynthDef(\gladiolaGranular, {
-        arg fxSendBus = 0, sizeMod = 0, posMod = 0, pitchRange = 0, level = 0, out = 0;
+        arg fxSendBus = 0, sizeMod = 0, posMod = 0, pitchRange = 0, level = 0;
         var input, sig, trig, stepTrig, posVal, sizeVal, densVal, pitchVal;
         var pitchOffsets = #[-0.396, -0.25, -0.146, 0, 0.146, 0.25, 0.396];
         var pitchIdx, densAvg;
@@ -38,11 +38,11 @@
             lofi: 0,
             trig: trig
         );
-        Out.ar(out, sig * Lag.kr(level, 0.05));
+        Out.ar(0, sig * Lag.kr(level, 0.05));
     }).add;
 
     SynthDef(\gladiolaReverb, {
-        arg fxSendBus = 0, size = 0.5, damping = 0.5, level = 0, out = 0;
+        arg fxSendBus = 0, size = 0.5, damping = 0.5, level = 0;
         var input, sig;
         input = HPF.ar(In.ar(fxSendBus, 2), 200);
         sig = Greyhole.ar(
@@ -53,7 +53,7 @@
             0.1,
             Lag.kr(size, 0.3).linlin(0, 1, 0.5, 2)
         );
-        Out.ar(out, sig * Lag.kr(level, 0.05));
+        Out.ar(0, sig * Lag.kr(level, 0.05));
     }).add;
 
     SynthDef(\gladiolaSaturation, {

@@ -67,7 +67,6 @@ var defaultStep = {
 ~fxGroup       = nil;
 ~masterGroup   = nil;
 ~fxSendBus     = nil;
-~reverbInputBus = nil;
 ~delaySynth    = nil;
 ~granularSynth = nil;
 ~reverbSynth   = nil;
@@ -127,7 +126,6 @@ var defaultStep = {
     ~masterGroup = Group.after(~fxGroup);
 
     ~fxSendBus = Bus.audio(s, 2);
-    ~reverbInputBus = Bus.audio(s, 2);
 
     ~numTracks.do { |i|
         ~tracks[i][\voice] = Synth(\gladiolaSample, [
@@ -138,7 +136,6 @@ var defaultStep = {
 
     ~delaySynth = Synth(\gladiolaDelay, [
         \fxSendBus, ~fxSendBus.index,
-        \out, ~reverbInputBus.index,
         \delaytime, ~fxParams[\delayDiv] * 60 / ~bpm,
         \feedback, ~fxParams[\delayFeedback],
         \tone, ~fxParams[\delayTone],
@@ -147,7 +144,6 @@ var defaultStep = {
 
     ~granularSynth = Synth(\gladiolaGranular, [
         \fxSendBus, ~fxSendBus.index,
-        \out, ~reverbInputBus.index,
         \sizeMod, ~fxParams[\granSizeMod],
         \posMod, ~fxParams[\granPosMod],
         \pitchRange, ~fxParams[\granPitchRange],
@@ -155,7 +151,7 @@ var defaultStep = {
     ], ~fxGroup);
 
     ~reverbSynth = Synth(\gladiolaReverb, [
-        \fxSendBus, ~reverbInputBus.index,
+        \fxSendBus, ~fxSendBus.index,
         \size, ~fxParams[\reverbSize],
         \damping, ~fxParams[\reverbDamp],
         \level, ~fxParams[\reverbLevel]
@@ -347,7 +343,6 @@ var defaultStep = {
     if(~delaySynth.notNil) { ~delaySynth.free };
     ~delaySynth = Synth(\gladiolaDelay, [
         \fxSendBus, ~fxSendBus.index,
-        \out, ~reverbInputBus.index,
         \delaytime, ~fxParams[\delayDiv] * 60 / ~bpm,
         \feedback, ~fxParams[\delayFeedback],
         \tone, ~fxParams[\delayTone],
@@ -357,7 +352,6 @@ var defaultStep = {
     if(~granularSynth.notNil) { ~granularSynth.free };
     ~granularSynth = Synth(\gladiolaGranular, [
         \fxSendBus, ~fxSendBus.index,
-        \out, ~reverbInputBus.index,
         \sizeMod, ~fxParams[\granSizeMod],
         \posMod, ~fxParams[\granPosMod],
         \pitchRange, ~fxParams[\granPitchRange],
@@ -366,7 +360,7 @@ var defaultStep = {
 
     if(~reverbSynth.notNil) { ~reverbSynth.free };
     ~reverbSynth = Synth(\gladiolaReverb, [
-        \fxSendBus, ~reverbInputBus.index,
+        \fxSendBus, ~fxSendBus.index,
         \size, ~fxParams[\reverbSize],
         \damping, ~fxParams[\reverbDamp],
         \level, ~fxParams[\reverbLevel]
