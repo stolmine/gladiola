@@ -40,7 +40,7 @@
     if(~pulseRoutine.isNil) {
         ~pulseRoutine = Routine({
             loop {
-                0.05.wait;
+                0.033.wait;
                 { ~updateGridLEDs.() }.defer;
             };
         }).play(AppClock);
