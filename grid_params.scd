@@ -1,8 +1,8 @@
 (
-var pitchValues = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 3.5, 4.0, 0.125, 0.33, 0.66];
+var pitchValues = [0.125, 0.25, 0.33, 0.5, 0.66, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 3.5, 4.0];
 var loopLengthValues = [0, 1/16, 1/8, 1/4, 3/8, 1/2, 5/8, 3/4, 7/8, 1.0, 2.0, 4.0, 8.0, 8.0, 8.0];
-// 1/16 step → full sustain (100 = sentinel for "no gate")
-var gateLengthValues = [0.0625, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.625, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 100];
+// 1/16 step → 16 steps (full pattern cycle)
+var gateLengthValues = [0.0625, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.625, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 16];
 
 ~paramNamesPage1 = [\bank, \pitch, \velocity, \loopLength, \loopRegion, \ratchet, \randomness];
 ~paramNamesPage2 = [\gateLength, \reverse, \filter, \pan, \probability, \delaySend, \bitcrush];

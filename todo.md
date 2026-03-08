@@ -105,18 +105,82 @@
 - [x] latch keys for global overlays: transport (1,7), clockDiv (2,7), FX matrix (3,7), transpose (5,7), and preset overlays (6-9,7) can be latched open via key one column right of held button on row 7; latch pulses when engaged, dim when available
 - [x] kill FX tails button on transport hold page at (2,7): tap to immediately free and recreate send FX synths
 - [x] fixed preset save to mapped slot: holding a preset button mapped to an empty slot now saves to the mapped slot instead of resetting to the button's default slot
+- [x] fixed gate length max: replaced 100 sentinel ("full sustain") with 16 steps (one full pattern cycle), clock-relative to track division — eliminates runaway sample playback
+
+## per-track global overlay rework
+
+Currently a simple hold-to-open param editor. Needs to become a proper track control surface with action grid before mod/slice features can land.
+
+### overlay structure
+- action grid keys: slice toggle, audition, modulation, clear track (with confirmation)
+- latch: to the right of held key (or left for col 15)
+- page toggle for param pages (existing behavior)
+- we can use a 3x3 like step overlay action cluster, with an additional button at center for modulation or slice toggle
+
+### per-track LFO modulation system
+- one LFO per track, available to all 14 param destinations via mod depth faders
+- motivation: per-step/sub-step editing is powerful but surgical and local; need movement over time at the *track* level without manual intervention
+- UI: tap modulation key in per-track global action grid
+  - blocking overlay with 14 depth faders (cols 2-15) + shape/rate controls (cols 0-1)
+  - auto-latched on entrance, lower-left key pulses and user hits it to exit
+  - depth fader layout per column:
+    - rows 0-5: depth levels 6-1 (expo curve, row 0 = max depth)
+    - row 6: zero (no modulation)
+    - row 7: polarity toggle (solid = positive, pulse = negative)
+    - full brightness at current position, dim elsewhere; polarity toggle independent of depth value
+  - left two columns reserved for shape and rate:
+    - col 0: 7 shapes — sine (default), square, triangle, brownian, full random, saw up, saw down
+    	- currently selected notch can give visual feedback regarding state: sine smoothly pulses, square flashes on/off, etc, we should be able to map actual rate to animation
+    - col 0,row 7 (currently unoccupied) could be a momentary hold or a reset. i am partial to hold myself, should be released if still on when leaving page
+    - col 1: rate as nudge in 16ths — buttons for +16, +4, +1, center at 1 bar (16/16), -1, -4, -16; allows odd timings for polyrhythmic drift
+- modulation behavior:
+  - LFO offsets from each step's current value (per-step settings are the offset control)
+  - continuous params interpolate smoothly (not restricted to step overlay 15 notch selector layouts); discrete params (sample, ratchet, reverse) use sample-and-hold per trigger
+  - bank excluded as destination
+  - values clamp at param min/max (no wrapping)
+  - modulation takes priority over per-step values (step values set initial offset, LFO adds movement on top)
+  - param order matches step overlay page 1 + page 2 for memorability
+- implementation: one LFO synth per track → control bus, read by sample_voice SynthDef with 14 mod depth args (verbose but lightweight); params stored as floats so continuous interpolation is straightforward
+
+### sample slice mode
+- toggle slice mode on in per-track global action grid
+- locks all steps on track to selected sample (slices by equal division, 16 slices; whatever is simplest and fastest)
+- sample selection inside per-track global (requires auditioning in this overlay)
+- step overlay sample bank chooser disabled in slice mode; user chooses from 16 slices per step instead
+- time stretching is prerequisite for this to be useful
+
+### time stretching
+- per-track toggle, lives in per-track global overlay; prerequisite for slicing
+- how would this work when not in slice mode with a locked sample? would everything just get stretched? a problem to consider
 
 ## ideas
 
 [0] = abandoned
 
-- [ ] time stretching infrastructure for loop/break support - this should probably be a per track toggle? could live in the global track overlays as an option. will be necessary for slicing imo, which i would like to implement
-- [0] copy/paste step regions (multi-step copy) - given we have no facility for selcting multiple steps i think we forget this one
-- [ ] swing / groove templates
+- [ ] bitcrush scaling — barely audible until last few notches, needs better value curve
+- [ ] compressor scaling — too much loudness, needs tighter param bounds; character macro not very useful
+	- no makeup gain at all — Compander just squashes signal. but loudness issue is likely threshold going down to 0.1, where Compander boosts hot signals above threshold when slopeAbove < 1. combined with SelectX crossfade this can produce louder output than dry signal
+	- color range is too narrow: attack 10ms-100ms, release 50ms-500ms — all "fast" territory, no slow glue compression available
+- [ ] saturation improvements — gentler curve, adapt saturation types from monokit (discontinuity parameter), replace current softclip/tanh/fold toggle
+- [ ] param page reorg: move filter, pan, gate length to page 1 (most-changed params); move looping controls and randomisation to page 2. breaking change for muscle memory — bundle with another major change
+	- if we are going forward with mod system we can nix randomization altogether, it won't be necessary and will in fact just be very coarse compared to mod system
+	- what can we replace it with that we are currently missing?
+		- Filter could be given resonance
+		- we could have ratchet start and ratchet end, interpolate between values for interesting rolls, but over the course a single step? idrk
+		- what else?
+		- pitch EG? this would require two selectors to be useful tho
+		- attack? this could be quite useful on a single selector
+		- slew rate? this could be really fun, but it makes little sense
+			- what i envision is that this is set per step and determines how long it takes for given step to assume its own params. maybe this would be better per track than per step, but i think it could be fun either way. discrete things like reverse and sample selection could not be slewed, obv
+			- also would not make much sense when dealing with 16ths that have one step of gate length
+		- anything else I am not thinking of?
+- [ ] pitch param selector currently places lowest options at far right instead of far left
+	- root cause: pitchValues array has 0.125, 0.33, 0.66 appended at indices 12-14 instead of sorted ascending. fix is just reordering the array to [0.125, 0.25, 0.33, 0.5, 0.66, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 3.5, 4.0] — no logic changes needed since valueForPosition and positionForValue both use the array directly
 - [ ] clock sync (MIDI clock, Link)
 - [ ] audio output routing options (bus selection)
+- [ ] legato mode for preset switching: start presets from the same position the previous one was at instead of resetting to start, given instant switching is enabled (clock div interpolation would be goofy but worth a try)
+- [0] groove templates (swing is implemented; templates would be preset swing curves beyond linear)
+- [0] copy/paste step regions (multi-step copy) - given we have no facility for selecting multiple steps i think we forget this one
 - [0] pattern chaining / song mode - i think we will stick to manual preset switching
-- [ ] sample slice mode (auto-chop breaks)
 - [0] per-track sample lock (all steps in a track share one sample) - already accomplished with global track overlays
-- [ ] legato mode for preset switching: the program will attempt to start presets from the same place the previous one was on given instant preset switching is enabled instead of resetting to start (clock div interpolation would be goofy here but worth a try)
-- [ ] BUG: meters sometimes seem to die, or else they do not update on a synchronized basis with steps
+- [0] FX volumes to transport hold page - conceptually wrong grouping; FX levels belong with FX matrix, transport is for global performance controls; 3 reclaimed FX columns aren't valuable enough
