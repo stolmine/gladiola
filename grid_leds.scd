@@ -366,6 +366,53 @@
                     };
                 };
             } {
+            if(~transportHeld) {
+                ~grid.clear;
+
+                // Transport indicator
+                ~grid.led(0, 7, GridInterface.ledFull);
+
+                // Col 0: tempo nudge
+                7.do { |row|
+                    var brightness = if(row == 3) { GridInterface.ledBright } { GridInterface.ledDim };
+                    ~grid.led(0, row, brightness);
+                };
+
+                // Col 1: swing nudge
+                7.do { |row|
+                    var brightness = if(row == 3) { GridInterface.ledBright } { GridInterface.ledDim };
+                    ~grid.led(1, row, brightness);
+                };
+
+                // Stereo meters (cols 7-8)
+                2.do { |ch|
+                    var col = 7 + ch;
+                    var level = ~meterLevel[ch];
+                    var segments = level * 8;
+                    var fullSegs = segments.floor.asInteger;
+                    var frac = segments - fullSegs;
+
+                    fullSegs.do { |i|
+                        ~grid.led(col, 7 - i, GridInterface.ledFull);
+                    };
+                    if(fullSegs < 8) {
+                        if(frac > 0.05) {
+                            ~grid.led(col, 7 - fullSegs, (frac * GridInterface.ledFull).round.asInteger);
+                        };
+                    };
+                };
+
+                // Mixer faders (cols 9-15, tracks 0-6)
+                7.do { |trackIdx|
+                    var col = 9 + trackIdx;
+                    var curRow = ~mixerPosForVolume.(~trackVolumes[trackIdx]);
+                    8.do { |row|
+                        var brightness = if(row == curRow) { GridInterface.ledFull }
+                            { if(row > curRow) { GridInterface.ledMedium } { GridInterface.ledDim } };
+                        ~grid.led(col, row, brightness);
+                    };
+                };
+            } {
                 ~grid.clear;
 
                 ~numTracks.do { |trackIdx|
@@ -426,13 +473,7 @@
                 ~numTracks.do { |i|
                     ~grid.led(9 + i, 7, if(~tracks[i][\muted]) { GridInterface.ledFull } { GridInterface.ledDim });
                 };
-                if(~transportHeld == true) {
-                    ~grid.led(0, 7, GridInterface.ledFull);
-                    7.do { |row|
-                        var brightness = if(row == 3) { GridInterface.ledBright } { GridInterface.ledDim };
-                        ~grid.led(0, row, brightness);
-                    };
-                };
+            };
             };
         };
         };

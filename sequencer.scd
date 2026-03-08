@@ -46,6 +46,21 @@ var defaultStep = {
 ~activePresetButton = nil;
 ~clipboard     = nil;
 ~seqClock      = nil;
+~swing         = 50;
+~anchorTempo   = 120;
+~trackVolumes  = Array.fill(7, { 1.0 });
+~mixerVolumes  = [1.0, 0.85, 0.7, 0.5, 0.3, 0.15, 0.05, 0];
+
+~mixerPosForVolume = { |vol|
+    var best = 0;
+    ~mixerVolumes.do { |v, i| if((vol - v).abs < (vol - ~mixerVolumes[best]).abs) { best = i } };
+    best
+};
+
+~setTrackVolume = { |trackIdx, vol|
+    ~trackVolumes[trackIdx] = vol;
+    if(~tracks[trackIdx][\voice].notNil) { ~tracks[trackIdx][\voice].set(\trackAmp, vol) };
+};
 
 ~voiceGroup    = nil;
 ~satGroup      = nil;
@@ -62,6 +77,11 @@ var defaultStep = {
 ~limiterSynth  = nil;
 
 ~tracks = nil;
+
+~stepPosInRange = { |step, startStep, endStep|
+    if(startStep <= endStep) { step - startStep }
+    { if(step >= startStep) { step - startStep } { (~stepsPerTrack - startStep) + step } }
+};
 
 ~stepInRange = { |step, startStep, endStep|
     if(startStep <= endStep) {
@@ -111,7 +131,8 @@ var defaultStep = {
 
     ~numTracks.do { |i|
         ~tracks[i][\voice] = Synth(\gladiolaSample, [
-            \fxSendBus, ~fxSendBus.index
+            \fxSendBus, ~fxSendBus.index,
+            \trackAmp, ~trackVolumes[i]
         ], ~voiceGroup);
     };
 
@@ -156,6 +177,25 @@ var defaultStep = {
 
     ~limiterSynth = Synth(\gladiolaLimiter, [], ~masterGroup);
 
+    ~meterBus = Bus.control(s, 2);
+    ~meterSynth = SynthDef(\gladiolaMeter, {
+        var sig = In.ar(0, 2);
+        var amp = Amplitude.kr(sig, 0.01, 0.1);
+        Out.kr(\out.kr(0), amp);
+    }).play(s, [\out, ~meterBus], addAction: \addToTail);
+    ~meterLevel = [0, 0];
+    ~meterUpdateRoutine = Routine({
+        loop {
+            ~meterBus.getn(2, { |vals|
+                ~meterLevel = [
+                    vals[0].ampdb.linlin(-40, 0, 0, 1).clip(0, 1),
+                    vals[1].ampdb.linlin(-40, 0, 0, 1).clip(0, 1)
+                ];
+            });
+            0.05.wait;
+        }
+    }).play(AppClock);
+
     "[Gladiola] Sequencer initialized. % tracks × % steps.".format(~numTracks, ~stepsPerTrack).postln;
 };
 
@@ -171,7 +211,8 @@ var defaultStep = {
             ~seqClock.schedAbs(~seqClock.beats, {
                 if(~playing) {
                     var track     = ~tracks[trackIdx];
-                    var step      = track[\steps][track[\currentStep]];
+                    var playedStep = track[\currentStep];
+                    var step      = track[\steps][playedStep];
                     var voice     = track[\voice];
                     var buf, stepDur, numBanks, nextStep;
 
@@ -238,8 +279,10 @@ var defaultStep = {
                                 \bitcrush,   resolvedBitcrush,
                                 \t_trig,     1
                             );
-                            if(resolvedDelaySend > 0 && ~granularSynth.notNil) {
-                                ~granularSynth.set(\t_trig, 1);
+                            if(resolvedDelaySend > 0) {
+                                if(~granularSynth.notNil) {
+                                    ~granularSynth.set(\t_trig, 1);
+                                };
                             };
                         };
                     };
@@ -265,7 +308,11 @@ var defaultStep = {
 
                     { ~updateGridLEDs.() }.defer;
 
-                    track[\clockDiv]
+                    {
+                        var stepPos = ~stepPosInRange.(playedStep, track[\startStep], track[\endStep]);
+                        var swingMul = if(stepPos.even) { 2 * (~swing / 100) } { 2 * (1 - (~swing / 100)) };
+                        track[\clockDiv] * swingMul
+                    }.value
                 } {
                     nil
                 }
@@ -458,6 +505,11 @@ var defaultStep = {
     "[Gladiola] Tempo set to % BPM.".format(~bpm).postln;
 };
 
+~setSwing = { |pct|
+    ~swing = pct.clip(50, 100).asInteger;
+    "[Gladiola] Swing set to %%".format(~swing, "%").postln;
+};
+
 ~clearPattern = {
     ~numTracks.do { |i|
         ~tracks[i][\steps] = Array.fill(~stepsPerTrack, { defaultStep.value });
@@ -487,6 +539,8 @@ var defaultStep = {
     snapshot[\fxParams] = ~fxParams.copy;
     snapshot[\transpose] = ~transpose;
     snapshot[\globalReverse] = ~globalReverse;
+    snapshot[\swing] = ~swing;
+    snapshot[\trackVolumes] = ~trackVolumes.copy;
     ~presets[slot] = snapshot;
     "[Gladiola] Preset % saved.".format(slot + 1).postln;
 };
@@ -528,6 +582,11 @@ var defaultStep = {
         };
         ~transpose = snapshot[\transpose];
         ~globalReverse = snapshot[\globalReverse] ? false;
+        ~swing = snapshot[\swing] ?? { 50 };
+        ~trackVolumes = snapshot[\trackVolumes] ?? { Array.fill(7, { 1.0 }) };
+        ~numTracks.do { |i|
+            if(~tracks[i][\voice].notNil) { ~tracks[i][\voice].set(\trackAmp, ~trackVolumes[i]) };
+        };
         "[Gladiola] Preset % recalled.".format(slot + 1).postln;
     } {
         "[Gladiola] Preset % is empty.".format(slot + 1).postln;

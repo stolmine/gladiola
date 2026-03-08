@@ -16,7 +16,8 @@
             pan = 0.0,
             delaySend = 0.0,
             bitcrush = 0.0,
-            fxSendBus = 0;
+            fxSendBus = 0,
+            trackAmp = 1.0;
 
         var smoothRate, smoothAmp,
             clampedRatchet, safeStepDur, ratchetFreq, ratchetImpulse,
@@ -83,7 +84,7 @@
             interpolation: 4
         );
 
-        sig = sig * env * smoothAmp;
+        sig = sig * env * smoothAmp * Lag.kr(trackAmp, 0.05);
 
         crushed = Decimator.ar(sig, 44100 * (1 - (bitcrush * 0.9)), 24 - (bitcrush * 20));
         sig = SelectX.ar(bitcrush, [sig, crushed]);

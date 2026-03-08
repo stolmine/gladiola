@@ -26,6 +26,7 @@
 ~presetPulsePhase = 0;
 ~subStepEditing = false;
 ~subStepEditIdx = nil;
+~anchorPressTime = nil;
 
 
 ~subStepParamPage = 0;
@@ -184,13 +185,41 @@
             } {
                 if(~transportHeld) {
                     if(x == 0 && (y < 7)) {
-                        var nudges = [10, 5, 1, nil, -1, -5, -10];
-                        var nudge = nudges[y];
-                        if(nudge.notNil) {
-                            ~setTempo.(~bpm + nudge);
+                        if(y == 3) {
+                            ~anchorPressTime = Main.elapsedTime;
+                            AppClock.sched(0.5, {
+                                if(~anchorPressTime.notNil) {
+                                    ~anchorTempo = ~bpm;
+                                    ~anchorPressTime = nil;
+                                    "[Gladiola] Anchor tempo set to % BPM".format(~bpm).postln;
+                                    { ~updateGridLEDs.() }.defer;
+                                };
+                                nil;
+                            });
                         } {
-                            ~setTempo.(120);
+                            var nudges = [10, 5, 1, nil, -1, -5, -10];
+                            var nudge = nudges[y];
+                            if(nudge.notNil) {
+                                ~setTempo.(~bpm + nudge);
+                            };
                         };
+                        ~updateGridLEDs.();
+                    };
+                    if(x == 1 && (y < 7)) {
+                        if(y == 3) {
+                            ~setSwing.(50);
+                        } {
+                            var nudges = [10, 5, 1, nil, -1, -5, -10];
+                            var nudge = nudges[y];
+                            if(nudge.notNil) {
+                                ~setSwing.(~swing + nudge);
+                            };
+                        };
+                        ~updateGridLEDs.();
+                    };
+                    if(x >= 9 && (x <= 15)) {
+                        var trackIdx = x - 9;
+                        ~setTrackVolume.(trackIdx, ~mixerVolumes[y]);
                         ~updateGridLEDs.();
                     };
                 } {
@@ -486,6 +515,7 @@
                                     AppClock.sched(0.5, {
                                         if(~transportPressTime.notNil) {
                                             ~transportHeld = true;
+                                            ~startPulseRoutine.();
                                             ~pendingToggle = nil;
                                             ~pendingToggleTrack = nil;
                                             "[Gladiola] Tempo nudge mode".postln;
@@ -639,11 +669,20 @@
     });
 
     ~grid.release({ |x, y|
+        if(~transportHeld && (x == 0) && (y == 3)) {
+            if(~anchorPressTime.notNil) {
+                ~setTempo.(~anchorTempo);
+                ~anchorPressTime = nil;
+                "[Gladiola] Anchor tempo recalled: % BPM".format(~anchorTempo).postln;
+                ~updateGridLEDs.();
+            };
+        };
         if(y == 7 && (x == 0)) {
             ~transportPressTime = nil;
             if(~transportHeld) {
                 ~transportHeld = false;
-                "[Gladiola] Tempo nudge mode off".postln;
+                if(~latchActive.not && ~subStepEditing.not) { ~stopPulseRoutine.() };
+                "[Gladiola] Transport page closed".postln;
                 ~updateGridLEDs.();
             };
         };
@@ -802,7 +841,7 @@
             };
         };
         if(y >= 0 && (y < ~numTracks)) {
-            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil) {
+            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil && ~transportHeld.not) {
                 var track = ~tracks[y];
                 if(~stepInRange.(x, track[\startStep], track[\endStep])) {
                     track[\steps][x][\on] = track[\steps][x][\on].not;

@@ -10,6 +10,8 @@
 	snapshot[\fxParams] = ~fxParams.copy;
 	snapshot[\transpose] = ~transpose;
 	snapshot[\globalReverse] = ~globalReverse;
+	snapshot[\swing] = ~swing;
+	snapshot[\trackVolumes] = ~trackVolumes.copy;
 	snapshot[\tracks] = ~numTracks.collect { |i|
 		var t = ~tracks[i];
 		Dictionary[
@@ -103,7 +105,12 @@
 					};
 				};
 
-				~bpm = snapshot[\bpm];
+				~trackVolumes = snapshot[\trackVolumes] ?? { Array.fill(7, { 1.0 }) };
+			~numTracks.do { |i|
+				if(~tracks[i][\voice].notNil) { ~tracks[i][\voice].set(\trackAmp, ~trackVolumes[i]) };
+			};
+
+			~bpm = snapshot[\bpm];
 				if(snapshot[\fxParams].notNil) {
 					snapshot[\fxParams].keysValuesDo { |key, val|
 						~setFxParam.(key, val);
@@ -119,6 +126,7 @@
 				};
 				~transpose = snapshot[\transpose];
 				~globalReverse = snapshot[\globalReverse] ? false;
+				~swing = snapshot[\swing] ?? { 50 };
 
 				~presets = snapshot[\presets].collect { |p|
 					if(p.notNil) {
@@ -184,6 +192,11 @@
 		~bpm = 120;
 		~transpose = 1.0;
 		~globalReverse = false;
+		~swing = 50;
+		~trackVolumes = Array.fill(7, { 1.0 });
+		~numTracks.do { |i|
+			if(~tracks[i][\voice].notNil) { ~tracks[i][\voice].set(\trackAmp, 1.0) };
+		};
 		~setTempo.(~bpm);
 
 		~presets = Array.fill(49, { nil });
@@ -208,41 +221,34 @@
 	if(~sessionWindow.notNil && { ~sessionWindow.isClosed.not }) {
 		~sessionWindow.front;
 	} {
-		var bpmLabel, sampleDirLabel, gridStatusLabel, meterL, meterR, updateTask, meterSynth, meterBus;
+		var bpmLabel, swingLabel, sampleDirLabel, gridStatusLabel, meterL, meterR, updateTask;
 
 		~sessionWindow = Window("Gladiola", Rect(100, 100, 400, 130), resizable: false)
 		.alwaysOnTop_(true);
 
 		bpmLabel = StaticText().string_("BPM: %".format(~bpm));
+		swingLabel = StaticText().string_("Swing: %%".format(~swing, "%"));
 		sampleDirLabel = StaticText().string_("Samples: %".format(~sampleDir ? "—"));
 		gridStatusLabel = StaticText().string_(if(~grid.notNil) { "Grid: connected" } { "Grid: —" });
 		meterL = LevelIndicator().style_(\continuous).drawsPeak_(true).warning_(0.7).critical_(0.9);
 		meterR = LevelIndicator().style_(\continuous).drawsPeak_(true).warning_(0.7).critical_(0.9);
 
-		meterBus = Bus.control(Server.default, 2);
-		meterSynth = SynthDef(\gladiolaMeter, {
-			var sig = In.ar(0, 2);
-			var amp = Amplitude.kr(sig, 0.01, 0.1);
-			Out.kr(meterBus, amp);
-		}).play(Server.default, addAction: \addToTail);
-
 		updateTask = Routine({
 			loop {
-				meterBus.getn(2, { |vals|
-					{
-						if(~sessionWindow.notNil && { ~sessionWindow.isClosed.not }) {
-							var l = vals[0].ampdb.linlin(-40, 0, 0, 1).clip(0, 1);
-							var r = vals[1].ampdb.linlin(-40, 0, 0, 1).clip(0, 1);
-							meterL.value = l; meterL.peakLevel = l;
-							meterR.value = r; meterR.peakLevel = r;
-							bpmLabel.string = "BPM: %".format(~bpm);
-							sampleDirLabel.string = "Samples: %".format(
-								if(~sampleDir.notNil) { PathName(~sampleDir).folderName } { "—" }
-							);
-							gridStatusLabel.string = if(~grid.notNil) { "Grid: connected" } { "Grid: —" };
-						};
-					}.defer;
-				});
+				{
+					if(~sessionWindow.notNil && { ~sessionWindow.isClosed.not }) {
+						var l = ~meterLevel[0];
+						var r = ~meterLevel[1];
+						meterL.value = l; meterL.peakLevel = l;
+						meterR.value = r; meterR.peakLevel = r;
+						bpmLabel.string = "BPM: %".format(~bpm);
+						swingLabel.string = "Swing: %%".format(~swing, "%");
+						sampleDirLabel.string = "Samples: %".format(
+							if(~sampleDir.notNil) { PathName(~sampleDir).folderName } { "—" }
+						);
+						gridStatusLabel.string = if(~grid.notNil) { "Grid: connected" } { "Grid: —" };
+					};
+				}.defer;
 				0.05.wait;
 			}
 		}).play(AppClock);
@@ -250,6 +256,7 @@
 		~sessionWindow.layout_(VLayout(
 			HLayout(
 				bpmLabel,
+				swingLabel,
 				nil,
 				gridStatusLabel,
 				nil,
@@ -353,8 +360,6 @@
 
 		~sessionWindow.onClose_({
 			updateTask.stop;
-			meterSynth.free;
-			meterBus.free;
 		});
 
 		~sessionWindow.front;
