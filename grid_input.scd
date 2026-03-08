@@ -217,6 +217,22 @@
                         };
                         ~updateGridLEDs.();
                     };
+                    if(x == 2 && (y == 7)) {
+                        ~killFxTails.();
+                        "[Gladiola] FX tails killed".postln;
+                        ~updateGridLEDs.();
+                    };
+                    if(x == 1 && (y == 7)) {
+                        if(~latchActive) {
+                            ~latchActive = false;
+                            ~transportHeld = false;
+                            ~stopPulseRoutine.();
+                            ~updateGridLEDs.();
+                        } {
+                            ~latchActive = true;
+                            ~updateGridLEDs.();
+                        };
+                    };
                     if(x >= 9 && (x <= 15)) {
                         var trackIdx = x - 9;
                         ~setTrackVolume.(trackIdx, ~mixerVolumes[y]);
@@ -224,6 +240,27 @@
                     };
                 } {
                 if(~utilityOverlayActive) {
+                    if(x == (~utilityHeldButton + 1) && (y == 7)) {
+                        if(~latchActive) {
+                            ~latchActive = false;
+                            ~stopPulseRoutine.();
+                            if(~utilityOverlayType == \preset) {
+                                var btnIdx = ~utilityHeldButton - 5;
+                                if(~presetSelectedSlot.notNil) {
+                                    ~presetSlotMap[btnIdx] = ~presetSelectedSlot;
+                                };
+                            };
+                            ~utilityOverlayActive = false;
+                            ~utilityOverlayType = nil;
+                            ~utilityHeldButton = nil;
+                            ~presetConfirmArmed = nil;
+                            ~updateGridLEDs.();
+                        } {
+                            ~latchActive = true;
+                            ~startPulseRoutine.();
+                            ~updateGridLEDs.();
+                        };
+                    };
                     if(~utilityOverlayType == \clockDiv) {
                         if(x < 7 && (y < 7)) {
                             var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
@@ -637,8 +674,7 @@
                     if(~presets[mappedSlot].isNil) {
                         ~presetHeldSlot = nil;
                         ~presetHeldX = nil;
-                        ~presetSlotMap[btnIdx] = btnIdx;
-                        ~savePreset.(btnIdx);
+                        ~savePreset.(mappedSlot);
                         ~updateGridLEDs.();
                     } {
                         ~presetHeldSlot = nil;
@@ -680,10 +716,14 @@
         if(y == 7 && (x == 0)) {
             ~transportPressTime = nil;
             if(~transportHeld) {
-                ~transportHeld = false;
-                if(~latchActive.not && ~subStepEditing.not) { ~stopPulseRoutine.() };
-                "[Gladiola] Transport page closed".postln;
-                ~updateGridLEDs.();
+                if(~latchActive) {
+                    // Latch engaged — keep transport open
+                } {
+                    ~transportHeld = false;
+                    if(~subStepEditing.not) { ~stopPulseRoutine.() };
+                    "[Gladiola] Transport page closed".postln;
+                    ~updateGridLEDs.();
+                };
             };
         };
         if(y == 7 && (x == 3) && ~reverseHeld) {
@@ -734,23 +774,27 @@
             } {
                 if(~utilityOverlayActive) {
                     if(y == 7 && (x == ~utilityHeldButton)) {
-                        if(~utilityOverlayType == \preset) {
-                            var btnIdx = x - 5;
-                            ~utilityOverlayActive = false;
-                            ~utilityOverlayType = nil;
-                            ~utilityHeldButton = nil;
-                            ~presetConfirmArmed = nil;
-                            if(~presetSelectedSlot.notNil) {
-                                ~presetSlotMap[btnIdx] = ~presetSelectedSlot;
-                            };
-                            "[Gladiola] Preset overlay closed, btn % -> slot %".format(btnIdx, ~presetSlotMap[btnIdx]).postln;
-                            ~updateGridLEDs.();
+                        if(~latchActive) {
+                            // Latch engaged — keep overlay open
                         } {
-                            "[Gladiola] Overlay closed".postln;
-                            ~utilityOverlayActive = false;
-                            ~utilityOverlayType = nil;
-                            ~utilityHeldButton = nil;
-                            ~updateGridLEDs.();
+                            if(~utilityOverlayType == \preset) {
+                                var btnIdx = x - 5;
+                                ~utilityOverlayActive = false;
+                                ~utilityOverlayType = nil;
+                                ~utilityHeldButton = nil;
+                                ~presetConfirmArmed = nil;
+                                if(~presetSelectedSlot.notNil) {
+                                    ~presetSlotMap[btnIdx] = ~presetSelectedSlot;
+                                };
+                                "[Gladiola] Preset overlay closed, btn % -> slot %".format(btnIdx, ~presetSlotMap[btnIdx]).postln;
+                                ~updateGridLEDs.();
+                            } {
+                                "[Gladiola] Overlay closed".postln;
+                                ~utilityOverlayActive = false;
+                                ~utilityOverlayType = nil;
+                                ~utilityHeldButton = nil;
+                                ~updateGridLEDs.();
+                            };
                         };
                     } {
                         "[Gladiola] Overlay release ignored: x=%, y=%, expected (%, 7)".format(x, y, ~utilityHeldButton).postln;

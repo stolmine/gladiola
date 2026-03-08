@@ -31,8 +31,8 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 - Step copy/paste via side-by-side sub-seq and action grids (3×3 each, same rows, far side from held step)
 - 49-slot preset matrix with confirm mode and quantized switching
 - Global reverse toggle (XOR with per-step reverse)
-- Clock division, FX matrix, and transpose overlays
-- Tempo nudge mode: hold transport 500ms, column 0 rows 0-6 adjust BPM (±1/5/10, reset)
+- Clock division, FX matrix, and transpose overlays, each with a latch key (one column right on row 7) to lock the overlay open hands-free
+- Transport hold page: hold transport 500ms for BPM nudge, swing nudge, kill FX tails, and VU meters; latched via (1, 7)
 - Session manager: save/load/new sessions as `.gladiola` archives with GUI and stereo metering
 - Session GUI with grid connection button and live status
 - Full FX chain (delay, granular, reverb, saturation, tilt EQ, compressor, limiter), bitcrush, bipolar filter, pan, probability

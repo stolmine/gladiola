@@ -46,21 +46,47 @@ Tap a step on any track row to toggle it on/off. Active steps show LED brightnes
 - **Double-tap** (0, 7): Stop transport, silence all voices, and kill FX tails (panic)
 - **Hold** (0, 7) for 500ms: Enter tempo nudge mode
 
-### Tempo Nudge
+### Transport Hold Page
 
-Hold the transport button (column 0, row 7) for 500ms without releasing. The transport button lights full and column 0 rows 0-6 become BPM adjustment buttons:
+Hold the transport button (column 0, row 7) for 500ms without releasing to open the transport hold page. The page is fully blocking — all grid input is captured by the transport page while it is open. Release the transport button to close (or use the latch key to keep it open).
+
+**Latch**: Tap (1, 7) while the transport page is open to latch it. The latch key pulses when engaged; tap again to close. When latched, releasing the transport button does not close the page.
+
+**Tempo nudge** — column 0, rows 0-6:
 
 | Row | Action |
 |-----|--------|
 | 0 | +10 BPM |
 | 1 | +5 BPM |
 | 2 | +1 BPM |
-| 3 | Reset to 120 BPM |
+| 3 | Recall anchor tempo (tap) / Set anchor tempo (hold 500ms) |
 | 4 | -1 BPM |
 | 5 | -5 BPM |
 | 6 | -10 BPM |
 
-Tap any nudge button to apply the adjustment immediately. Release the transport button to exit nudge mode. Nudge mode is blocked during overlays, modals, and other active utility states.
+Tap any nudge button to apply the adjustment immediately. The anchor tempo (row 3) defaults to 120 BPM; hold row 3 for 500ms to store the current BPM as the new anchor.
+
+**Swing nudge** — column 1, rows 0-6:
+
+| Row | Action |
+|-----|--------|
+| 0 | +10% swing |
+| 1 | +5% swing |
+| 2 | +1% swing |
+| 3 | Reset swing to 50% |
+| 4 | -1% swing |
+| 5 | -5% swing |
+| 6 | -10% swing |
+
+Swing ranges from 50% (straight) to 100% (full shuffle). Even steps are delayed by the swing amount; odd steps are advanced correspondingly.
+
+**Kill FX tails** — (2, 7): Tap to immediately free and recreate all send FX synths, silencing delay trails, granular clouds, and reverb.
+
+**VU meters** — columns 7-8: Stereo output level displayed as vertical segment fills with fractional brightness at the top.
+
+**Mixer faders** — columns 9-15: Per-track volume faders for tracks 1-7. Each column controls one track; rows 0-6 step through volume levels.
+
+Nudge mode is blocked during overlays, modals, and other active utility states.
 
 ### Start/End Points
 
@@ -82,13 +108,13 @@ Hold column 1 (clock) on the utility row. Options appear vertically in the colum
 | 5 | 2 (2.0) |
 | 6 | 4 (4.0) |
 
-Tap a row to select. Release the held button to close.
+Tap a row to select. Release the held button to close, or tap (2, 7) to latch the overlay open. The latch key pulses when engaged; tap again to close. While latched, releasing the held button does not close the overlay.
 
 ## FX Matrix
 
 Hold column 2 on the utility row to open the FX matrix overlay. A 16×7 grid appears showing all FX parameters. Each column controls one parameter, rows 0-6 select from 7 preset values. One bright LED per column shows the current setting.
 
-Tap any position to set that parameter to the corresponding value. Changes take effect immediately.
+Tap any position to set that parameter to the corresponding value. Changes take effect immediately. Release the held button to close, or tap (3, 7) to latch the overlay open. The latch key pulses when engaged; tap again to close. While latched, releasing the held button does not close the overlay.
 
 ### Signal Flow
 
@@ -145,6 +171,8 @@ Options appear vertically in the column above:
 
 The transpose button lights full when transposed away from unity. Transpose multiplies pitch globally across all tracks.
 
+Tap (5, 7) to latch the transpose overlay open. The latch key pulses when engaged; tap again to close. While latched, releasing the held button does not close the overlay.
+
 ### Track Mutes
 
 Tap columns 9-15 on the utility row to toggle mute for tracks 1-7. Mute toggles fire on release. Muted tracks show full brightness on their mute button; active steps on muted tracks display dim. Muting a track immediately silences its voice — long gates and looping sounds cut off at the moment of mute.
@@ -161,7 +189,7 @@ Hold a mute key to open the track parameter overlay for that track (see [Track P
 Four preset buttons (columns 5-8 on the utility row) map to a 49-slot preset matrix (7×7). Each button can be remapped to any slot in the matrix.
 
 - **Tap** (populated slot): Recall preset (or queue if quantized switching is enabled)
-- **Hold** (empty slot): Save current state to the button's default slot
+- **Hold** (empty slot): Save current state to the mapped slot
 - **Hold** (populated slot): Open preset matrix overlay
 
 Each preset captures: all track steps and parameters, start/end points, track mutes, clock division, FX parameters, transpose, and global reverse state.
@@ -182,6 +210,7 @@ Hold a populated preset button to open the 7×7 matrix overlay. Slots appear on 
 - Tap a slot to select it. Populated selected = full, populated unselected = medium, empty selected = medium, empty unselected = dim.
 - Confirm-armed Save and Clear buttons pulse at 1/4 the slowest pattern's period — tap again to execute, or tap a different action to cancel.
 - On release of the held utility button: the button remaps to the selected slot. Tap the button to recall (or queue if quantized).
+- Tap the key one column right of the held preset button (cols 6-9, row 7) to latch the overlay open. The latch key pulses when engaged; tap again to close. While latched, releasing the held button does not close the overlay.
 
 ### Quantized Preset Switching
 
@@ -209,7 +238,7 @@ Two 3×3 grids appear side-by-side on the far side of the held step:
 - **P (Page toggle)**: Switches between param page 1 and page 2. Medium = page 1, full = page 2.
 - **C (Copy)**: Copies all params from the held step to the clipboard. Three brightness states: dim = clipboard empty, subtle glow = clipboard has data but differs from the held step, bright = clipboard matches the held step exactly.
 - **A (Audition)**: Toggles step preview. Full = enabled. Only active when transport is stopped.
-- **L (Latch)**: Keeps the overlay open after releasing the held step. Pulses when engaged. Tap again to disengage and close the overlay.
+- **L (Latch)**: Keeps the overlay open after releasing the held step. Pulses when engaged. Tap again to disengage and close the overlay. Latch behavior extends to all utility overlays and the transport hold page — each has a dedicated latch key one column to the right of the held button on row 7.
 
 Both grids share the same 3 rows, positioned to maximise gap from the value row. When the held step is in cols 0-7, grids appear on the right (cols 9-15). When in cols 8-15, grids appear on the left (cols 0-6).
 

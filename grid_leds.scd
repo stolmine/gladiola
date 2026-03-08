@@ -263,6 +263,8 @@
                             ~grid.led(colIdx, trackIdx, brightness);
                         };
                     };
+                    ~grid.led(~utilityHeldButton, 7, GridInterface.ledFull);
+                    ~grid.led(~utilityHeldButton + 1, 7, if(~latchActive) { pulseBright } { GridInterface.ledDim });
                 } {
                     if(~utilityOverlayType == \fxMatrix) {
                         16.do { |col|
@@ -281,6 +283,8 @@
                                 ~grid.led(col, row, brightness);
                             };
                         };
+                        ~grid.led(~utilityHeldButton, 7, GridInterface.ledFull);
+                        ~grid.led(~utilityHeldButton + 1, 7, if(~latchActive) { pulseBright } { GridInterface.ledDim });
                     } {
                         if(~utilityOverlayType == \transpose) {
                             var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];
@@ -292,6 +296,8 @@
                                 };
                                 ~grid.led(4, i, brightness);
                             };
+                            ~grid.led(~utilityHeldButton, 7, GridInterface.ledFull);
+                            ~grid.led(~utilityHeldButton + 1, 7, if(~latchActive) { pulseBright } { GridInterface.ledDim });
                         } {
                             if(~utilityOverlayType == \preset) {
                                 7.do { |row|
@@ -319,6 +325,7 @@
                                 ~grid.led(8, 6, if(~presetQuantized) { GridInterface.ledFull } { GridInterface.ledDim });
                                 if(~utilityHeldButton.notNil) {
                                     ~grid.led(~utilityHeldButton, 7, GridInterface.ledFull);
+                                    ~grid.led(~utilityHeldButton + 1, 7, if(~latchActive) { pulseBright } { GridInterface.ledDim });
                                 };
                             };
                         };
@@ -401,6 +408,11 @@
                         };
                     };
                 };
+
+                // Latch key
+                ~grid.led(1, 7, if(~latchActive) { pulseBright } { GridInterface.ledDim });
+                // Kill FX tails
+                ~grid.led(2, 7, GridInterface.ledDim);
 
                 // Mixer faders (cols 9-15, tracks 0-6)
                 7.do { |trackIdx|

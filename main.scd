@@ -133,6 +133,9 @@ s.waitForBoot({
 	// ========================================
 
 	~cleanup = {
+		if(~meterUpdateRoutine.notNil) { ~meterUpdateRoutine.stop; ~meterUpdateRoutine = nil };
+		if(~meterSynth.notNil) { ~meterSynth.free; ~meterSynth = nil };
+		if(~meterBus.notNil) { ~meterBus.free; ~meterBus = nil };
 		if(~stopTransport.notNil)  { ~stopTransport.() };
 		if(~disconnectGrid.notNil) { ~disconnectGrid.() };
 		if(~freeSamples.notNil)    { ~freeSamples.() };

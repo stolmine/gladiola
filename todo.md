@@ -102,13 +102,16 @@
 - [x] session manager quit button with confirmation dialog: stops transport, silences voices, kills FX tails, clears/frees grid, quits server
 - [x] three-state copy key LED in param overlay: dim = clipboard empty, subtle glow (6) = clipboard populated but differs from held step, bright (12) = clipboard matches held step; scalar params compared via ~clipboardMatchesStep helper (array types skipped)
 - [x] fixed audition during sub-step editing: ~previewStep now resolves params through ~resolveSubStepParam when ~subStepEditing is active, matching sequencer playback
+- [x] latch keys for global overlays: transport (1,7), clockDiv (2,7), FX matrix (3,7), transpose (5,7), and preset overlays (6-9,7) can be latched open via key one column right of held button on row 7; latch pulses when engaged, dim when available
+- [x] kill FX tails button on transport hold page at (2,7): tap to immediately free and recreate send FX synths
+- [x] fixed preset save to mapped slot: holding a preset button mapped to an empty slot now saves to the mapped slot instead of resetting to the button's default slot
 
 ## ideas
 
 [0] = abandoned
 
-- [ ] time stretching infrastructure for loop/break support
-- [ ] copy/paste step regions (multi-step copy)
+- [ ] time stretching infrastructure for loop/break support - this should probably be a per track toggle? could live in the global track overlays as an option. will be necessary for slicing imo, which i would like to implement
+- [0] copy/paste step regions (multi-step copy) - given we have no facility for selcting multiple steps i think we forget this one
 - [ ] swing / groove templates
 - [ ] clock sync (MIDI clock, Link)
 - [ ] audio output routing options (bus selection)
@@ -116,3 +119,4 @@
 - [ ] sample slice mode (auto-chop breaks)
 - [0] per-track sample lock (all steps in a track share one sample) - already accomplished with global track overlays
 - [ ] legato mode for preset switching: the program will attempt to start presets from the same place the previous one was on given instant preset switching is enabled instead of resetting to start (clock div interpolation would be goofy here but worth a try)
+- [ ] BUG: meters sometimes seem to die, or else they do not update on a synchronized basis with steps
