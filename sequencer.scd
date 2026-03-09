@@ -51,6 +51,105 @@ var defaultStep = {
 ~trackVolumes  = Array.fill(7, { 1.0 });
 ~mixerVolumes  = [1.0, 0.85, 0.7, 0.5, 0.3, 0.15, 0.05, 0];
 
+~undoState = nil;
+
+~saveUndo = { |type ... args|
+    ~undoState = Dictionary.newFrom([\type, type] ++ args);
+};
+
+~performUndo = {
+    if(~undoState.notNil) {
+        var u = ~undoState;
+        ~undoState = nil;
+        switch(u[\type])
+        { \stepToggle } {
+            ~tracks[u[\track]][\steps][u[\step]][\on] = u[\oldOn];
+            "[Gladiola] Undo step toggle: track % step %".format(u[\track], u[\step]).postln;
+        }
+        { \stepParam } {
+            ~tracks[u[\track]][\steps][u[\step]][u[\param]] = u[\oldValue];
+            "[Gladiola] Undo step param: track % step % %".format(u[\track], u[\step], u[\param]).postln;
+        }
+        { \subStepParam } {
+            var step = ~tracks[u[\track]][\steps][u[\step]];
+            if(step[\subSteps][u[\subIdx]].notNil) {
+                step[\subSteps][u[\subIdx]][u[\param]] = u[\oldValue];
+            };
+            "[Gladiola] Undo sub-step param: track % step % sub % %".format(u[\track], u[\step], u[\subIdx], u[\param]).postln;
+        }
+        { \stepBank } {
+            var step = ~tracks[u[\track]][\steps][u[\step]];
+            step[\bank] = u[\oldBank];
+            step[\sample] = u[\oldSample];
+            "[Gladiola] Undo step bank: track % step %".format(u[\track], u[\step]).postln;
+        }
+        { \subStepBank } {
+            var step = ~tracks[u[\track]][\steps][u[\step]];
+            if(step[\subSteps][u[\subIdx]].notNil) {
+                step[\subSteps][u[\subIdx]][\bank] = u[\oldBank];
+                step[\subSteps][u[\subIdx]][\sample] = u[\oldSample];
+            };
+            "[Gladiola] Undo sub-step bank: track % step % sub %".format(u[\track], u[\step], u[\subIdx]).postln;
+        }
+        { \trackBank } {
+            u[\oldBanks].do { |bank, i|
+                ~tracks[u[\track]][\steps][i][\bank] = bank;
+                ~tracks[u[\track]][\steps][i][\sample] = u[\oldSamples][i];
+            };
+            "[Gladiola] Undo track bank: track %".format(u[\track]).postln;
+        }
+        { \trackParam } {
+            u[\oldValues].do { |val, i|
+                ~tracks[u[\track]][\steps][i][u[\param]] = val;
+            };
+            "[Gladiola] Undo track param: track % %".format(u[\track], u[\param]).postln;
+        }
+        { \fxParam } {
+            ~setFxParam.(u[\key], u[\oldValue]);
+            "[Gladiola] Undo FX param: %".format(u[\key]).postln;
+        }
+        { \paste } {
+            ~tracks[u[\track]][\steps][u[\step]] = u[\oldStep];
+            "[Gladiola] Undo paste: track % step %".format(u[\track], u[\step]).postln;
+        }
+        { \subToggle } {
+            var step = ~tracks[u[\track]][\steps][u[\step]];
+            step[\subActive][u[\subIdx]] = u[\oldActive];
+            "[Gladiola] Undo sub-step toggle: track % step % sub %".format(u[\track], u[\step], u[\subIdx]).postln;
+        }
+        { \subClear } {
+            var step = ~tracks[u[\track]][\steps][u[\step]];
+            step[\subSteps][u[\subIdx]] = u[\oldSub];
+            "[Gladiola] Undo sub-step clear: track % step % sub %".format(u[\track], u[\step], u[\subIdx]).postln;
+        }
+        { \clockDiv } {
+            ~setTrackClockDiv.(u[\track], u[\oldDiv]);
+            "[Gladiola] Undo clock div: track %".format(u[\track]).postln;
+        }
+        { \transpose } {
+            ~transpose = u[\oldTranspose];
+            ~prevTranspose = u[\oldPrevTranspose];
+            "[Gladiola] Undo transpose".postln;
+        }
+        { \swing } {
+            ~setSwing.(u[\oldSwing]);
+            "[Gladiola] Undo swing".postln;
+        }
+        { \trackVolume } {
+            ~setTrackVolume.(u[\track], u[\oldVolume]);
+            "[Gladiola] Undo track volume: track %".format(u[\track]).postln;
+        }
+        { \seqLength } {
+            ~setTrackStart.(u[\track], u[\oldStart]);
+            ~setTrackEnd.(u[\track], u[\oldEnd]);
+            "[Gladiola] Undo sequence length: track %".format(u[\track]).postln;
+        };
+        { ~updateGridLEDs.() }.defer;
+    } {
+        "[Gladiola] Nothing to undo".postln;
+    };
+};
+
 ~mixerPosForVolume = { |vol|
     var best = 0;
     ~mixerVolumes.do { |v, i| if((vol - v).abs < (vol - ~mixerVolumes[best]).abs) { best = i } };
@@ -505,6 +604,7 @@ var defaultStep = {
 };
 
 ~clearPattern = {
+    ~undoState = nil;
     ~numTracks.do { |i|
         ~tracks[i][\steps] = Array.fill(~stepsPerTrack, { defaultStep.value });
         ~tracks[i][\currentStep] = 0;
@@ -542,6 +642,7 @@ var defaultStep = {
 ~recallPreset = { |slot|
     var snapshot = ~presets[slot];
     if(snapshot.notNil) {
+        ~undoState = nil;
         ~numTracks.do { |i|
             var saved = snapshot[\tracks][i];
             saved[\steps].do { |step|
