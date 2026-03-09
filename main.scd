@@ -75,6 +75,55 @@ s.waitForBoot({
 	// CONNECT GRID
 	// ========================================
 
+	~gridAnimFill = { |callback|
+		// Sequential fill: lights each cell one by one, left-to-right top-to-bottom
+		Routine {
+			~grid.clear;
+			8.do { |y|
+				16.do { |x|
+					~grid.led(x, y, GridInterface.ledBright);
+					(0.005).wait;
+				};
+			};
+			0.15.wait;
+			if(callback.notNil) { callback.() };
+		}.play(AppClock);
+	};
+
+	~gridAnimScatter = { |callback|
+		// Random fill: each cell fades 0→full over several frames
+		var positions = 128.collect { |i| [i % 16, i div: 16] }.scramble;
+		var levels = Array.fill(128, { 0 });
+		var steps = 4;
+		var inc = (GridInterface.ledFull / steps).ceil.asInteger;
+		Routine {
+			~grid.clear;
+			positions.do { |pos, idx|
+				levels[idx] = 1;
+				// Fade up any cell that has been started
+				levels.do { |lvl, j|
+					if(lvl > 0 && (lvl < GridInterface.ledFull)) {
+						levels[j] = (lvl + inc).min(GridInterface.ledFull);
+						~grid.led(positions[j][0], positions[j][1], levels[j]);
+					};
+				};
+				(0.02).wait;
+			};
+			// Finish fading any cells not yet at full
+			steps.do {
+				levels.do { |lvl, j|
+					if(lvl > 0 && (lvl < GridInterface.ledFull)) {
+						levels[j] = (lvl + inc).min(GridInterface.ledFull);
+						~grid.led(positions[j][0], positions[j][1], levels[j]);
+					};
+				};
+				(0.02).wait;
+			};
+			0.1.wait;
+			if(callback.notNil) { callback.() };
+		}.play(AppClock);
+	};
+
 	~connectGrid = { |ip = "127.0.0.1", port = 13001, oscgrid = true, prefix = "/monome"|
 		if(~grid.notNil) { ~grid.free };
 		~grid = GridInterface.new(ip, port, oscgrid, prefix);
@@ -88,7 +137,7 @@ s.waitForBoot({
 		};
 
 		"[Gladiola] Grid connected (%, port %).".format(ip, port).postln;
-		~initGridHandler.();
+		~gridAnimFill.({ ~initGridHandler.(); ~updateGridLEDs.() });
 	};
 
 	~disconnectGrid = {

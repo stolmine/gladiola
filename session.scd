@@ -79,6 +79,8 @@
 	Routine {
 		var path = ~sessionsDir +/+ name ++ ".gladiola";
 		var snapshot;
+		var animDone = false;
+		var loadDone = false;
 
 		if(File.exists(path).not) {
 			"[Gladiola] Session file not found: %".format(path).postln;
@@ -88,6 +90,14 @@
 			if(snapshot.isNil) {
 				"[Gladiola] Failed to read session: %".format(path).postln;
 			} {
+				// Start scatter animation concurrently — it runs alongside the load
+				if(~grid.notNil && ~gridAnimScatter.notNil) {
+					~gridAnimScatter.({
+						animDone = true;
+						if(loadDone) { ~updateGridLEDs.() };
+					});
+				} { animDone = true };
+
 				if(~playing) { ~stopTransport.() };
 
 				~loadSamples.(snapshot[\sampleDir]);
@@ -197,8 +207,11 @@
 				~sessionName = name;
 				~sessionPath = path;
 
-				{ ~updateGridLEDs.() }.defer;
 				"[Gladiola] Session '%' loaded.".format(name).postln;
+				loadDone = true;
+				if(animDone) {
+					{ ~updateGridLEDs.() }.defer;
+				};
 			};
 		};
 	}.play;
@@ -237,8 +250,12 @@
 		~sessionPath = ~sessionsDir +/+ name ++ ".gladiola";
 		~saveSession.();
 
-		{ ~updateGridLEDs.() }.defer;
 		"[Gladiola] New session '%' created.".format(name).postln;
+		if(~grid.notNil && ~gridAnimScatter.notNil) {
+			~gridAnimScatter.({ ~updateGridLEDs.() });
+		} {
+			{ ~updateGridLEDs.() }.defer;
+		};
 	}.play;
 };
 
