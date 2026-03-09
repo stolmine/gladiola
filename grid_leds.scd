@@ -174,12 +174,14 @@
             var paramNames = ~currentParamNames.();
             var numParams = paramNames.size;
             var valueRow = ~selectedParam;
-            var pagePos = ~trackOverlayPagePos.(~trackParamCol, valueRow);
+            var layout = ~overlayLayout.(~trackParamCol, -1, valueRow);
 
             ~grid.clear;
 
+            // Held button
             ~grid.led(~trackParamCol, 7, GridInterface.ledFull);
 
+            // Param selector column
             7.do { |row|
                 if(row < numParams) {
                     var brightness;
@@ -198,6 +200,7 @@
                 };
             };
 
+            // Value row with collision avoidance
             if(~selectedParam == 0 && (~paramPage == 0)) {
                 var firstVal = ~tracks[~trackParamTrack][\steps][0][\sample];
                 var unanimous = ~tracks[~trackParamTrack][\steps].every { |step| step[\sample] == firstVal };
@@ -205,15 +208,18 @@
                 var numValid = ~numValidPositions.(0, 0, ~trackParamTrack, 0);
 
                 16.do { |col|
-                    if(col != ~trackParamCol && (col != pagePos[\pageCol] || (valueRow != pagePos[\pageRow]))) {
-                        var valIdx = ~valueIdxForCol.(col, ~trackParamCol);
-                        if(valIdx.notNil && (valIdx < numValid)) {
-                            var brightness = if(curPos.notNil && (valIdx == curPos)) {
-                                GridInterface.ledFull
-                            } {
-                                GridInterface.ledDim
+                    if(col != ~trackParamCol) {
+                        if((layout[\actionCols].includes(col) || layout[\subCols].includes(col)) && layout[\actionRows].includes(valueRow)) {
+                        } {
+                            var valIdx = ~valueIdxForCol.(col, ~trackParamCol);
+                            if(valIdx.notNil && (valIdx < numValid)) {
+                                var brightness = if(curPos.notNil && (valIdx == curPos)) {
+                                    GridInterface.ledFull
+                                } {
+                                    GridInterface.ledDim
+                                };
+                                ~grid.led(col, valueRow, brightness);
                             };
-                            ~grid.led(col, valueRow, brightness);
                         };
                     };
                 };
@@ -225,26 +231,40 @@
                 var centerPos = ~paramCenterPos.(~paramPage, ~selectedParam);
 
                 16.do { |col|
-                    if(col != ~trackParamCol && (col != pagePos[\pageCol] || (valueRow != pagePos[\pageRow]))) {
-                        var valIdx = ~valueIdxForCol.(col, ~trackParamCol);
-                        if(valIdx.notNil && (valIdx < numValid)) {
-                            var brightness = if(curPos.notNil && (valIdx == curPos)) {
-                                GridInterface.ledFull
-                            } {
-                                if(centerPos.notNil && (valIdx == centerPos)) {
-                                    GridInterface.ledMedium
+                    if(col != ~trackParamCol) {
+                        if((layout[\actionCols].includes(col) || layout[\subCols].includes(col)) && layout[\actionRows].includes(valueRow)) {
+                        } {
+                            var valIdx = ~valueIdxForCol.(col, ~trackParamCol);
+                            if(valIdx.notNil && (valIdx < numValid)) {
+                                var brightness = if(curPos.notNil && (valIdx == curPos)) {
+                                    GridInterface.ledFull
                                 } {
-                                    GridInterface.ledDim
-                                }
+                                    if(centerPos.notNil && (valIdx == centerPos)) {
+                                        GridInterface.ledMedium
+                                    } {
+                                        GridInterface.ledDim
+                                    }
+                                };
+                                ~grid.led(col, valueRow, brightness);
                             };
-                            ~grid.led(col, valueRow, brightness);
                         };
                     };
                 };
             };
 
-            ~grid.led(pagePos[\pageCol], pagePos[\pageRow],
+            // Action grid LEDs
+            ~grid.led(layout[\pageCol], layout[\pageRow],
                 if(~paramPage == 1) { GridInterface.ledFull } { GridInterface.ledMedium });
+            ~grid.led(layout[\copyCol], layout[\copyRow], GridInterface.ledDim);  // Slice stub
+            ~grid.led(layout[\auditionCol], layout[\auditionRow],
+                if(~auditionEnabled) { GridInterface.ledFull } { GridInterface.ledDim });
+            ~grid.led(layout[\latchCol], layout[\latchRow],
+                if(~latchActive) { pulseBright } { GridInterface.ledDim });
+            ~grid.led(layout[\actionCols][1], layout[\actionRows][1], GridInterface.ledDim);  // Mod stub
+
+            // Clear LED (phantom sub grid center)
+            ~grid.led(layout[\subCols][1], layout[\subRows][1],
+                if(~trackClearArmed) { pulseBright } { GridInterface.ledDim });
 
         } {
             if(~utilityOverlayActive) {

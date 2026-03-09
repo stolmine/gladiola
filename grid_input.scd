@@ -36,6 +36,7 @@
 ~latchActive = false;
 ~pulseRoutine = nil;
 ~lastOverlayCloseTime = nil;
+~trackClearArmed = false;
 
 ~startPulseRoutine = {
     if(~pulseRoutine.isNil) {
@@ -146,13 +147,6 @@
         if(col < heldCol) { col } { col - 1 }
     }
 };
-
-~trackOverlayPagePos = { |heldCol, valueRow|
-    var pageCol = heldCol - 4;
-    var pageRow = if(valueRow != 0) { 0 } { 1 };
-    Dictionary[\pageCol -> pageCol, \pageRow -> pageRow]
-};
-
 
 ~subIdxFromGrid = { |x, y, subPos|
     var result = nil;
@@ -495,54 +489,138 @@
                         if(~trackParamActive && ~trackParamCol.notNil && ~trackParamTrack.notNil) {
                             var paramNames = ~currentParamNames.();
                             var valueRow = ~selectedParam;
-                            var pagePos = ~trackOverlayPagePos.(~trackParamCol, valueRow);
+                            var layout = ~overlayLayout.(~trackParamCol, -1, valueRow);
 
-                            if(x == pagePos[\pageCol] && (y == pagePos[\pageRow])) {
+                            // Disarm clear on any non-clear press
+                            if(x != layout[\subCols][1] || (y != layout[\subRows][1])) {
+                                if(~trackClearArmed) {
+                                    ~trackClearArmed = false;
+                                    "[Gladiola] Track clear disarmed".postln;
+                                };
+                            };
+
+                            if(x == layout[\pageCol] && (y == layout[\pageRow])) {
+                                // Page toggle
                                 ~paramPage = 1 - ~paramPage;
                                 ~selectedParam = 0;
                                 "[Gladiola] Track param page -> %".format(~paramPage).postln;
                                 ~updateGridLEDs.();
                             } {
-                                if(x == ~trackParamCol && (y < 7)) {
-                                    if(y < paramNames.size) {
-                                        if(y == 0 && (~selectedParam == 0) && (~paramPage == 0)) {
-                                            var numBanks = (~numBanks ? 1).max(1);
-                                            var curBank = ~tracks[~trackParamTrack][\steps][0][\bank];
-                                            var newBank = (curBank + 1) % numBanks;
-                                            ~tracks[~trackParamTrack][\steps].do { |step|
-                                                step[\bank] = newBank;
-                                                step[\sample] = 0;
-                                            };
-                                            "[Gladiola] Track % all steps: bank -> %".format(~trackParamTrack, newBank).postln;
-                                        } {
-                                            ~selectedParam = y;
-                                            "[Gladiola] Track param -> %".format(paramNames[y]).postln;
-                                        };
-                                        ~updateGridLEDs.();
-                                    };
+                            if(x == layout[\copyCol] && (y == layout[\copyRow])) {
+                                // Slice stub
+                                "[Gladiola] Slice toggle (stub) for track %".format(~trackParamTrack).postln;
+                                ~updateGridLEDs.();
+                            } {
+                            if(x == layout[\auditionCol] && (y == layout[\auditionRow])) {
+                                // Audition toggle
+                                ~auditionEnabled = ~auditionEnabled.not;
+                                "[Gladiola] Audition -> %".format(~auditionEnabled).postln;
+                                if(~auditionEnabled && ~playing.not) {
+                                    ~previewStep.(~trackParamTrack, 0);
+                                };
+                                ~updateGridLEDs.();
+                            } {
+                            if(x == layout[\latchCol] && (y == layout[\latchRow])) {
+                                // Latch toggle
+                                if(~latchActive) {
+                                    ~latchActive = false;
+                                    ~stopPulseRoutine.();
+                                    ~trackParamActive = false;
+                                    ~trackParamCol = nil;
+                                    ~trackParamTrack = nil;
+                                    ~trackClearArmed = false;
+                                    ~auditionEnabled = true;
+                                    ~lastOverlayCloseTime = Main.elapsedTime;
+                                    "[Gladiola] Track latch disengaged, overlay closed".postln;
                                 } {
-                                    if(y == ~selectedParam && (x != ~trackParamCol)) {
-                                        var valIdx = ~valueIdxForCol.(x, ~trackParamCol);
-                                        if(valIdx.notNil) {
-                                            var numValid = ~numValidPositions.(~paramPage, ~selectedParam, ~trackParamTrack, 0);
-                                            if(valIdx < numValid) {
-                                                if(~selectedParam == 0 && (~paramPage == 0)) {
-                                                    ~tracks[~trackParamTrack][\steps].do { |step|
-                                                        step[\sample] = valIdx;
-                                                    };
-                                                    "[Gladiola] Track % all steps: sample -> %".format(~trackParamTrack, valIdx).postln;
-                                                } {
-                                                    var val = ~valueForPosition.(~paramPage, ~selectedParam, valIdx);
-                                                    ~tracks[~trackParamTrack][\steps].do { |step|
-                                                        step[paramNames[~selectedParam]] = val;
-                                                    };
-                                                    "[Gladiola] Track % all steps: % -> %".format(~trackParamTrack, paramNames[~selectedParam], val).postln;
+                                    ~latchActive = true;
+                                    ~startPulseRoutine.();
+                                    "[Gladiola] Track latch engaged".postln;
+                                };
+                                ~updateGridLEDs.();
+                            } {
+                            if(x == layout[\actionCols][1] && (y == layout[\actionRows][1])) {
+                                // Mod stub
+                                "[Gladiola] Mod (stub) for track %".format(~trackParamTrack).postln;
+                                ~updateGridLEDs.();
+                            } {
+                            if(x == layout[\subCols][1] && (y == layout[\subRows][1])) {
+                                // Clear
+                                if(~trackClearArmed) {
+                                    ~tracks[~trackParamTrack][\steps] = Array.fill(~stepsPerTrack, {
+                                        Dictionary.newFrom([
+                                            \on, false, \bank, 0, \sample, 0, \pitch, 1.0,
+                                            \velocity, 1.0, \loopLength, 0.0, \loopRegion, 0.0,
+                                            \ratchet, 1, \randomness, 0.0, \gateLength, 1.0,
+                                            \reverse, false, \filter, 0.0, \pan, 0.0,
+                                            \probability, 1.0, \delaySend, 0.0, \bitcrush, 0.0,
+                                            \subSteps, Array.fill(9, { nil }),
+                                            \subActive, Array.fill(9, { |i| i == 0 }),
+                                            \subIdx, 0
+                                        ])
+                                    });
+                                    ~trackClearArmed = false;
+                                    "[Gladiola] Track % cleared".format(~trackParamTrack).postln;
+                                } {
+                                    ~trackClearArmed = true;
+                                    "[Gladiola] Track % clear armed".format(~trackParamTrack).postln;
+                                };
+                                ~updateGridLEDs.();
+                            } {
+                            if(x == ~trackParamCol && (y < 7)) {
+                                // Param selector
+                                if(y < paramNames.size) {
+                                    if(y == 0 && (~selectedParam == 0) && (~paramPage == 0)) {
+                                        var numBanks = (~numBanks ? 1).max(1);
+                                        var curBank = ~tracks[~trackParamTrack][\steps][0][\bank];
+                                        var newBank = (curBank + 1) % numBanks;
+                                        ~tracks[~trackParamTrack][\steps].do { |step|
+                                            step[\bank] = newBank;
+                                            step[\sample] = 0;
+                                        };
+                                        "[Gladiola] Track % all steps: bank -> %".format(~trackParamTrack, newBank).postln;
+                                    } {
+                                        ~selectedParam = y;
+                                        "[Gladiola] Track param -> %".format(paramNames[y]).postln;
+                                    };
+                                    ~updateGridLEDs.();
+                                };
+                            } {
+                            if(y == ~selectedParam && (x != ~trackParamCol)) {
+                                // Value row — skip action/sub grid cells
+                                if((layout[\actionCols].includes(x) || layout[\subCols].includes(x)) && layout[\actionRows].includes(y)) {
+                                    // Skip — collision with action/sub grid
+                                } {
+                                    var valIdx = ~valueIdxForCol.(x, ~trackParamCol);
+                                    if(valIdx.notNil) {
+                                        var numValid = ~numValidPositions.(~paramPage, ~selectedParam, ~trackParamTrack, 0);
+                                        if(valIdx < numValid) {
+                                            if(~selectedParam == 0 && (~paramPage == 0)) {
+                                                ~tracks[~trackParamTrack][\steps].do { |step|
+                                                    step[\sample] = valIdx;
                                                 };
-                                                ~updateGridLEDs.();
+                                                "[Gladiola] Track % all steps: sample -> %".format(~trackParamTrack, valIdx).postln;
+                                            } {
+                                                var val = ~valueForPosition.(~paramPage, ~selectedParam, valIdx);
+                                                ~tracks[~trackParamTrack][\steps].do { |step|
+                                                    step[paramNames[~selectedParam]] = val;
+                                                };
+                                                "[Gladiola] Track % all steps: % -> %".format(~trackParamTrack, paramNames[~selectedParam], val).postln;
                                             };
+                                            if(~auditionEnabled && ~playing.not) {
+                                                ~previewStep.(~trackParamTrack, 0);
+                                            };
+                                            ~updateGridLEDs.();
                                         };
                                     };
                                 };
+                            };
+                            };
+                            };
+                            };
+                            };
+                            };
+                            };
                             };
                         } {
                             if(y == 7) {
@@ -768,10 +846,16 @@
         } {
             if(~trackParamActive) {
                 if(x == ~trackParamCol && (y == 7)) {
-                    ~trackParamActive = false;
-                    ~trackParamCol = nil;
-                    ~trackParamTrack = nil;
-                    ~updateGridLEDs.();
+                    if(~latchActive) {
+                        // Latch engaged — keep overlay open
+                    } {
+                        ~trackParamActive = false;
+                        ~trackParamCol = nil;
+                        ~trackParamTrack = nil;
+                        ~trackClearArmed = false;
+                        ~lastOverlayCloseTime = Main.elapsedTime;
+                        ~updateGridLEDs.();
+                    };
                 };
             } {
                 if(~utilityOverlayActive) {
