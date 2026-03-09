@@ -41,6 +41,26 @@
 ~lfoModTrack = nil;
 ~lfoHoldActive = false;
 
+~fineActive = false;
+~fineContext = nil;
+~fineParamPage = nil;
+~fineParamIdx = nil;
+~fineFxCol = nil;
+~fineMixerTrack = nil;
+~fineModDest = nil;
+~fineTrackIdx = nil;
+~fineStepIdx = nil;
+~fineSubStepIdx = nil;
+
+~fineGridToPos = { |x, y|
+    var cellIdx = y * 16 + x;
+    if(cellIdx == 0) { nil } { cellIdx - 1 }
+};
+~finePosToGrid = { |pos|
+    var cellIdx = pos + 1;
+    [cellIdx % 16, cellIdx div: 16]
+};
+
 ~startPulseRoutine = {
     if(~pulseRoutine.isNil) {
         ~pulseRoutine = Routine({
@@ -165,6 +185,80 @@
 
     ~grid.key({ |x, y, state|
         if(state == 1) {
+            if(~fineActive == true) {
+                if(x == 0 && (y == 0)) {
+                    // Exit fine fader
+                    ~fineActive = false;
+                    ~fineContext = nil;
+                    "[Gladiola] Fine fader closed".postln;
+                    ~updateGridLEDs.();
+                } {
+                    var pos = ~fineGridToPos.(x, y);
+                    if(pos.notNil) {
+                        switch(~fineContext)
+                        { \step } {
+                            var step = ~tracks[~fineTrackIdx][\steps][~fineStepIdx];
+                            var target = if(~fineSubStepIdx.notNil) {
+                                if(step[\subSteps][~fineSubStepIdx].isNil) { step[\subSteps][~fineSubStepIdx] = Dictionary.new };
+                                step[\subSteps][~fineSubStepIdx]
+                            } { step };
+                            if(~fineParamIdx == 0 && (~fineParamPage == 0)) {
+                                // Sample
+                                var info = ~fineSampleToBank.(pos);
+                                target[\bank] = info[0];
+                                target[\sample] = info[1];
+                                "[Gladiola] Fine step sample -> bank % sample %".format(info[0], info[1]).postln;
+                            } {
+                                var val = ~fineValueForPosition.(~fineParamPage, ~fineParamIdx, pos);
+                                var paramNames = if(~fineParamPage == 0) { ~paramNamesPage1 } { ~paramNamesPage2 };
+                                target[paramNames[~fineParamIdx]] = val;
+                                "[Gladiola] Fine step % -> %".format(paramNames[~fineParamIdx], val).postln;
+                            };
+                            if(~auditionEnabled && ~playing.not) {
+                                ~previewStep.(~fineTrackIdx, ~fineStepIdx);
+                            };
+                        }
+                        { \track } {
+                            var paramNames = if(~fineParamPage == 0) { ~paramNamesPage1 } { ~paramNamesPage2 };
+                            if(~fineParamIdx == 0 && (~fineParamPage == 0)) {
+                                var info = ~fineSampleToBank.(pos);
+                                ~tracks[~fineTrackIdx][\steps].do { |step|
+                                    step[\bank] = info[0];
+                                    step[\sample] = info[1];
+                                };
+                                "[Gladiola] Fine track sample -> bank % sample %".format(info[0], info[1]).postln;
+                            } {
+                                var val = ~fineValueForPosition.(~fineParamPage, ~fineParamIdx, pos);
+                                ~tracks[~fineTrackIdx][\steps].do { |step|
+                                    step[paramNames[~fineParamIdx]] = val;
+                                };
+                                "[Gladiola] Fine track % -> %".format(paramNames[~fineParamIdx], val).postln;
+                            };
+                            if(~auditionEnabled && ~playing.not) {
+                                ~previewStep.(~fineTrackIdx, 0);
+                            };
+                        }
+                        { \fx } {
+                            var val = ~fxFineValueForPosition.(~fineFxCol, pos);
+                            var key = ~fxParamKeys[~fineFxCol];
+                            ~setFxParam.(key, val);
+                            "[Gladiola] Fine FX % -> %".format(key, val).postln;
+                        }
+                        { \mixer } {
+                            var val = ~mixerFineValue.(pos);
+                            ~setTrackVolume.(~fineMixerTrack, val);
+                            "[Gladiola] Fine mixer track % -> %".format(~fineMixerTrack, val).postln;
+                        }
+                        { \modDepth } {
+                            var val = ~modDepthFineValue.(pos);
+                            var polarity = ~trackModSettings[~fineTrackIdx][\polarities][~fineModDest];
+                            ~setModDepth.(~fineTrackIdx, ~fineModDest, val, polarity);
+                            "[Gladiola] Fine mod % depth -> %".format(~modDestKeys[~fineModDest], val).postln;
+                        };
+                        ~updateGridLEDs.();
+                    };
+                };
+            } {
             if(~lengthModalTrack.notNil) {
                 if(y == ~lengthModalTrack) {
                     if(~lengthModalMode == \setEnd) {
@@ -753,10 +847,135 @@
                 };
                 };
             };
+            };
         };
     });
 
     ~grid.hold({ |x, y|
+        if(~fineActive == true) {
+            // Already in fine fader, ignore holds
+        } {
+        if(~paramMenuActive && ~heldTrack.notNil && ~heldStepIdx.notNil) {
+            var effectivePage = if(~subStepEditing) { ~subStepParamPage } { ~paramPage };
+            var paramNames = if(effectivePage == 0) { ~paramNamesPage1 } { ~paramNamesPage2 };
+            var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
+            var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
+
+            if(y == valueRow && (x != ~heldStepIdx)) {
+                var valIdx = ~valueIdxForCol.(x, ~heldStepIdx);
+                if(valIdx.notNil) {
+                    var curPos, isSample = (~selectedParam == 0 && (effectivePage == 0));
+                    if(isSample) {
+                        curPos = if(~subStepEditing && ~subStepEditIdx.notNil) {
+                            ~resolveSubStepParam.(step, ~subStepEditIdx, \sample).asInteger
+                        } {
+                            step[\sample].asInteger
+                        };
+                    } {
+                        var curVal = if(~subStepEditing && ~subStepEditIdx.notNil) {
+                            ~resolveSubStepParam.(step, ~subStepEditIdx, paramNames[~selectedParam])
+                        } {
+                            step[paramNames[~selectedParam]]
+                        };
+                        curPos = ~positionForValue.(effectivePage, ~selectedParam, curVal);
+                    };
+                    if(valIdx == curPos) {
+                        if(isSample || { ~paramHasFine.(effectivePage, ~selectedParam) }) {
+                            ~fineActive = true;
+                            ~fineContext = \step;
+                            ~fineParamPage = effectivePage;
+                            ~fineParamIdx = ~selectedParam;
+                            ~fineTrackIdx = ~heldTrack;
+                            ~fineStepIdx = ~heldStepIdx;
+                            ~fineSubStepIdx = if(~subStepEditing) { ~subStepEditIdx } { nil };
+                            ~latchActive = true;
+                            ~startPulseRoutine.();
+                            "[Gladiola] Fine fader opened (step)".postln;
+                            ~updateGridLEDs.();
+                        };
+                    };
+                };
+            };
+        };
+        if(~fineActive.not && ~trackParamActive && ~trackParamCol.notNil && ~trackParamTrack.notNil) {
+            var paramNames = ~currentParamNames.();
+            var valueRow = ~selectedParam;
+            if(y == valueRow && (x != ~trackParamCol)) {
+                var valIdx = ~valueIdxForCol.(x, ~trackParamCol);
+                if(valIdx.notNil) {
+                    var curPos, isSample = (~selectedParam == 0 && (~paramPage == 0));
+                    if(isSample) {
+                        var firstVal = ~tracks[~trackParamTrack][\steps][0][\sample];
+                        curPos = firstVal.asInteger;
+                    } {
+                        var curVal = ~tracks[~trackParamTrack][\steps][0][paramNames[~selectedParam]];
+                        curPos = ~positionForValue.(~paramPage, ~selectedParam, curVal);
+                    };
+                    if(valIdx == curPos) {
+                        if(isSample || { ~paramHasFine.(~paramPage, ~selectedParam) }) {
+                            ~fineActive = true;
+                            ~fineContext = \track;
+                            ~fineParamPage = ~paramPage;
+                            ~fineParamIdx = ~selectedParam;
+                            ~fineTrackIdx = ~trackParamTrack;
+                            ~latchActive = true;
+                            ~startPulseRoutine.();
+                            "[Gladiola] Fine fader opened (track)".postln;
+                            ~updateGridLEDs.();
+                        };
+                    };
+                };
+            };
+        };
+        if(~fineActive.not && ~utilityOverlayActive && (~utilityOverlayType == \fxMatrix)) {
+            if(x < 16 && (y < 7)) {
+                var key = ~fxParamKeys[x];
+                var currentRow = ~fxPositionForValue.(x, ~fxParams[key]);
+                if(y == currentRow) {
+                    if(~fxHasFine.(x)) {
+                        ~fineActive = true;
+                        ~fineContext = \fx;
+                        ~fineFxCol = x;
+                        ~latchActive = true;
+                        ~startPulseRoutine.();
+                        "[Gladiola] Fine fader opened (FX col %)".format(x).postln;
+                        ~updateGridLEDs.();
+                    };
+                };
+            };
+        };
+        if(~fineActive.not && ~transportHeld) {
+            if(x >= 9 && (x <= 15) && (y < 8)) {
+                var trackIdx = x - 9;
+                var curRow = ~mixerPosForVolume.(~trackVolumes[trackIdx]);
+                if(y == curRow) {
+                    ~fineActive = true;
+                    ~fineContext = \mixer;
+                    ~fineMixerTrack = trackIdx;
+                    ~latchActive = true;
+                    ~startPulseRoutine.();
+                    "[Gladiola] Fine fader opened (mixer track %)".format(trackIdx).postln;
+                    ~updateGridLEDs.();
+                };
+            };
+        };
+        if(~fineActive.not && ~lfoModActive && ~lfoModTrack.notNil) {
+            if(x >= 2 && (x <= 15) && (y < 7)) {
+                var destIdx = x - 2;
+                var depth = ~trackModSettings[~lfoModTrack][\depths][destIdx];
+                var depthRow = ~modRowForDepth.(depth);
+                if(y == depthRow) {
+                    ~fineActive = true;
+                    ~fineContext = \modDepth;
+                    ~fineModDest = destIdx;
+                    ~fineTrackIdx = ~lfoModTrack;
+                    ~latchActive = true;
+                    ~startPulseRoutine.();
+                    "[Gladiola] Fine fader opened (mod %)".format(~modDestKeys[destIdx]).postln;
+                    ~updateGridLEDs.();
+                };
+            };
+        };
         if(~paramMenuActive && ~subStepEditing.not && ~heldTrack.notNil && ~heldStepIdx.notNil) {
             var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
             var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
@@ -862,9 +1081,13 @@
             };
         };
         };
+        };
     });
 
     ~grid.release({ |x, y|
+        if(~fineActive == true) {
+            // Auto-latched, release does nothing
+        } {
         if(~transportHeld && (x == 0) && (y == 3)) {
             if(~anchorPressTime.notNil) {
                 ~setTempo.(~anchorTempo);
@@ -1042,6 +1265,7 @@
             };
             };
         };
+        };
     });
 
     ~grid.doubleTap({ |x, y|
@@ -1063,7 +1287,7 @@
             };
         };
         if(y >= 0 && (y < ~numTracks)) {
-            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~trackParamActive.not && ~lfoModActive.not && ~lengthModalTrack.isNil && ~transportHeld.not && (~lastOverlayCloseTime.isNil || { (Main.elapsedTime - ~lastOverlayCloseTime) > 0.3 })) {
+            if(~fineActive.not && ~utilityOverlayActive.not && ~paramMenuActive.not && ~trackParamActive.not && ~lfoModActive.not && ~lengthModalTrack.isNil && ~transportHeld.not && (~lastOverlayCloseTime.isNil || { (Main.elapsedTime - ~lastOverlayCloseTime) > 0.3 })) {
                 var track = ~tracks[y];
                 if(~stepInRange.(x, track[\startStep], track[\endStep])) {
                     track[\steps][x][\on] = track[\steps][x][\on].not;

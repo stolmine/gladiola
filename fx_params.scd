@@ -43,6 +43,27 @@
     bestIdx
 };
 
+~fxHasFine = { |col| col != 12 };
+
+~fxFineRanges = [
+    [0.0625, 1.0], [0.0, 0.95], [-1.0, 1.0], [0.0, 1.0],
+    [0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0],
+    [0.1, 1.0], [0.0, 1.0], [0.0, 1.0],
+    [0.0, 1.0], nil, [-1.0, 1.0], [0.0, 1.0], [0.0, 1.0]
+];
+
+~fxFineValueForPosition = { |col, pos127|
+    var range = ~fxFineRanges[col];
+    range[0] + (pos127 / 126.0 * (range[1] - range[0]))
+};
+~fxFinePositionForValue = { |col, value|
+    var range = ~fxFineRanges[col];
+    ((value - range[0]) / (range[1] - range[0]) * 126.0).round.asInteger.clip(0, 126)
+};
+~fxFineCenterPos = { |col|
+    if((col == 2) || (col == 13)) { 63 } { nil }
+};
+
 ~fxHasNonDefault = {
     var nonDefault = false;
     ~fxParamKeys.do { |key|

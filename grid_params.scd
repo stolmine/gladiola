@@ -118,6 +118,66 @@ var attackValues = [0.002, 0.005, 0.01, 0.015, 0.025, 0.04, 0.06, 0.09, 0.13, 0.
     if(paramPage == 0 && ((paramIdx == 4) || (paramIdx == 5))) { 7 } { nil }
 };
 
+// Fine fader: 127-position precision control
+~paramHasFine = { |paramPage, paramIdx|
+    if(paramPage == 0) { paramIdx >= 1 } {
+        [0, 2, 3, 5, 6].includes(paramIdx)
+    }
+};
+
+~fineParamRanges = Dictionary[
+    'p0i1' -> [0.125, 4.0],   'p0i2' -> [0.067, 1.0],
+    'p0i3' -> [0.0625, 16.0], 'p0i4' -> [-1.0, 1.0],
+    'p0i5' -> [-1.0, 1.0],    'p0i6' -> [0.0, 1.0],
+    'p1i0' -> [0.002, 0.5],   'p1i2' -> [0.0, 8.0],
+    'p1i3' -> [0.0, 1.0],     'p1i5' -> [0.067, 1.0],
+    'p1i6' -> [0.0, 1.0],
+];
+
+~fineValueForPosition = { |paramPage, paramIdx, pos127|
+    var key = ("p" ++ paramPage ++ "i" ++ paramIdx).asSymbol;
+    var range = ~fineParamRanges[key];
+    range[0] + (pos127 / 126.0 * (range[1] - range[0]))
+};
+
+~finePositionForValue = { |paramPage, paramIdx, value|
+    var key = ("p" ++ paramPage ++ "i" ++ paramIdx).asSymbol;
+    var range = ~fineParamRanges[key];
+    ((value - range[0]) / (range[1] - range[0]) * 126.0).round.asInteger.clip(0, 126)
+};
+
+~fineCenterPos = { |paramPage, paramIdx|
+    if(paramPage == 0 && ((paramIdx == 4) || (paramIdx == 5))) { 63 } { nil }
+};
+
+~fineSampleList = {
+    var count = 0, boundaries = List.new;
+    ~numBanks.do { |b|
+        var bankSize = ~samplesInBank.(b);
+        if(count < 127) { boundaries.add(count) };
+        count = count + bankSize;
+    };
+    Dictionary[\count -> count.min(127), \bankBoundaries -> boundaries.asArray]
+};
+
+~fineSampleToBank = { |flatIdx|
+    var remaining = flatIdx, result = [0, 0];
+    block { |break|
+        ~numBanks.do { |b|
+            var bankSize = ~samplesInBank.(b);
+            if(remaining < bankSize) { result = [b, remaining]; break.() };
+            remaining = remaining - bankSize;
+        };
+    };
+    result
+};
+
+~fineBankToFlat = { |bank, sample|
+    var flat = 0;
+    bank.do { |b| flat = flat + ~samplesInBank.(b) };
+    flat + sample
+};
+
 ~resolveSubStepParam = { |step, subIdx, paramName|
     if(step[\subActive][subIdx]) {
         var sub = step[\subSteps][subIdx];

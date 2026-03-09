@@ -28,6 +28,101 @@
         GridInterface.ledFull - (((pulsePhase - 8) / 7) * (GridInterface.ledFull - GridInterface.ledDim)).round.asInteger
     };
 
+    if(~fineActive == true) {
+        var currentPos, centerPos = nil, sampleInfo = nil;
+
+        ~grid.clear;
+
+        // Exit key
+        ~grid.led(0, 0, pulseBright);
+
+        // Compute current position and center
+        switch(~fineContext)
+        { \step } {
+            if(~fineParamIdx == 0 && (~fineParamPage == 0)) {
+                // Sample
+                var step = ~tracks[~fineTrackIdx][\steps][~fineStepIdx];
+                var bank, sample;
+                if(~fineSubStepIdx.notNil) {
+                    bank = ~resolveSubStepParam.(step, ~fineSubStepIdx, \bank);
+                    sample = ~resolveSubStepParam.(step, ~fineSubStepIdx, \sample);
+                } {
+                    bank = step[\bank];
+                    sample = step[\sample];
+                };
+                currentPos = ~fineBankToFlat.(bank, sample);
+                sampleInfo = ~fineSampleList.();
+            } {
+                var step = ~tracks[~fineTrackIdx][\steps][~fineStepIdx];
+                var paramNames = if(~fineParamPage == 0) { ~paramNamesPage1 } { ~paramNamesPage2 };
+                var curVal = if(~fineSubStepIdx.notNil) {
+                    ~resolveSubStepParam.(step, ~fineSubStepIdx, paramNames[~fineParamIdx])
+                } {
+                    step[paramNames[~fineParamIdx]]
+                };
+                currentPos = ~finePositionForValue.(~fineParamPage, ~fineParamIdx, curVal);
+                centerPos = ~fineCenterPos.(~fineParamPage, ~fineParamIdx);
+            };
+        }
+        { \track } {
+            if(~fineParamIdx == 0 && (~fineParamPage == 0)) {
+                var step = ~tracks[~fineTrackIdx][\steps][0];
+                currentPos = ~fineBankToFlat.(step[\bank], step[\sample]);
+                sampleInfo = ~fineSampleList.();
+            } {
+                var paramNames = if(~fineParamPage == 0) { ~paramNamesPage1 } { ~paramNamesPage2 };
+                var curVal = ~tracks[~fineTrackIdx][\steps][0][paramNames[~fineParamIdx]];
+                currentPos = ~finePositionForValue.(~fineParamPage, ~fineParamIdx, curVal);
+                centerPos = ~fineCenterPos.(~fineParamPage, ~fineParamIdx);
+            };
+        }
+        { \fx } {
+            var key = ~fxParamKeys[~fineFxCol];
+            currentPos = ~fxFinePositionForValue.(~fineFxCol, ~fxParams[key]);
+            centerPos = ~fxFineCenterPos.(~fineFxCol);
+        }
+        { \mixer } {
+            currentPos = ~mixerFinePosition.(~trackVolumes[~fineMixerTrack]);
+        }
+        { \modDepth } {
+            var depth = ~trackModSettings[~fineTrackIdx][\depths][~fineModDest];
+            currentPos = ~modDepthFinePosition.(depth);
+        };
+
+        // Render 127 value cells
+        127.do { |pos|
+            var cellIdx = pos + 1;
+            var cx = cellIdx % 16;
+            var cy = cellIdx div: 16;
+            var brightness;
+
+            if(pos == currentPos) {
+                brightness = GridInterface.ledFull;
+            } {
+                if(sampleInfo.notNil) {
+                    // Sample mode
+                    if(pos >= sampleInfo[\count]) {
+                        brightness = GridInterface.ledOff;
+                    } {
+                        if(sampleInfo[\bankBoundaries].includes(pos)) {
+                            brightness = GridInterface.ledMedium;
+                        } {
+                            brightness = GridInterface.ledDim;
+                        };
+                    };
+                } {
+                    if(centerPos.notNil && (pos == centerPos)) {
+                        brightness = GridInterface.ledMedium;
+                    } {
+                        brightness = GridInterface.ledDim;
+                    };
+                };
+            };
+
+            ~grid.led(cx, cy, brightness);
+        };
+    } {
+
     if(~paramMenuActive && ~heldTrack.notNil && ~heldStepIdx.notNil) {
         var track = ~tracks[~heldTrack];
         var step = track[\steps][~heldStepIdx];
@@ -624,6 +719,7 @@
         };
         };
     };
+    };  // close if(~fineActive) else
 };
 
 "[Gladiola] grid_leds.scd loaded.".postln;

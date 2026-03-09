@@ -57,6 +57,9 @@ var defaultStep = {
     best
 };
 
+~mixerFineValue = { |pos127| pos127 / 126.0 };
+~mixerFinePosition = { |vol| (vol * 126.0).round.asInteger.clip(0, 126) };
+
 ~lfoRateHz = { |sixteenths| ~bpm / (60 * sixteenths * 0.25) };
 
 ~updateLfoRate = { |trackIdx|

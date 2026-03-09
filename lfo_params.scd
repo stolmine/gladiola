@@ -18,5 +18,8 @@
     ~trackModSettings[trackIdx][\depths].any { |d| d > 0 }
 };
 
+~modDepthFineValue = { |pos127| pos127 / 126.0 };
+~modDepthFinePosition = { |depth| (depth * 126.0).round.asInteger.clip(0, 126) };
+
 "[Gladiola] lfo_params.scd loaded.".postln;
 )
