@@ -66,6 +66,19 @@ var defaultStep = {
 };
 ~updateAllLfoRates = { ~numTracks.do { |i| ~updateLfoRate.(i) } };
 
+~debugLfo = { |trackIdx|
+    var synth = ~lfoSynths[trackIdx];
+    var busIdx = ~lfoBus.index + trackIdx;
+    var ms = ~trackModSettings[trackIdx];
+    "[Gladiola] === LFO DEBUG track % ===".format(trackIdx).postln;
+    "[Gladiola]   synth: %, nodeID: %".format(synth, if(synth.notNil) { synth.nodeID } { "nil" }).postln;
+    "[Gladiola]   bus index: %, getSynchronous: %".format(busIdx, ~lfoBus.getSynchronous(trackIdx)).postln;
+    "[Gladiola]   rate16ths: %, hz: %".format(ms[\rate16ths], ~lfoRateHz.(ms[\rate16ths]).round(0.001)).postln;
+    "[Gladiola]   shape: %".format(ms[\shape]).postln;
+    // Query the server for the node
+    s.sendMsg('/n_query', synth.nodeID);
+};
+
 ~setModDepth = { |trackIdx, destIdx, depth, polarity|
     ~trackModSettings[trackIdx][\depths][destIdx] = depth;
     ~trackModSettings[trackIdx][\polarities][destIdx] = polarity;

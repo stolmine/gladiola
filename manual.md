@@ -266,19 +266,86 @@ The overlay uses `~overlayLayout` for layout computation, placing two 3x3 grids 
 
 ```
 [P] [ ] [S]    P = Page toggle     S = Slice stub
-[ ] [M] [ ]    M = Mod stub
+[ ] [M] [ ]    M = Mod (opens LFO overlay)
 [A] [ ] [L]    A = Audition         L = Latch
 ```
 
 - **P (Page toggle)**: Switches between param page 1 and page 2. Medium = page 1, full = page 2.
 - **S (Slice stub)**: Placeholder for future slice mode toggle.
-- **M (Mod stub)**: Center key, placeholder for future modulation overlay.
+- **M (Mod)**: Center key. Opens the LFO modulation overlay for the track. Shows medium brightness when the track has any active modulation depth.
 - **A (Audition)**: Toggles step preview. Full = enabled. Only active when transport is stopped.
 - **L (Latch)**: Keeps the overlay open after releasing the mute key. Pulses when engaged. Tap again to disengage and close the overlay.
 
 **Clear track** — center cell of the phantom sub-step grid (col 1, middle row): Two-tap confirmation. First tap arms the clear (LED pulses). Second tap confirms — resets all 16 steps on the track to defaults. Tapping any other button disarms. The clear state (`~trackClearArmed`) resets when the overlay closes.
 
 Cannot open the step param overlay while the track overlay is active, and vice versa.
+
+### LFO Modulation
+
+Tap the M (Mod) key in the track overlay action grid to open the LFO modulation overlay for the current track. The overlay is full blocking — all grid input is captured while it is open. The overlay auto-latches on entry. Tap the exit key (col 0, row 7, pulses) to return to the track overlay with latch state preserved.
+
+Each track has one LFO. The LFO outputs to a per-track control bus and offsets each step's current value. Step values set the center point; the LFO adds movement on top. Values clamp at the param min/max. Continuous params interpolate smoothly; discrete params (sample, ratchet, reverse) use sample-and-hold per trigger.
+
+**Col 0 — Shape selector** (rows 0-6):
+
+| Row | Shape |
+|-----|-------|
+| 0 | Sine |
+| 1 | Square |
+| 2 | Triangle |
+| 3 | Brownian |
+| 4 | Random |
+| 5 | Saw Up |
+| 6 | Saw Down |
+
+The selected shape cell animates to reflect the LFO waveform at the current rate. Row 7 (col 0) is the exit key — it pulses continuously. Tap it to close the mod overlay and return to the track overlay.
+
+**Col 1 — Rate nudge** (rows 0-6):
+
+| Row | Action |
+|-----|--------|
+| 0 | +16 sixteenths |
+| 1 | +4 sixteenths |
+| 2 | +1 sixteenth |
+| 3 | Reset to 16 sixteenths (1 bar) |
+| 4 | -1 sixteenth |
+| 5 | -4 sixteenths |
+| 6 | -16 sixteenths |
+
+Rate ranges from 1 to 128 sixteenths (tempo-synced). Nudge buttons allow odd timings for polyrhythmic drift. Row 7 (col 1) is the hold/freeze key — hold it to freeze the LFO output and pause all slink animation. Released on key release or when leaving the overlay.
+
+**Cols 2-15 — Depth faders** (14 destinations):
+
+Each column controls modulation depth for one destination. Destinations match the param page order:
+
+| Col | Destination |
+|-----|-------------|
+| 2 | Sample |
+| 3 | Pitch |
+| 4 | Velocity |
+| 5 | Gate Length |
+| 6 | Filter |
+| 7 | Pan |
+| 8 | Delay Send |
+| 9 | Attack |
+| 10 | Reverse |
+| 11 | Loop Length |
+| 12 | Loop Region |
+| 13 | Ratchet |
+| 14 | Probability |
+| 15 | Bitcrush |
+
+Within each column:
+
+- **Rows 0-5**: Depth levels 6→1 (exponential curve; row 0 = max depth)
+- **Row 6**: Zero — no modulation
+- **Row 7**: Polarity toggle — solid = positive modulation, pulsing = negative modulation
+
+Tap any depth row to set the depth for that destination. The selected depth lights full brightness; all other rows in the column are dim. The polarity toggle is independent of depth and can be set at any depth level.
+
+**Slink visualization**: Each depth fader column overlays a dim LED showing the current LFO position within the fader range, with exponential bunching toward the set depth marker. This gives a live readout of where the LFO is in its cycle without obscuring the depth setting.
+
+**~overlayLayout note**: The mod overlay is a full blocking overlay entered from the track overlay. It replaces the track overlay display entirely for the duration of the session. Closing the mod overlay returns to the track overlay, preserving latch state.
 
 ### Navigating Parameters
 
@@ -372,6 +439,7 @@ The session manager window provides:
 ### What Sessions Capture
 
 - All 7 tracks: steps, per-step parameters, sub-step data, start/end points, mute state
+- Per-track mod settings: LFO shape, rate, depth per destination, polarity per destination
 - BPM, clock division, FX parameters, transpose, global reverse
 - All 49 preset slots, slot map, confirm mode, quantize mode
 - Sample directory path
@@ -418,6 +486,11 @@ Loading a session stops transport, frees existing buffers (with a server sync to
 | `~newSession.(name, sampleDir)` | Create blank session |
 | `~sessionGUI.()` | Open session manager window |
 | `~cleanup.()` | Shutdown |
+| `~setModDepth.(track, dest, depth)` | Set LFO mod depth for a destination (0-6) on a track |
+| `~setModShape.(track, shape)` | Set LFO shape for a track (0=sine, 1=square, 2=triangle, 3=brownian, 4=random, 5=sawUp, 6=sawDown) |
+| `~setModRate.(track, sixteenths)` | Set LFO rate in sixteenths (1-128) for a track |
+| `~resetModSettings.(track)` | Reset all LFO mod settings for a track to defaults |
+| `~debugLfo.(track)` | Print current LFO state for a track to the post window |
 
 ## File Structure
 
@@ -433,3 +506,5 @@ Loading a session stops transport, frees existing buffers (with a server sync to
 | `grid_leds.scd` | LED rendering for all modes |
 | `grid_input.scd` | Grid input handling |
 | `session.scd` | Session save/load/new and GUI window |
+| `synthdefs/lfo.scd` | Per-track LFO SynthDefs (one per track, outputting to control bus) |
+| `lfo_params.scd` | LFO parameter definitions, mod depth tables, shape/rate helpers |

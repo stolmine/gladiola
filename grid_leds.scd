@@ -174,11 +174,13 @@
             var ms = ~trackModSettings[~lfoModTrack];
             var lfoHz = ~lfoRateHz.(ms[\rate16ths]);
             var animPhase = ((Main.elapsedTime * lfoHz % 1.0) * 16).asInteger;
-            var shapeAnim, range;
+            var shapeAnim, range, lfoVal;
 
             ~grid.clear;
 
             range = GridInterface.ledFull - GridInterface.ledDim;
+            lfoVal = ~lfoBus.getSynchronous(~lfoModTrack);
+
 
             // Shape animation brightness per shape (freeze when held)
             shapeAnim = if(~lfoHoldActive) { GridInterface.ledFull } { case
@@ -232,22 +234,59 @@
                 ~grid.led(1, row, brightness);
             };
 
-            // Cols 2-15: Depth faders (14 destinations)
+            // Cols 2-15: Depth faders with LFO slink visualization
+            // Slink fills from base (row 6) up to the LFO's current position.
+            // Bunching: brightness concentrates near the head using exponential falloff,
+            // creating a dense bright cluster that compresses into the peak on arrival
+            // and dissolves into the base when retreating.
             14.do { |destIdx|
                 var col = destIdx + 2;
                 var depth = ms[\depths][destIdx];
                 var depthRow = ~modRowForDepth.(depth);
-                7.do { |row|
-                    var brightness = if(row == depthRow) { GridInterface.ledFull } { GridInterface.ledDim };
-                    ~grid.led(col, row, brightness);
+                if(depth > 0) {
+                    var span = (6 - depthRow).max(1);
+                    var lfoAmount = lfoVal.abs * depth;
+                    var headRowFloat = 6.0 - (lfoAmount * span);
+                    var headRow = headRowFloat.round.asInteger.clip(depthRow, 6);
+                    7.do { |row|
+                        var brightness;
+                        if(row == depthRow) {
+                            // Peak: brightens when head arrives (bunching into peak)
+                            if(headRow <= (depthRow + 1)) {
+                                brightness = GridInterface.ledFull;
+                            } {
+                                // Peak indicator when head is far away
+                                brightness = GridInterface.ledBright;
+                            };
+                        } {
+                            if(row >= headRow && (row < 6)) {
+                                // Slink body with exponential bunching toward head
+                                var distFromHead = (row - headRow).max(0);
+                                var bodyLen = (6 - headRow).max(1);
+                                var normDist = distFromHead / bodyLen;
+                                // Exponential falloff: bunches brightness near head
+                                var fade = (1.0 - (normDist * normDist)).max(0);
+                                brightness = (GridInterface.ledDim + (fade * (GridInterface.ledMedium - GridInterface.ledDim))).round.asInteger;
+                            } {
+                                brightness = GridInterface.ledDim;
+                            };
+                        };
+                        ~grid.led(col, row, brightness);
+                    };
+                } {
+                    // No depth — static display
+                    7.do { |row|
+                        var brightness = if(row == 6) { GridInterface.ledFull } { GridInterface.ledDim };
+                        ~grid.led(col, row, brightness);
+                    };
                 };
             };
 
             // Row 7: Exit key (col 0) - pulsing (frozen when held)
             ~grid.led(0, 7, if(~lfoHoldActive) { GridInterface.ledMedium } { pulseBright });
 
-            // Row 7: Hold key (col 1)
-            ~grid.led(1, 7, if(~lfoHoldActive) { GridInterface.ledFull } { GridInterface.ledDim });
+            // Row 7: Hold key (col 1) — off until engaged
+            ~grid.led(1, 7, if(~lfoHoldActive) { GridInterface.ledFull } { GridInterface.ledOff });
 
             // Row 7, cols 2-15: Polarity toggles (frozen when held)
             14.do { |destIdx|

@@ -23,6 +23,8 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 | `grid_leds.scd` | LED rendering for all display modes |
 | `grid_input.scd` | Grid input handling, gesture recognition, modal state |
 | `session.scd` | Session save/load/new, GUI window with metering and quit button |
+| `synthdefs/lfo.scd` | Per-track LFO SynthDefs (one per track, outputting to control bus) |
+| `lfo_params.scd` | LFO parameter definitions, mod depth tables, shape/rate helpers |
 
 ## Key Features
 
@@ -39,5 +41,6 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 - Granular (MiClouds) with 3× input boost, per-parameter S&H mod depth (size/position/pitch), quantized pitch intervals
 - Clock-relative loop lengths (scales with tempo and clock division)
 - Start/end points with wrap-around for polymetric patterns
-- Per-track "macro" parameter overlay via mute key hold (apply params to all steps at once) with action grid (page, slice stub, audition, latch, mod stub), clear track (two-tap confirm), and audition preview
+- Per-track "macro" parameter overlay via mute key hold (apply params to all steps at once) with action grid (page, slice stub, audition, latch, mod key), clear track (two-tap confirm), and audition preview; mod key opens the LFO overlay and shows medium brightness when the track has active modulation
+- Per-track LFO modulation system: one tempo-synced LFO per track with 7 shapes, rate in 1-128 sixteenths, and 14 per-destination depth faders with polarity toggles; slink visualization shows LFO position; hold key freezes LFO; mod settings saved per preset and session
 - Input mutex system preventing gesture conflicts across modal states

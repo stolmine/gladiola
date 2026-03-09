@@ -111,6 +111,13 @@
 - [x] bitcrush value curve: replaced linear pos/14.0 mapping with 15-value lookup table (approx quadratic curve), effect noticeable from position 2-3 onward
 - [x] compressor scaling: raised threshold floor (0.3), stronger ratio (8:1), wider attack (5ms-300ms) and release (30ms-1.5s) ranges, added auto makeup gain via thresh.reciprocal.pow(1 - ratio)
 - [x] saturation redesign: 7 discrete types (fold, tanh, softclip, hard clip, sqrt, rectify, quantize) replacing 3-type crossfade; baked-in DC offset (0.05) for asymmetric harmonic character with LeakDC cleanup; satType value table now integer indices 0-6
+- [x] LFO SynthDef (synthdefs/lfo.scd): one per track, 7 shapes (sine/square/triangle/brownian/random/sawUp/sawDown), rate 1-128 sixteenths, tempo-synced, outputs to per-track control bus
+- [x] voice SynthDef integration: 14 mod depth args (one per destination) reading from LFO control bus; continuous params interpolate smoothly, discrete params (sample, ratchet, reverse) use S&H per trigger; values clamped at param min/max
+- [x] mod overlay UI: full blocking overlay entered from mod key in track overlay action grid; col 0 shape selector (rows 0-6), col 1 rate nudge (+16/+4/+1/reset to 16/-1/-4/-16 sixteenths), cols 2-15 depth faders (14 destinations), row 7 cols 2-15 polarity toggles (solid=positive, pulse=negative); slink visualization shows LFO position with exponential bunching; shape-animated LED feedback on selected shape cell; hold key (col 1 row 7) freezes LFO and pauses animation; exit key (col 0 row 7, pulses) returns to track overlay with latch preserved; auto-latched on entry
+- [x] preset/session persistence: mod settings (shape, rate, depth per destination, polarity per destination) saved per track in presets and sessions; migration handles missing mod data
+- [x] slink visualization: depth fader columns show single bright LED at set depth plus dim LEDs indicating LFO position with exponential bunching toward the depth marker
+- [x] hold-to-freeze: holding col 1 row 7 in mod overlay freezes LFO output and pauses all slink animation; released on exit or key release
+- [x] guard conditions for mod overlay: cannot enter mod overlay while step param overlay is active; mod key in track overlay shows medium brightness when track has any active modulation depth
 
 ## per-track global overlay rework
 
@@ -193,11 +200,11 @@ foundation for phases 4 and 5. get solid and tested before building on top.
 - [x] session/preset migration for missing \attack (defaults to 0.002)
 - [x] MiClouds input boost raised from 2× to 3×
 
-### phase 5 — LFO modulation system
-- [ ] LFO SynthDef — one per track, outputting to control bus. shape selection, rate in 16ths.
-- [ ] voice SynthDef integration — 14 mod depth args reading from control bus, applying offset to step values, clamping. S&H for discrete params.
-- [ ] mod overlay UI — blocking page from track overlay action grid. 14 depth faders, polarity toggles, shape/rate columns, shape-animated LED feedback, hold key, auto-latch.
-- [ ] preset/session persistence — mod settings per track saved and recalled
+### phase 5 — LFO modulation system ✓
+- [x] LFO SynthDef — one per track, outputting to control bus. shape selection, rate in 16ths.
+- [x] voice SynthDef integration — 14 mod depth args reading from control bus, applying offset to step values, clamping. S&H for discrete params.
+- [x] mod overlay UI — blocking page from track overlay action grid. 14 depth faders, polarity toggles, shape/rate columns, shape-animated LED feedback, hold key, auto-latch.
+- [x] preset/session persistence — mod settings per track saved and recalled
 
 biggest single feature. SynthDef work and UI work can be developed somewhat in parallel.
 

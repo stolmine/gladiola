@@ -498,8 +498,11 @@
                                 ~updateGridLEDs.();
                             };
                             if(x == 1 && (y < 7)) {
-                                // Rate nudge
-                                if(y != 3) {
+                                // Rate nudge (row 3 = snap to 16)
+                                if(y == 3) {
+                                    ~setModRate.(~lfoModTrack, 16);
+                                    "[Gladiola] LFO rate -> 16 sixteenths (reset)".postln;
+                                } {
                                     var nudge = ~modRateNudges[y];
                                     var cur = ms[\rate16ths];
                                     var newRate;
@@ -510,8 +513,8 @@
                                     };
                                     ~setModRate.(~lfoModTrack, newRate);
                                     "[Gladiola] LFO rate -> % sixteenths".format(ms[\rate16ths]).postln;
-                                    ~updateGridLEDs.();
                                 };
+                                ~updateGridLEDs.();
                             };
                             if(x >= 2 && (x <= 15) && (y < 7)) {
                                 // Depth fader
