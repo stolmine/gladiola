@@ -115,7 +115,11 @@ var attackValues = [0.002, 0.005, 0.01, 0.015, 0.025, 0.04, 0.06, 0.09, 0.13, 0.
 
 // Center position for bipolar params (nil = no center)
 ~paramCenterPos = { |paramPage, paramIdx|
-    if(paramPage == 0 && ((paramIdx == 4) || (paramIdx == 5))) { 7 } { nil }
+    if(paramPage == 0) {
+        if(paramIdx == 1) { 6 } {
+            if((paramIdx == 4) || (paramIdx == 5)) { 7 } { nil }
+        }
+    } { nil }
 };
 
 // Fine fader: 127-position precision control
@@ -147,7 +151,11 @@ var attackValues = [0.002, 0.005, 0.01, 0.015, 0.025, 0.04, 0.06, 0.09, 0.13, 0.
 };
 
 ~fineCenterPos = { |paramPage, paramIdx|
-    if(paramPage == 0 && ((paramIdx == 4) || (paramIdx == 5))) { 63 } { nil }
+    if(paramPage == 0) {
+        if(paramIdx == 1) { 28 } {
+            if((paramIdx == 4) || (paramIdx == 5)) { 63 } { nil }
+        }
+    } { nil }
 };
 
 ~fineSampleList = {
