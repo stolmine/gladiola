@@ -169,9 +169,6 @@
             };
         }.value;
 
-        ~grid.led(layout[\actionCols][1], layout[\actionRows][1],
-            if(~undoState.notNil) { GridInterface.ledMedium } { GridInterface.ledDim });
-
     } {
         if(~trackParamActive && ~trackParamCol.notNil && ~trackParamTrack.notNil) {
             var paramNames = ~currentParamNames.();
@@ -416,8 +413,6 @@
                 ~grid.led(1, 7, if(~latchActive) { pulseBright } { GridInterface.ledDim });
                 // Kill FX tails
                 ~grid.led(2, 7, GridInterface.ledDim);
-                // Panic
-                ~grid.led(3, 7, GridInterface.ledDim);
 
                 // Mixer faders (cols 9-15, tracks 0-6)
                 7.do { |trackIdx|

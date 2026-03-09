@@ -36,7 +36,6 @@
 ~latchActive = false;
 ~pulseRoutine = nil;
 ~lastOverlayCloseTime = nil;
-~deferredTransportTime = nil;
 
 ~startPulseRoutine = {
     if(~pulseRoutine.isNil) {
@@ -171,7 +170,6 @@
         if(state == 1) {
             if(~lengthModalTrack.notNil) {
                 if(y == ~lengthModalTrack) {
-                    ~saveUndo.(\seqLength, \track, ~lengthModalTrack, \oldStart, ~tracks[~lengthModalTrack][\startStep], \oldEnd, ~tracks[~lengthModalTrack][\endStep]);
                     if(~lengthModalMode == \setEnd) {
                         ~setTrackEnd.(~lengthModalTrack, x);
                     } {
@@ -210,13 +208,11 @@
                     };
                     if(x == 1 && (y < 7)) {
                         if(y == 3) {
-                            ~saveUndo.(\swing, \oldSwing, ~swing);
                             ~setSwing.(50);
                         } {
                             var nudges = [10, 5, 1, nil, -1, -5, -10];
                             var nudge = nudges[y];
                             if(nudge.notNil) {
-                                ~saveUndo.(\swing, \oldSwing, ~swing);
                                 ~setSwing.(~swing + nudge);
                             };
                         };
@@ -225,13 +221,6 @@
                     if(x == 2 && (y == 7)) {
                         ~killFxTails.();
                         "[Gladiola] FX tails killed".postln;
-                        ~updateGridLEDs.();
-                    };
-                    if(x == 3 && (y == 7)) {
-                        ~stopTransport.();
-                        ~panicVoices.();
-                        ~killFxTails.();
-                        "[Gladiola] Panic".postln;
                         ~updateGridLEDs.();
                     };
                     if(x == 1 && (y == 7)) {
@@ -247,7 +236,6 @@
                     };
                     if(x >= 9 && (x <= 15)) {
                         var trackIdx = x - 9;
-                        ~saveUndo.(\trackVolume, \track, trackIdx, \oldVolume, ~trackVolumes[trackIdx]);
                         ~setTrackVolume.(trackIdx, ~mixerVolumes[y]);
                         ~updateGridLEDs.();
                     };
@@ -279,7 +267,6 @@
                             var divValues = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
                             var div = divValues[x];
                             "[Gladiola] Clock div overlay tap: col %, row % -> track % div %".format(x, y, y, div).postln;
-                            ~saveUndo.(\clockDiv, \track, y, \oldDiv, ~tracks[y][\clockDiv]);
                             ~setTrackClockDiv.(y, div);
                             ~updateGridLEDs.();
                         };
@@ -288,7 +275,6 @@
                             if(x < 16 && (y < 7)) {
                                 var key = ~fxParamKeys[x];
                                 var value = ~fxValueForPosition.(x, y);
-                                ~saveUndo.(\fxParam, \key, key, \oldValue, ~fxParams[key]);
                                 ~setFxParam.(key, value);
                                 "[Gladiola] FX: % -> %".format(key, value).postln;
                                 ~updateGridLEDs.();
@@ -297,7 +283,6 @@
                             if(~utilityOverlayType == \transpose) {
                                 if(x == 4 && (y < 7)) {
                                     var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];
-                                    ~saveUndo.(\transpose, \oldTranspose, ~transpose, \oldPrevTranspose, ~prevTranspose);
                                     ~prevTranspose = ~transpose;
                                     ~transpose = transposeValues[y];
                                     "[Gladiola] Transpose -> %".format(~transpose).postln;
@@ -446,9 +431,6 @@
                                 ~updateGridLEDs.();
                             };
                         } {
-                        if(x == layout[\actionCols][1] && (y == layout[\actionRows][1])) {
-                            ~performUndo.();
-                        } {
                             if(x == ~heldStepIdx && (y != ~heldTrack)) {
                                 var paramIdx = ~paramIndexForRow.(y, ~heldTrack);
                                 if(paramIdx.notNil && (paramIdx < paramNames.size)) {
@@ -460,11 +442,6 @@
                                         } { step };
                                         var curBank = target[\bank] ?? { step[\bank] };
                                         var newBank = (curBank + 1) % numBanks;
-                                        if(~subStepEditing && ~subStepEditIdx.notNil) {
-                                            ~saveUndo.(\subStepBank, \track, ~heldTrack, \step, ~heldStepIdx, \subIdx, ~subStepEditIdx, \oldBank, curBank, \oldSample, target[\sample] ?? { step[\sample] });
-                                        } {
-                                            ~saveUndo.(\stepBank, \track, ~heldTrack, \step, ~heldStepIdx, \oldBank, curBank, \oldSample, step[\sample]);
-                                        };
                                         target[\bank] = newBank;
                                         target[\sample] = 0;
                                         "[Gladiola] Track % step %: bank -> %".format(~heldTrack, ~heldStepIdx, newBank).postln;
@@ -484,23 +461,19 @@
                                             if(~subStepEditing && ~subStepEditIdx.notNil) {
                                                 if(step[\subSteps][~subStepEditIdx].isNil) { step[\subSteps][~subStepEditIdx] = Dictionary.new };
                                                 if(~selectedParam == 0 && (effectivePage == 0)) {
-                                                    ~saveUndo.(\subStepParam, \track, ~heldTrack, \step, ~heldStepIdx, \subIdx, ~subStepEditIdx, \param, \sample, \oldValue, step[\subSteps][~subStepEditIdx][\sample]);
                                                     step[\subSteps][~subStepEditIdx][\sample] = valIdx;
                                                     "[Gladiola] Sub-step %: sample -> %".format(~subStepEditIdx, valIdx).postln;
                                                 } {
                                                     var val = ~valueForPosition.(effectivePage, ~selectedParam, valIdx);
-                                                    ~saveUndo.(\subStepParam, \track, ~heldTrack, \step, ~heldStepIdx, \subIdx, ~subStepEditIdx, \param, paramNames[~selectedParam], \oldValue, step[\subSteps][~subStepEditIdx][paramNames[~selectedParam]]);
                                                     step[\subSteps][~subStepEditIdx][paramNames[~selectedParam]] = val;
                                                     "[Gladiola] Sub-step %: % -> %".format(~subStepEditIdx, paramNames[~selectedParam], val).postln;
                                                 };
                                             } {
                                                 if(~selectedParam == 0 && (effectivePage == 0)) {
-                                                    ~saveUndo.(\stepParam, \track, ~heldTrack, \step, ~heldStepIdx, \param, \sample, \oldValue, step[\sample]);
                                                     step[\sample] = valIdx;
                                                     "[Gladiola] Track % step %: sample -> %".format(~heldTrack, ~heldStepIdx, valIdx).postln;
                                                 } {
                                                     var val = ~valueForPosition.(effectivePage, ~selectedParam, valIdx);
-                                                    ~saveUndo.(\stepParam, \track, ~heldTrack, \step, ~heldStepIdx, \param, paramNames[~selectedParam], \oldValue, step[paramNames[~selectedParam]]);
                                                     step[paramNames[~selectedParam]] = val;
                                                     "[Gladiola] Track % step %: % -> %".format(~heldTrack, ~heldStepIdx, paramNames[~selectedParam], val).postln;
                                                 };
@@ -513,7 +486,6 @@
                                     };
                                 };
                             };
-                        };
                         };
                         };
                         };
@@ -537,7 +509,6 @@
                                             var numBanks = (~numBanks ? 1).max(1);
                                             var curBank = ~tracks[~trackParamTrack][\steps][0][\bank];
                                             var newBank = (curBank + 1) % numBanks;
-                                            ~saveUndo.(\trackBank, \track, ~trackParamTrack, \oldBanks, ~tracks[~trackParamTrack][\steps].collect({ |s| s[\bank] }), \oldSamples, ~tracks[~trackParamTrack][\steps].collect({ |s| s[\sample] }));
                                             ~tracks[~trackParamTrack][\steps].do { |step|
                                                 step[\bank] = newBank;
                                                 step[\sample] = 0;
@@ -556,14 +527,12 @@
                                             var numValid = ~numValidPositions.(~paramPage, ~selectedParam, ~trackParamTrack, 0);
                                             if(valIdx < numValid) {
                                                 if(~selectedParam == 0 && (~paramPage == 0)) {
-                                                    ~saveUndo.(\trackParam, \track, ~trackParamTrack, \param, \sample, \oldValues, ~tracks[~trackParamTrack][\steps].collect({ |s| s[\sample] }));
                                                     ~tracks[~trackParamTrack][\steps].do { |step|
                                                         step[\sample] = valIdx;
                                                     };
                                                     "[Gladiola] Track % all steps: sample -> %".format(~trackParamTrack, valIdx).postln;
                                                 } {
                                                     var val = ~valueForPosition.(~paramPage, ~selectedParam, valIdx);
-                                                    ~saveUndo.(\trackParam, \track, ~trackParamTrack, \param, paramNames[~selectedParam], \oldValues, ~tracks[~trackParamTrack][\steps].collect({ |s| s[paramNames[~selectedParam]] }));
                                                     ~tracks[~trackParamTrack][\steps].do { |step|
                                                         step[paramNames[~selectedParam]] = val;
                                                     };
@@ -656,7 +625,6 @@
                     if(~clipboard.notNil && (step[\on] == false)) {
                         ~pendingToggle = nil;
                         ~pendingToggleTrack = nil;
-                        ~saveUndo.(\paste, \track, y, \step, x, \oldStep, ~deepCopyStep.(track[\steps][x]));
                         track[\steps][x] = ~deepCopyStep.(~clipboard);
                         track[\steps][x][\on] = true;
                         "[Gladiola] Pasted into track % step %".format(y, x).postln;
@@ -791,7 +759,6 @@
                     var layout = ~overlayLayout.(~heldStepIdx, ~heldTrack, valueRow);
                     var subIdx = ~subIdxFromGrid.(x, y, [layout[\subCols], layout[\subRows]]);
                     if(subIdx.notNil && (subIdx == ~pendingSubToggle)) {
-                        ~saveUndo.(\subToggle, \track, ~heldTrack, \step, ~heldStepIdx, \subIdx, subIdx, \oldActive, step[\subActive][subIdx]);
                         step[\subActive][subIdx] = step[\subActive][subIdx].not;
                         ~pendingSubToggle = nil;
                         ~updateGridLEDs.();
@@ -864,23 +831,14 @@
                             if(~pendingToggleTrack == 7 && (~pendingToggle == 0)) {
                                 ~pendingToggle = nil;
                                 ~pendingToggleTrack = nil;
-                                ~deferredTransportTime = Main.elapsedTime;
-                                AppClock.sched(0.26, {
-                                    if(~deferredTransportTime.notNil) {
-                                        ~deferredTransportTime = nil;
-                                        { if(~playing) { ~stopTransport.() } { ~startTransport.() };
-                                        ~updateGridLEDs.() }.defer;
-                                    };
-                                    nil;
-                                });
+                                if(~playing) { ~stopTransport.() } { ~startTransport.() };
+                                ~updateGridLEDs.();
                             } {
                                 if(~pendingToggleTrack == 7 && (~pendingToggle == 4)) {
                                     ~pendingToggle = nil;
                                     ~pendingToggleTrack = nil;
                                     if(~prevTranspose.notNil) {
-                                        var swap;
-                                        ~saveUndo.(\transpose, \oldTranspose, ~transpose, \oldPrevTranspose, ~prevTranspose);
-                                        swap = ~transpose;
+                                        var swap = ~transpose;
                                         ~transpose = ~prevTranspose;
                                         ~prevTranspose = swap;
                                         "[Gladiola] Transpose swap -> %".format(~transpose).postln;
@@ -898,7 +856,6 @@
                                     var trackIdx = ~pendingToggleTrack;
                                     ~pendingToggle = nil;
                                     ~pendingToggleTrack = nil;
-                                    ~saveUndo.(\stepToggle, \track, trackIdx, \step, stepIdx, \oldOn, ~tracks[trackIdx][\steps][stepIdx][\on]);
                                     ~tracks[trackIdx][\steps][stepIdx][\on] = ~tracks[trackIdx][\steps][stepIdx][\on].not;
                                     ~updateGridLEDs.();
                                 };
@@ -913,8 +870,10 @@
 
     ~grid.doubleTap({ |x, y|
         if(y == 7 && (x == 0)) {
-            ~deferredTransportTime = nil;
-            ~performUndo.();
+            ~stopTransport.();
+            ~panicVoices.();
+            ~killFxTails.();
+            ~updateGridLEDs.();
         };
         if(~paramMenuActive && ~subStepEditing.not && ~heldTrack.notNil && ~heldStepIdx.notNil) {
             var step = ~tracks[~heldTrack][\steps][~heldStepIdx];
@@ -922,7 +881,6 @@
             var layout = ~overlayLayout.(~heldStepIdx, ~heldTrack, valueRow);
             var subIdx = ~subIdxFromGrid.(x, y, [layout[\subCols], layout[\subRows]]);
             if(subIdx.notNil) {
-                ~saveUndo.(\subClear, \track, ~heldTrack, \step, ~heldStepIdx, \subIdx, subIdx, \oldSub, if(step[\subSteps][subIdx].notNil) { step[\subSteps][subIdx].copy } { nil });
                 step[\subSteps][subIdx] = nil;
                 "[Gladiola] Sub-step % overrides cleared".format(subIdx).postln;
                 ~updateGridLEDs.();
@@ -931,7 +889,6 @@
         if(y >= 0 && (y < ~numTracks)) {
             if(~utilityOverlayActive.not && ~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil && ~transportHeld.not && (~lastOverlayCloseTime.isNil || { (Main.elapsedTime - ~lastOverlayCloseTime) > 0.3 })) {
                 var track = ~tracks[y];
-                ~saveUndo.(\seqLength, \track, y, \oldStart, track[\startStep], \oldEnd, track[\endStep]);
                 if(~stepInRange.(x, track[\startStep], track[\endStep])) {
                     track[\steps][x][\on] = track[\steps][x][\on].not;
                 };
