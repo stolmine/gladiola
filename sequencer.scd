@@ -57,6 +57,53 @@ var defaultStep = {
     best
 };
 
+~lfoRateHz = { |sixteenths| ~bpm / (60 * sixteenths * 0.25) };
+
+~updateLfoRate = { |trackIdx|
+    if(~lfoSynths.notNil) { if(~lfoSynths[trackIdx].notNil) {
+        ~lfoSynths[trackIdx].set(\rate, ~lfoRateHz.(~trackModSettings[trackIdx][\rate16ths]))
+    } }
+};
+~updateAllLfoRates = { ~numTracks.do { |i| ~updateLfoRate.(i) } };
+
+~setModDepth = { |trackIdx, destIdx, depth, polarity|
+    ~trackModSettings[trackIdx][\depths][destIdx] = depth;
+    ~trackModSettings[trackIdx][\polarities][destIdx] = polarity;
+    if(~modArgNames[destIdx].notNil) {
+        if(~tracks[trackIdx][\voice].notNil) {
+            ~tracks[trackIdx][\voice].set(~modArgNames[destIdx], depth * polarity)
+        }
+    }
+};
+~setModShape = { |trackIdx, shape|
+    ~trackModSettings[trackIdx][\shape] = shape;
+    if(~lfoSynths.notNil) { if(~lfoSynths[trackIdx].notNil) {
+        ~lfoSynths[trackIdx].set(\shape, shape)
+    } }
+};
+~setModRate = { |trackIdx, rate16ths|
+    ~trackModSettings[trackIdx][\rate16ths] = rate16ths.clip(1, 128);
+    ~updateLfoRate.(trackIdx)
+};
+~applyModDepths = { |trackIdx|
+    var ms = ~trackModSettings[trackIdx];
+    var voice = ~tracks[trackIdx][\voice];
+    if(voice.notNil) {
+        14.do { |i|
+            if(~modArgNames[i].notNil) {
+                voice.set(~modArgNames[i], ms[\depths][i] * ms[\polarities][i])
+            }
+        }
+    }
+};
+~resetModSettings = { |trackIdx|
+    ~trackModSettings[trackIdx] = Dictionary[\shape -> 0, \rate16ths -> 16,
+        \depths -> Array.fill(14, { 0.0 }), \polarities -> Array.fill(14, { 1 })];
+    ~setModShape.(trackIdx, 0);
+    ~updateLfoRate.(trackIdx);
+    ~applyModDepths.(trackIdx)
+};
+
 ~setTrackVolume = { |trackIdx, vol|
     ~trackVolumes[trackIdx] = vol;
     if(~tracks[trackIdx][\voice].notNil) { ~tracks[trackIdx][\voice].set(\trackAmp, vol) };
@@ -127,10 +174,22 @@ var defaultStep = {
 
     ~fxSendBus = Bus.audio(s, 2);
 
+    ~lfoBus = Bus.control(s, ~numTracks);
+    ~trackModSettings = Array.fill(~numTracks, {
+        Dictionary[\shape -> 0, \rate16ths -> 16,
+            \depths -> Array.fill(14, { 0.0 }), \polarities -> Array.fill(14, { 1 })]
+    });
+    ~lfoGroup = Group.before(~voiceGroup);
+    ~lfoSynths = Array.fill(~numTracks, { |i|
+        Synth(\gladiolaLFO, [\out, ~lfoBus.index + i, \shape, 0,
+            \rate, ~lfoRateHz.(16), \freeze, 0], ~lfoGroup)
+    });
+
     ~numTracks.do { |i|
         ~tracks[i][\voice] = Synth(\gladiolaSample, [
             \fxSendBus, ~fxSendBus.index,
-            \trackAmp, ~trackVolumes[i]
+            \trackAmp, ~trackVolumes[i],
+            \lfoBus, ~lfoBus.index + i
         ], ~voiceGroup);
     };
 
@@ -212,7 +271,14 @@ var defaultStep = {
                     var voice     = track[\voice];
                     var buf, stepDur, numBanks, nextStep;
 
-                    if(track[\muted].not && step[\on] && step[\probability].coin) {
+                    if(track[\muted].not && step[\on] && {
+                        var lfoVal = ~lfoBus.getSynchronous(trackIdx);
+                        var modProb = ~trackModSettings[trackIdx][\depths][12] * ~trackModSettings[trackIdx][\polarities][12];
+                        var effectiveProb = if(modProb != 0) {
+                            (step[\probability] + (lfoVal * modProb)).clip(0, 1)
+                        } { step[\probability] };
+                        effectiveProb.coin
+                    }.value) {
                         var activeSubs, lastActive, subLen, curSub;
                         var bank, sample, pitch, velocity, loopLength, loopRegion, ratchet;
                         var resolvedGateLength, resolvedReverse, resolvedFilter;
@@ -239,6 +305,16 @@ var defaultStep = {
                         resolvedAttack     = ~resolveSubStepParam.(step, curSub, \attack);
 
                         step[\subIdx] = step[\subIdx] + 1;
+
+                        // LFO sample modulation (sclang-side)
+                        {
+                            var lfoVal = ~lfoBus.getSynchronous(trackIdx);
+                            var modSample = ~trackModSettings[trackIdx][\depths][0] * ~trackModSettings[trackIdx][\polarities][0];
+                            if(modSample != 0) {
+                                var bankSize = ~samplesInBank.(bank).max(1);
+                                sample = (sample + (lfoVal * modSample * bankSize)).round.asInteger.wrap(0, bankSize - 1);
+                            };
+                        }.value;
 
                         buf = ~getSample.(bank, sample);
 
@@ -484,6 +560,7 @@ var defaultStep = {
         ~seqClock.tempo = ~bpm / 60;
     };
     ~updateDelayTime.();
+    ~updateAllLfoRates.();
     "[Gladiola] Tempo set to % BPM.".format(~bpm).postln;
 };
 
@@ -503,6 +580,7 @@ var defaultStep = {
     ~fxParamDefaults.keysValuesDo { |key, val|
         ~setFxParam.(key, val);
     };
+    ~numTracks.do { |i| ~resetModSettings.(i) };
     "[Gladiola] All patterns cleared.".postln;
 };
 
@@ -523,6 +601,11 @@ var defaultStep = {
     snapshot[\globalReverse] = ~globalReverse;
     snapshot[\swing] = ~swing;
     snapshot[\trackVolumes] = ~trackVolumes.copy;
+    snapshot[\trackModSettings] = ~numTracks.collect { |i|
+        var ms = ~trackModSettings[i];
+        Dictionary[\shape -> ms[\shape], \rate16ths -> ms[\rate16ths],
+            \depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy]
+    };
     ~presets[slot] = snapshot;
     "[Gladiola] Preset % saved.".format(slot + 1).postln;
 };
@@ -570,6 +653,14 @@ var defaultStep = {
         ~numTracks.do { |i|
             if(~tracks[i][\voice].notNil) { ~tracks[i][\voice].set(\trackAmp, ~trackVolumes[i]) };
         };
+        if(snapshot[\trackModSettings].notNil) {
+            ~numTracks.do { |i|
+                var saved = snapshot[\trackModSettings][i];
+                ~trackModSettings[i] = Dictionary[\shape -> saved[\shape], \rate16ths -> saved[\rate16ths],
+                    \depths -> saved[\depths].copy, \polarities -> saved[\polarities].copy];
+                ~setModShape.(i, saved[\shape]); ~updateLfoRate.(i); ~applyModDepths.(i);
+            };
+        } { ~numTracks.do { |i| ~resetModSettings.(i) } };
         "[Gladiola] Preset % recalled.".format(slot + 1).postln;
     } {
         "[Gladiola] Preset % is empty.".format(slot + 1).postln;

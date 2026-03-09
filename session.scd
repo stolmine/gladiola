@@ -12,6 +12,11 @@
 	snapshot[\globalReverse] = ~globalReverse;
 	snapshot[\swing] = ~swing;
 	snapshot[\trackVolumes] = ~trackVolumes.copy;
+	snapshot[\trackModSettings] = ~numTracks.collect { |i|
+		var ms = ~trackModSettings[i];
+		Dictionary[\shape -> ms[\shape], \rate16ths -> ms[\rate16ths],
+			\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy]
+	};
 	snapshot[\tracks] = ~numTracks.collect { |i|
 		var t = ~tracks[i];
 		Dictionary[
@@ -40,6 +45,10 @@
 			copy[\delayDiv] = p[\delayDiv];
 			copy[\transpose] = p[\transpose];
 			copy[\globalReverse] = p[\globalReverse];
+				if(p[\trackModSettings].notNil) { copy[\trackModSettings] = p[\trackModSettings].collect { |ms|
+					Dictionary[\shape -> ms[\shape], \rate16ths -> ms[\rate16ths],
+						\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy]
+				} };
 			copy
 		} { nil }
 	};
@@ -111,6 +120,15 @@
 				if(~tracks[i][\voice].notNil) { ~tracks[i][\voice].set(\trackAmp, ~trackVolumes[i]) };
 			};
 
+			if(snapshot[\trackModSettings].notNil) {
+				~numTracks.do { |i|
+					var saved = snapshot[\trackModSettings][i];
+					~trackModSettings[i] = Dictionary[\shape -> saved[\shape], \rate16ths -> saved[\rate16ths],
+						\depths -> saved[\depths].copy, \polarities -> saved[\polarities].copy];
+					~setModShape.(i, saved[\shape]); ~updateLfoRate.(i); ~applyModDepths.(i);
+				};
+			} { ~numTracks.do { |i| ~resetModSettings.(i) } };
+
 			~bpm = snapshot[\bpm];
 				if(snapshot[\fxParams].notNil) {
 					snapshot[\fxParams].keysValuesDo { |key, val|
@@ -156,6 +174,10 @@
 						if(p[\fxParams].notNil) { copy[\fxParams] = p[\fxParams].copy };
 						copy[\transpose] = p[\transpose];
 						copy[\globalReverse] = p[\globalReverse];
+							if(p[\trackModSettings].notNil) { copy[\trackModSettings] = p[\trackModSettings].collect { |ms|
+								Dictionary[\shape -> ms[\shape], \rate16ths -> ms[\rate16ths],
+									\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy]
+							} };
 						copy
 					} { nil }
 				};
@@ -199,6 +221,7 @@
 		~numTracks.do { |i|
 			if(~tracks[i][\voice].notNil) { ~tracks[i][\voice].set(\trackAmp, 1.0) };
 		};
+		~numTracks.do { |i| ~resetModSettings.(i) };
 		~setTempo.(~bpm);
 
 		~presets = Array.fill(49, { nil });

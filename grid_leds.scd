@@ -170,6 +170,95 @@
         }.value;
 
     } {
+        if(~lfoModActive && ~lfoModTrack.notNil) {
+            var ms = ~trackModSettings[~lfoModTrack];
+            var lfoHz = ~lfoRateHz.(ms[\rate16ths]);
+            var animPhase = ((Main.elapsedTime * lfoHz % 1.0) * 16).asInteger;
+            var shapeAnim, range;
+
+            ~grid.clear;
+
+            range = GridInterface.ledFull - GridInterface.ledDim;
+
+            // Shape animation brightness per shape (freeze when held)
+            shapeAnim = if(~lfoHoldActive) { GridInterface.ledFull } { case
+                { ms[\shape] == 0 } {
+                    // Sine: smooth pulse
+                    if(animPhase < 8) {
+                        GridInterface.ledDim + ((animPhase / 7) * range).round.asInteger
+                    } {
+                        GridInterface.ledFull - (((animPhase - 8) / 7) * range).round.asInteger
+                    }
+                }
+                { ms[\shape] == 1 } {
+                    // Square
+                    if(animPhase < 8) { GridInterface.ledFull } { GridInterface.ledDim }
+                }
+                { ms[\shape] == 2 } {
+                    // Triangle
+                    if(animPhase < 8) {
+                        GridInterface.ledDim + ((animPhase / 7) * range).round.asInteger
+                    } {
+                        GridInterface.ledFull - (((animPhase - 8) / 7) * range).round.asInteger
+                    }
+                }
+                { ms[\shape] == 3 } {
+                    // Brownian: smoothed random
+                    (GridInterface.ledDim + (range * (animPhase.hash % 100 / 100))).round.asInteger
+                }
+                { ms[\shape] == 4 } {
+                    // Random
+                    (GridInterface.ledDim + (range * (animPhase.hash % 100 / 100))).round.asInteger
+                }
+                { ms[\shape] == 5 } {
+                    // Saw up
+                    (GridInterface.ledDim + (animPhase / 15 * range)).round.asInteger
+                }
+                { ms[\shape] == 6 } {
+                    // Saw down
+                    (GridInterface.ledFull - (animPhase / 15 * range)).round.asInteger
+                }
+                { true } { GridInterface.ledDim } };
+
+            // Col 0: Shape selector
+            7.do { |row|
+                var brightness = if(row == ms[\shape]) { shapeAnim } { GridInterface.ledDim };
+                ~grid.led(0, row, brightness);
+            };
+
+            // Col 1: Rate nudge
+            7.do { |row|
+                var brightness = if(row == 3) { GridInterface.ledBright } { GridInterface.ledDim };
+                ~grid.led(1, row, brightness);
+            };
+
+            // Cols 2-15: Depth faders (14 destinations)
+            14.do { |destIdx|
+                var col = destIdx + 2;
+                var depth = ms[\depths][destIdx];
+                var depthRow = ~modRowForDepth.(depth);
+                7.do { |row|
+                    var brightness = if(row == depthRow) { GridInterface.ledFull } { GridInterface.ledDim };
+                    ~grid.led(col, row, brightness);
+                };
+            };
+
+            // Row 7: Exit key (col 0) - pulsing (frozen when held)
+            ~grid.led(0, 7, if(~lfoHoldActive) { GridInterface.ledMedium } { pulseBright });
+
+            // Row 7: Hold key (col 1)
+            ~grid.led(1, 7, if(~lfoHoldActive) { GridInterface.ledFull } { GridInterface.ledDim });
+
+            // Row 7, cols 2-15: Polarity toggles (frozen when held)
+            14.do { |destIdx|
+                var col = destIdx + 2;
+                var pol = ms[\polarities][destIdx];
+                var brightness = if(pol > 0) { GridInterface.ledFull } {
+                    if(~lfoHoldActive) { GridInterface.ledMedium } { pulseBright }
+                };
+                ~grid.led(col, 7, brightness);
+            };
+        } {
         if(~trackParamActive && ~trackParamCol.notNil && ~trackParamTrack.notNil) {
             var paramNames = ~currentParamNames.();
             var numParams = paramNames.size;
@@ -260,7 +349,8 @@
                 if(~auditionEnabled) { GridInterface.ledFull } { GridInterface.ledDim });
             ~grid.led(layout[\latchCol], layout[\latchRow],
                 if(~latchActive) { pulseBright } { GridInterface.ledDim });
-            ~grid.led(layout[\actionCols][1], layout[\actionRows][1], GridInterface.ledDim);  // Mod stub
+            ~grid.led(layout[\actionCols][1], layout[\actionRows][1],
+                if(~trackHasModulation.(~trackParamTrack)) { GridInterface.ledMedium } { GridInterface.ledDim });
 
             // Clear LED (phantom sub grid center)
             ~grid.led(layout[\subCols][1], layout[\subRows][1],
@@ -507,6 +597,7 @@
                 };
             };
             };
+        };
         };
         };
     };

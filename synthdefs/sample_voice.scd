@@ -18,7 +18,11 @@
             bitcrush = 0.0,
             fxSendBus = 0,
             trackAmp = 1.0,
-            attack = 0.002;
+            attack = 0.002,
+            lfoBus = 0,
+            modPitch = 0, modVelocity = 0, modGateLength = 0, modFilter = 0,
+            modPan = 0, modDelaySend = 0, modAttack = 0, modReverse = 0,
+            modLoopLength = 0, modLoopRegion = 0, modRatchet = 0, modBitcrush = 0;
 
         var smoothRate, smoothAmp,
             clampedRatchet, safeStepDur, ratchetFreq, ratchetImpulse,
@@ -28,7 +32,10 @@
             phasorStart, phasorEnd, phasorResetPos, phasorRate, phasor,
             sig,
             crushed, filterFreq, filterSig, filterSelect, lpf, hpf,
-            panned;
+            panned,
+            lfo, lfoLatched;
+
+        lfo = In.kr(lfoBus, 1);
 
         smoothRate = Lag.kr(rate, 0.05);
         smoothAmp  = Lag.kr(amp,  0.05);
@@ -44,6 +51,22 @@
         gatedPulse = ratchetImpulse * latch;
 
         combinedTrig = Trig1.kr(max(t_trig, gatedPulse), ControlDur.ir);
+
+        lfoLatched = Latch.kr(lfo, combinedTrig);
+
+        // Apply LFO modulation
+        smoothRate = smoothRate * (2 ** (lfo * modPitch));
+        smoothAmp = (smoothAmp + (lfo * modVelocity * 0.5)).clip(0, 2);
+        gateLength = (gateLength * (1 + (lfo * modGateLength))).clip(0.01, 100);
+        filter = (filter + (lfo * modFilter)).clip(-1, 1);
+        pan = (pan + (lfo * modPan)).clip(-1, 1);
+        delaySend = (delaySend + (lfo * modDelaySend)).clip(0, 1);
+        attack = (attack * (1 + (lfo * modAttack * 4))).clip(0.002, 0.5);
+        reverse = Select.kr((lfoLatched * modReverse).abs > 0.5, [reverse, 1 - reverse]);
+        loopLength = (loopLength + (lfo * modLoopLength * 4)).clip(0, 8);
+        loopRegion = (loopRegion + (lfo * modLoopRegion)).clip(0, 1);
+        ratchet = (ratchet + (lfoLatched * modRatchet * 7)).round.clip(1, 8);
+        bitcrush = (bitcrush + (lfo * modBitcrush)).clip(0, 1);
 
         gateDur = safeStepDur * gateLength.clip(0.01, 100.0) / clampedRatchet;
         holdDur = (gateDur - (attack + 0.01)).max(0.0);

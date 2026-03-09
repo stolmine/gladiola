@@ -37,6 +37,9 @@
 ~pulseRoutine = nil;
 ~lastOverlayCloseTime = nil;
 ~trackClearArmed = false;
+~lfoModActive = false;
+~lfoModTrack = nil;
+~lfoHoldActive = false;
 
 ~startPulseRoutine = {
     if(~pulseRoutine.isNil) {
@@ -486,6 +489,73 @@
                         };
                         };
                     } {
+                        if(~lfoModActive && ~lfoModTrack.notNil) {
+                            var ms = ~trackModSettings[~lfoModTrack];
+                            if(x == 0 && (y < 7)) {
+                                // Shape selector
+                                ~setModShape.(~lfoModTrack, y);
+                                "[Gladiola] LFO shape -> %".format(~modShapeNames[y]).postln;
+                                ~updateGridLEDs.();
+                            };
+                            if(x == 1 && (y < 7)) {
+                                // Rate nudge
+                                if(y != 3) {
+                                    var nudge = ~modRateNudges[y];
+                                    var cur = ms[\rate16ths];
+                                    var newRate;
+                                    if(cur == 1 && (nudge == 16)) {
+                                        newRate = 16;
+                                    } {
+                                        newRate = (cur + nudge).clip(1, 128);
+                                    };
+                                    ~setModRate.(~lfoModTrack, newRate);
+                                    "[Gladiola] LFO rate -> % sixteenths".format(ms[\rate16ths]).postln;
+                                    ~updateGridLEDs.();
+                                };
+                            };
+                            if(x >= 2 && (x <= 15) && (y < 7)) {
+                                // Depth fader
+                                var destIdx = x - 2;
+                                var depth = ~modDepthForRow.(y);
+                                var polarity = ms[\polarities][destIdx];
+                                ~setModDepth.(~lfoModTrack, destIdx, depth, polarity);
+                                "[Gladiola] LFO % depth -> %".format(~modDestKeys[destIdx], depth).postln;
+                                ~updateGridLEDs.();
+                            };
+                            if(x >= 2 && (x <= 15) && (y == 7)) {
+                                // Polarity toggle
+                                var destIdx = x - 2;
+                                var newPol = ms[\polarities][destIdx].neg;
+                                ms[\polarities][destIdx] = newPol;
+                                if(ms[\depths][destIdx] > 0) {
+                                    ~setModDepth.(~lfoModTrack, destIdx, ms[\depths][destIdx], newPol);
+                                };
+                                "[Gladiola] LFO % polarity -> %".format(~modDestKeys[destIdx], if(newPol > 0) { "+" } { "-" }).postln;
+                                ~updateGridLEDs.();
+                            };
+                            if(x == 0 && (y == 7)) {
+                                // Exit — return to track overlay
+                                ~lfoModActive = false;
+                                ~lfoHoldActive = false;
+                                ~trackParamActive = true;
+                                ~trackParamCol = 9 + ~lfoModTrack;
+                                ~trackParamTrack = ~lfoModTrack;
+                                ~selectedParam = 0;
+                                ~paramPage = 0;
+                                // Keep latch active
+                                "[Gladiola] LFO mod overlay closed, back to track overlay".postln;
+                                ~updateGridLEDs.();
+                            };
+                            if(x == 1 && (y == 7)) {
+                                // Hold (freeze) — press
+                                ~lfoHoldActive = true;
+                                if(~lfoSynths.notNil) { if(~lfoSynths[~lfoModTrack].notNil) {
+                                    ~lfoSynths[~lfoModTrack].set(\freeze, 1)
+                                } };
+                                "[Gladiola] LFO hold engaged".postln;
+                                ~updateGridLEDs.();
+                            };
+                        } {
                         if(~trackParamActive && ~trackParamCol.notNil && ~trackParamTrack.notNil) {
                             var paramNames = ~currentParamNames.();
                             var valueRow = ~selectedParam;
@@ -540,8 +610,15 @@
                                 ~updateGridLEDs.();
                             } {
                             if(x == layout[\actionCols][1] && (y == layout[\actionRows][1])) {
-                                // Mod stub
-                                "[Gladiola] Mod (stub) for track %".format(~trackParamTrack).postln;
+                                // Enter LFO mod overlay
+                                ~lfoModActive = true;
+                                ~lfoModTrack = ~trackParamTrack;
+                                ~trackParamActive = false;
+                                ~trackParamCol = nil;
+                                ~trackClearArmed = false;
+                                ~latchActive = true;
+                                ~startPulseRoutine.();
+                                "[Gladiola] LFO mod overlay opened for track %".format(~lfoModTrack).postln;
                                 ~updateGridLEDs.();
                             } {
                             if(x == layout[\subCols][1] && (y == layout[\subRows][1])) {
@@ -668,6 +745,7 @@
                                 };
                             };
                         };
+                        };
                     };
                 };
                 };
@@ -695,7 +773,7 @@
                 ~updateGridLEDs.();
             } };
         } {
-        if(~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil && ~lengthModalMode.isNil && ~utilityOverlayActive.not && ~transportHeld.not) {
+        if(~paramMenuActive.not && ~trackParamActive.not && ~lfoModActive.not && ~lengthModalTrack.isNil && ~lengthModalMode.isNil && ~utilityOverlayActive.not && ~transportHeld.not) {
             if(y >= 0 && (y < ~numTracks)) {
                 var track = ~tracks[y];
                 if(~stepInRange.(x, track[\startStep], track[\endStep])) {
@@ -844,6 +922,16 @@
                 };
             };
         } {
+            if(~lfoModActive) {
+                if(x == 1 && (y == 7)) {
+                    ~lfoHoldActive = false;
+                    if(~lfoSynths.notNil) { if(~lfoSynths[~lfoModTrack].notNil) {
+                        ~lfoSynths[~lfoModTrack].set(\freeze, 0)
+                    } };
+                    "[Gladiola] LFO hold released".postln;
+                    ~updateGridLEDs.();
+                };
+            } {
             if(~trackParamActive) {
                 if(x == ~trackParamCol && (y == 7)) {
                     if(~latchActive) {
@@ -949,6 +1037,7 @@
                     };
                 };
             };
+            };
         };
     });
 
@@ -971,7 +1060,7 @@
             };
         };
         if(y >= 0 && (y < ~numTracks)) {
-            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~trackParamActive.not && ~lengthModalTrack.isNil && ~transportHeld.not && (~lastOverlayCloseTime.isNil || { (Main.elapsedTime - ~lastOverlayCloseTime) > 0.3 })) {
+            if(~utilityOverlayActive.not && ~paramMenuActive.not && ~trackParamActive.not && ~lfoModActive.not && ~lengthModalTrack.isNil && ~transportHeld.not && (~lastOverlayCloseTime.isNil || { (Main.elapsedTime - ~lastOverlayCloseTime) > 0.3 })) {
                 var track = ~tracks[y];
                 if(~stepInRange.(x, track[\startStep], track[\endStep])) {
                     track[\steps][x][\on] = track[\steps][x][\on].not;

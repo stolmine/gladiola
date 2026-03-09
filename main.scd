@@ -27,6 +27,8 @@ s.waitForBoot({
 	~gladiolaLoadSynthDefs.();
 	loadOrError.(basePath +/+ "synthdefs/fx_chain.scd");
 	~gladiolaLoadFxSynthDefs.();
+	loadOrError.(basePath +/+ "synthdefs/lfo.scd");
+	~gladiolaLoadLfoSynthDef.();
 	s.sync;
 	"[Gladiola] SynthDefs loaded.".postln;
 
@@ -57,6 +59,7 @@ s.waitForBoot({
 
 	loadOrError.(basePath +/+ "grid_params.scd");
 	loadOrError.(basePath +/+ "fx_params.scd");
+	loadOrError.(basePath +/+ "lfo_params.scd");
 	loadOrError.(basePath +/+ "grid_leds.scd");
 	loadOrError.(basePath +/+ "grid_input.scd");
 
@@ -143,6 +146,9 @@ s.waitForBoot({
 			var synth = key.envirGet;
 			if(synth.notNil) { synth.free; key.envirPut(nil) };
 		};
+		if(~lfoSynths.notNil) { ~lfoSynths.do { |s| if(s.notNil) { s.free } }; ~lfoSynths = nil };
+		if(~lfoGroup.notNil) { ~lfoGroup.free; ~lfoGroup = nil };
+		if(~lfoBus.notNil) { ~lfoBus.free; ~lfoBus = nil };
 		[\masterGroup, \fxGroup, \satGroup, \voiceGroup].do { |key|
 			var group = key.envirGet;
 			if(group.notNil) { group.free; key.envirPut(nil) };
