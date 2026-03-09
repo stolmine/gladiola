@@ -12,13 +12,13 @@
   - hold detection (0.5s), double-tap (0.25s), release callbacks
   - LED buffering with dirty flag, 30fps refresh
 - [x] 7-track × 16-step sequencer (rows 0-6), utility row (row 7)
-- [x] per-step state: on/off, bank, sample, pitch, velocity, loopLength, loopRegion, ratchet, randomness, gateLength, reverse, filter, pan, probability, delaySend, bitcrush
+- [x] per-step state: on/off, bank, sample, pitch, velocity, gateLength, filter, pan, delaySend, attack, reverse, loopLength, loopRegion, ratchet, probability, bitcrush
 - [x] per-track start/end step with wrap-around (polymetric/offset patterns)
 - [x] double-tap any step to set start point, then select end point
 - [x] clock/tempo with TempoClock, 16th note default
 - [x] randomness meta-mutator (per-read parameter mutation)
 - [x] hold-to-reveal parameter overlay with column/row selection
-- [x] two-page param system (page 1: bank/pitch/velocity/loop/ratchet/randomness, page 2: gateLength/reverse/filter/pan/probability/delaySend/bitcrush)
+- [x] two-page param system (page 1: bank/pitch/velocity/gateLength/filter/pan/delaySend, page 2: attack/reverse/loopLength/loopRegion/ratchet/probability/bitcrush)
 - [x] page toggle at (3,7) on utility row during param overlay
 - [x] 7th param uses row 7 as overflow during overlay
 - [x] deferred toggle (press sets pending, release commits, hold cancels)
@@ -184,24 +184,14 @@ Reworked from simple hold-to-open param editor to proper track control surface u
 
 foundation for phases 4 and 5. get solid and tested before building on top.
 
-### phase 4 — param page reorg + new params
-- [ ] decide replacement params — attack and filter resonance are strongest candidates
-	- if we are going forward with mod system we can nix randomization altogether, it won't be necessary and will in fact just be very coarse compared to mod system
-	- what can we replace it with that we are currently missing?
-		- Filter could be given resonance
-		- we could have ratchet start and ratchet end, interpolate between values for interesting rolls, but over the course a single step? idrk
-		- what else?
-		- pitch EG? this would require two selectors to be useful tho
-		- attack? this could be quite useful on a single selector
-		- slew rate? this could be really fun, but it makes little sense
-			- what i envision is that this is set per step and determines how long it takes for given step to assume its own params. maybe this would be better per track than per step, but i think it could be fun either way. discrete things like reverse and sample selection could not be slewed, obv
-			- also would not make much sense when dealing with 16ths that have one step of gate length
-		- anything else I am not thinking of?
-- [ ] reorg pages — filter, pan, gate length to page 1; looping, ratchet to page 2. drop randomness.
-- [ ] add new params — attack envelope time and/or filter resonance to SynthDef, value tables, overlay rendering
-- [ ] session migration — ensure old sessions/presets load with sensible defaults for new params
-
-bundle as one breaking change. after overlay rework so track overlay has new structure. before mod system so it targets the final param set.
+### phase 4 — param page reorg + new params ✓
+- [x] dropped \randomness param, added \attack (amp envelope attack time, 0.002-0.5s exponential, 15 positions)
+- [x] page 1 reorg: bank, pitch, velocity, gateLength, filter, pan, delaySend
+- [x] page 2 reorg: attack, reverse, loopLength, loopRegion, ratchet, probability, bitcrush
+- [x] center dents: filter (p0 idx 4), pan (p0 idx 5) — both bipolar at pos 7
+- [x] SynthDef: \attack arg replaces hardcoded 0.002 in envelope
+- [x] session/preset migration for missing \attack (defaults to 0.002)
+- [x] MiClouds input boost raised from 2× to 3×
 
 ### phase 5 — LFO modulation system
 - [ ] LFO SynthDef — one per track, outputting to control bus. shape selection, rate in 16ths.

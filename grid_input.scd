@@ -551,7 +551,7 @@
                                         Dictionary.newFrom([
                                             \on, false, \bank, 0, \sample, 0, \pitch, 1.0,
                                             \velocity, 1.0, \loopLength, 0.0, \loopRegion, 0.0,
-                                            \ratchet, 1, \randomness, 0.0, \gateLength, 1.0,
+                                            \ratchet, 1, \attack, 0.002, \gateLength, 1.0,
                                             \reverse, false, \filter, 0.0, \pan, 0.0,
                                             \probability, 1.0, \delaySend, 0.0, \bitcrush, 0.0,
                                             \subSteps, Array.fill(9, { nil }),

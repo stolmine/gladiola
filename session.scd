@@ -92,6 +92,7 @@
 							step[\subActive] = Array.fill(9, { |i| i == 0 });
 							step[\subIdx] = 0;
 						};
+						if(step[\attack].isNil) { step[\attack] = 0.002 };
 					};
 					~tracks[i][\steps] = saved[\steps].collect { |s| ~deepCopyStep.(s) };
 					~tracks[i][\startStep] = saved[\startStep];
@@ -139,6 +140,7 @@
 									step[\subActive] = Array.fill(9, { |i| i == 0 });
 									step[\subIdx] = 0;
 								};
+								if(step[\attack].isNil) { step[\attack] = 0.002 };
 							};
 							td = Dictionary[
 								\steps -> t[\steps].collect { |s| ~deepCopyStep.(s) },

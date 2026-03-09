@@ -9,7 +9,7 @@ var defaultStep = {
         \loopLength,  0.0,
         \loopRegion,  0.0,
         \ratchet,     1,
-        \randomness,  0.0,
+        \attack,      0.002,
         \gateLength,  1.0,
         \reverse,     false,
         \filter,      0.0,
@@ -214,16 +214,15 @@ var defaultStep = {
 
                     if(track[\muted].not && step[\on] && step[\probability].coin) {
                         var activeSubs, lastActive, subLen, curSub;
-                        var rand, bank, sample, pitch, velocity, loopLength, loopRegion, ratchet;
+                        var bank, sample, pitch, velocity, loopLength, loopRegion, ratchet;
                         var resolvedGateLength, resolvedReverse, resolvedFilter;
-                        var resolvedPan, resolvedDelaySend, resolvedBitcrush;
+                        var resolvedPan, resolvedDelaySend, resolvedBitcrush, resolvedAttack;
 
                         lastActive = 0;
                         step[\subActive].do { |active, i| if(active) { lastActive = i } };
                         subLen = lastActive + 1;
                         curSub = step[\subIdx] % subLen;
 
-                        rand       = ~resolveSubStepParam.(step, curSub, \randomness);
                         bank       = ~resolveSubStepParam.(step, curSub, \bank);
                         sample     = ~resolveSubStepParam.(step, curSub, \sample);
                         pitch      = ~resolveSubStepParam.(step, curSub, \pitch);
@@ -237,22 +236,9 @@ var defaultStep = {
                         resolvedPan        = ~resolveSubStepParam.(step, curSub, \pan);
                         resolvedDelaySend  = ~resolveSubStepParam.(step, curSub, \delaySend);
                         resolvedBitcrush   = ~resolveSubStepParam.(step, curSub, \bitcrush);
+                        resolvedAttack     = ~resolveSubStepParam.(step, curSub, \attack);
 
                         step[\subIdx] = step[\subIdx] + 1;
-
-                        if(rand > 0) {
-                            pitch      = pitch * rrand(1 - (rand * 0.5), 1 + (rand * 0.5));
-                            velocity   = (velocity * rrand(1 - (rand * 0.3), 1 + (rand * 0.3))).clip(0.0, 1.0);
-                            loopLength = (loopLength + (rrand(-0.2, 0.2) * rand)).clip(0.0, 8.0);
-                            loopRegion = (loopRegion + (rrand(-0.2, 0.2) * rand)).clip(0.0, 1.0);
-                            ratchet    = (ratchet + rrand(-2, 2)).clip(1, 8);
-
-                            if((rand * 0.3).coin) {
-                                numBanks = (~numBanks ?? { 0 }).max(1);
-                                bank     = rrand(0, numBanks - 1);
-                                sample   = rrand(0, (~sampleBanks !? { |sb| sb[bank].select(_.notNil).size } ?? { 1 }).max(1) - 1);
-                            };
-                        };
 
                         buf = ~getSample.(bank, sample);
 
@@ -273,6 +259,7 @@ var defaultStep = {
                                 \pan,        resolvedPan,
                                 \delaySend,  resolvedDelaySend,
                                 \bitcrush,   resolvedBitcrush,
+                                \attack,     resolvedAttack,
                                 \t_trig,     1
                             );
                             if(resolvedDelaySend > 0) {
@@ -392,6 +379,7 @@ var defaultStep = {
             \pan,        r.(\pan),
             \delaySend,  r.(\delaySend),
             \bitcrush,   r.(\bitcrush),
+            \attack,     r.(\attack),
             \t_trig,     1
         );
     };
@@ -550,6 +538,7 @@ var defaultStep = {
                     step[\subActive] = Array.fill(9, { |i| i == 0 });
                     step[\subIdx] = 0;
                 };
+                if(step[\attack].isNil) { step[\attack] = 0.002 };
             };
             ~tracks[i][\steps] = saved[\steps].collect { |s| ~deepCopyStep.(s) };
             ~tracks[i][\startStep] = saved[\startStep];

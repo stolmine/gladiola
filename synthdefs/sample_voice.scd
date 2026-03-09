@@ -17,7 +17,8 @@
             delaySend = 0.0,
             bitcrush = 0.0,
             fxSendBus = 0,
-            trackAmp = 1.0;
+            trackAmp = 1.0,
+            attack = 0.002;
 
         var smoothRate, smoothAmp,
             clampedRatchet, safeStepDur, ratchetFreq, ratchetImpulse,
@@ -45,9 +46,9 @@
         combinedTrig = Trig1.kr(max(t_trig, gatedPulse), ControlDur.ir);
 
         gateDur = safeStepDur * gateLength.clip(0.01, 100.0) / clampedRatchet;
-        holdDur = (gateDur - 0.012).max(0.0);
+        holdDur = (gateDur - (attack + 0.01)).max(0.0);
         env = EnvGen.kr(
-            Env.new([0, 1, 1, 0], [0.002, holdDur, 0.01], [2, 0, -4]),
+            Env.new([0, 1, 1, 0], [attack, holdDur, 0.01], [2, 0, -4]),
             gate: combinedTrig
         );
 

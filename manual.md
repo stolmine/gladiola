@@ -148,9 +148,9 @@ Voice send → FX bus ─┬─ Delay ──→ bus 0
 
 Default state: all send levels at 0 (delay/granular/reverb silent), saturation off, tilt neutral, compressor off. A limiter (0.95 ceiling) is always active with no user controls.
 
-The per-step "Delay Send" parameter (page 2) controls how much of each voice is sent to the shared FX bus. The three parallel effects (delay, granular, reverb) all read from this bus.
+The per-step "Delay Send" parameter (page 1) controls how much of each voice is sent to the shared FX bus. The three parallel effects (delay, granular, reverb) all read from this bus.
 
-The granular effect (MiClouds) receives a 1.5× input boost and per-parameter sample-and-hold modulation. When a step fires with delay send > 0, a trigger is sent to the granular synth, latching new random values. Columns 4-6 control modulation depth independently: size mod (random grain size variation around 0.5), position mod (random position variation around 0.5), and pitch range (quantized to musical intervals: unison, ±fifth, ±octave, ±octave+fifth). At 0 all parameters are fixed; raising the value increases the random spread per trigger. Density modulation is derived from the average of size and position mod depths.
+The granular effect (MiClouds) receives a 3× input boost and per-parameter sample-and-hold modulation. When a step fires with delay send > 0, a trigger is sent to the granular synth, latching new random values. Columns 4-6 control modulation depth independently: size mod (random grain size variation around 0.5), position mod (random position variation around 0.5), and pitch range (quantized to musical intervals: unison, ±fifth, ±octave, ±octave+fifth). At 0 all parameters are fixed; raising the value increases the random spread per trigger. Density modulation is derived from the average of size and position mod depths.
 
 ### Transpose
 
@@ -293,21 +293,21 @@ Cannot open the step param overlay while the track overlay is active, and vice v
 | Bank | 0-15 | Tap again when selected to cycle banks |
 | Pitch | 0.125× - 4.0× | 15 preset values |
 | Velocity | 1/15 - 1.0 | Affects LED brightness |
-| Loop Length | 0 - 8.0 | 0 = one-shot, 1/16-1.0 = sub-step fractions, 2/4/8 = multi-step loops. Clock-relative: scales with tempo and clock division. |
-| Loop Region | 0.0 - 1.0 | Start position in buffer |
-| Ratchet | 1-8 | Subdivisions per step |
-| Randomness | 0.0 - 1.0 | Mutates params per trigger |
+| Gate Length | 1/16 step - 16 steps | 15 exponential values, clock-relative |
+| Filter | -1.0 - 1.0 | Negative=lowpass, positive=highpass, center=bypass (center dent at pos 7) |
+| Pan | -1.0 - 1.0 | Stereo position, center=mono (center dent at pos 7) |
+| Delay Send | 0.0 - 1.0 | Amount sent to FX bus (delay, granular, reverb) |
 
 ### Page 2 Parameters
 
 | Param | Range | Notes |
 |-------|-------|-------|
-| Gate Length | 1/16 step - full sustain | 15 exponential values |
+| Attack | 0.002s - 0.5s | Amp envelope attack time, 15 exponential values |
 | Reverse | off/on | Plays sample backward |
-| Filter | -1.0 - 1.0 | Negative=lowpass, positive=highpass, center=bypass |
-| Pan | -1.0 - 1.0 | Stereo position, center=mono |
+| Loop Length | 0 - 8.0 | 0 = one-shot, 1/16-1.0 = sub-step fractions, 2/4/8 = multi-step loops. Clock-relative: scales with tempo and clock division. |
+| Loop Region | 0.0 - 1.0 | Start position in buffer |
+| Ratchet | 1-8 | Subdivisions per step |
 | Probability | 1/15 - 1.0 | Chance step fires each pass |
-| Delay Send | 0.0 - 1.0 | Amount sent to FX bus (delay, granular, reverb) |
 | Bitcrush | 0.0 - 1.0 | Sample rate and bit depth reduction |
 
 ## Sub-Sequencing

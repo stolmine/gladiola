@@ -16,7 +16,7 @@
         var input, sig, trig, stepTrig, posVal, sizeVal, densVal, pitchVal;
         var pitchOffsets = #[-0.396, -0.25, -0.146, 0, 0.146, 0.25, 0.396];
         var pitchIdx, densAvg;
-        input = In.ar(fxSendBus, 2) * 2;
+        input = In.ar(fxSendBus, 2) * 3;
         stepTrig = \t_trig.tr;
         posVal = 0.5 + (Latch.kr(WhiteNoise.kr, stepTrig) * Lag.kr(posMod, 0.1));
         sizeVal = 0.5 + (Latch.kr(WhiteNoise.kr, stepTrig) * Lag.kr(sizeMod, 0.1));
