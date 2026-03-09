@@ -343,7 +343,7 @@ Within each column:
 
 Tap any depth row to set the depth for that destination. The selected depth lights full brightness; all other rows in the column are dim. The polarity toggle is independent of depth and can be set at any depth level.
 
-**Slink visualization**: Each depth fader column overlays a dim LED showing the current LFO position within the fader range, with exponential bunching toward the set depth marker. This gives a live readout of where the LFO is in its cycle without obscuring the depth setting.
+**Slink visualization**: Each depth fader column shows a moving LED (medium brightness) tracking the current LFO position. The slink travels the full throw from row 6 (zero) to the depth anchor row — at zenith (LFO peak) the slink merges into the anchor (full brightness), at nadir it disappears into row 6. Polarity-aware: negative polarity inverts the direction.
 
 **~overlayLayout note**: The mod overlay is a full blocking overlay entered from the track overlay. It replaces the track overlay display entirely for the duration of the session. Closing the mod overlay returns to the track overlay, preserving latch state.
 
@@ -358,7 +358,7 @@ Tap any depth row to set the depth for that destination. The selected depth ligh
 | Param | Range | Notes |
 |-------|-------|-------|
 | Bank | 0-15 | Tap again when selected to cycle banks |
-| Pitch | 0.125× - 4.0× | 15 preset values |
+| Pitch | 0.125× - 4.0× | 15 preset values (center dent at pos 6 = 1.0× unity) |
 | Velocity | 1/15 - 1.0 | Affects LED brightness |
 | Gate Length | 1/16 step - 16 steps | 15 exponential values, clock-relative |
 | Filter | -1.0 - 1.0 | Negative=lowpass, positive=highpass, center=bypass (center dent at pos 7) |

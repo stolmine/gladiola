@@ -337,7 +337,7 @@
                 if(depth > 0) {
                     var polarity = ms[\polarities][destIdx];
                     var span = (6 - depthRow).max(1);
-                    var t = ((lfoVal * polarity).max(0) * depth).clip(0, 1);
+                    var t = (lfoVal * polarity).max(0).clip(0, 1);
                     var posRow = (6.0 - (t * span)).round.asInteger.clip(depthRow, 6);
                     7.do { |row|
                         var brightness;

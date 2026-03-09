@@ -21,7 +21,7 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 | `sample_loader.scd` | Bank-based sample loading (16 banks × 15 samples) |
 | `grid_params.scd` | Parameter definitions, value tables, mapping, sub-step resolution helpers |
 | `grid_leds.scd` | LED rendering for all display modes |
-| `grid_input.scd` | Grid input handling, gesture recognition, modal state |
+| `grid_input.scd` | Grid input handling — 8 extracted key handlers with flat case dispatch, gesture recognition, modal state |
 | `session.scd` | Session save/load/new, GUI window with metering and quit button |
 | `synthdefs/lfo.scd` | Per-track LFO SynthDefs (one per track, outputting to control bus) |
 | `lfo_params.scd` | LFO parameter definitions, mod depth tables, shape/rate helpers |
