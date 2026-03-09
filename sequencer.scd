@@ -17,6 +17,7 @@ var defaultStep = {
         \probability, 1.0,
         \delaySend,   0.0,
         \bitcrush,    0.0,
+        \sliceIdx,    0,
         \subSteps,    Array.fill(9, { nil }),
         \subActive,   Array.fill(9, { |i| i == 0 }),
         \subIdx,      0
@@ -180,7 +181,8 @@ var defaultStep = {
             \currentStep -> 0,
             \muted -> false,
             \voice -> nil,
-            \clockDiv -> 0.25]
+            \clockDiv -> 0.25,
+            \sliceMode -> false]
     });
 
     ~voiceGroup  = Group.new(s);
@@ -322,19 +324,27 @@ var defaultStep = {
 
                         step[\subIdx] = step[\subIdx] + 1;
 
-                        // LFO sample modulation (sclang-side)
+                        // LFO sample/slice modulation (sclang-side)
                         {
                             var lfoVal = ~lfoBus.getSynchronous(trackIdx);
                             var modSample = ~trackModSettings[trackIdx][\depths][0] * ~trackModSettings[trackIdx][\polarities][0];
                             if(modSample != 0) {
-                                var bankSize = ~samplesInBank.(bank).max(1);
-                                sample = (sample + (lfoVal * modSample * bankSize)).round.asInteger.wrap(0, bankSize - 1);
+                                if(track[\sliceMode] == true) {
+                                    var baseSlice = ~resolveSubStepParam.(step, curSub, \sliceIdx);
+                                    ~lfoResolvedSlice = (baseSlice + (lfoVal * modSample * 16)).round.asInteger.wrap(0, 15);
+                                } {
+                                    var bankSize = ~samplesInBank.(bank).max(1);
+                                    sample = (sample + (lfoVal * modSample * bankSize)).round.asInteger.wrap(0, bankSize - 1);
+                                };
+                            } {
+                                ~lfoResolvedSlice = nil;
                             };
                         }.value;
 
                         buf = ~getSample.(bank, sample);
 
                         if(buf.notNil) {
+                            var resolvedSlice = ~lfoResolvedSlice ?? { ~resolveSubStepParam.(step, curSub, \sliceIdx) };
                             stepDur = track[\clockDiv] / ~seqClock.tempo;
 
                             voice.set(
@@ -352,6 +362,8 @@ var defaultStep = {
                                 \delaySend,  resolvedDelaySend,
                                 \bitcrush,   resolvedBitcrush,
                                 \attack,     resolvedAttack,
+                                \sliceMode,  track[\sliceMode].asInteger,
+                                \sliceIdx,   resolvedSlice,
                                 \t_trig,     1
                             );
                             if(resolvedDelaySend > 0) {
@@ -448,13 +460,14 @@ var defaultStep = {
     "[Gladiola] FX tails killed.".postln;
 };
 
-~previewStep = { |trackIdx, stepIdx|
+~previewStep = { |trackIdx, stepIdx, forceSliceOff|
     var track = ~tracks[trackIdx];
     var step = track[\steps][stepIdx];
     var voice = track[\voice];
     var subIdx = if(~subStepEditing && ~subStepEditIdx.notNil) { ~subStepEditIdx } { nil };
     var r = { |param| if(subIdx.notNil) { ~resolveSubStepParam.(step, subIdx, param) } { step[param] } };
     var buf = ~getSample.(r.(\bank), r.(\sample));
+    var useSlice = if(forceSliceOff == true) { 0 } { ~tracks[trackIdx][\sliceMode].asInteger };
 
     if(buf.notNil && voice.notNil) {
         voice.set(
@@ -472,6 +485,8 @@ var defaultStep = {
             \delaySend,  r.(\delaySend),
             \bitcrush,   r.(\bitcrush),
             \attack,     r.(\attack),
+            \sliceMode,  useSlice,
+            \sliceIdx,   r.(\sliceIdx),
             \t_trig,     1
         );
     };
@@ -592,6 +607,7 @@ var defaultStep = {
         ~tracks[i][\startStep] = 0;
         ~tracks[i][\endStep] = 15;
         ~tracks[i][\clockDiv] = 0.25;
+        ~tracks[i][\sliceMode] = false;
     };
     ~fxParamDefaults.keysValuesDo { |key, val|
         ~setFxParam.(key, val);
@@ -609,7 +625,8 @@ var defaultStep = {
             \startStep -> t[\startStep],
             \endStep -> t[\endStep],
             \muted -> t[\muted],
-            \clockDiv -> t[\clockDiv]
+            \clockDiv -> t[\clockDiv],
+            \sliceMode -> t[\sliceMode]
         ]
     };
     snapshot[\fxParams] = ~fxParams.copy;
@@ -638,6 +655,7 @@ var defaultStep = {
                     step[\subIdx] = 0;
                 };
                 if(step[\attack].isNil) { step[\attack] = 0.002 };
+                if(step[\sliceIdx].isNil) { step[\sliceIdx] = 0 };
             };
             ~tracks[i][\steps] = saved[\steps].collect { |s| ~deepCopyStep.(s) };
             ~tracks[i][\startStep] = saved[\startStep];
@@ -647,6 +665,10 @@ var defaultStep = {
                 ~tracks[i][\clockDiv] = saved[\clockDiv];
             } {
                 ~tracks[i][\clockDiv] = 0.25;
+            };
+            ~tracks[i][\sliceMode] = saved[\sliceMode] ?? { false };
+            if(~tracks[i][\voice].notNil) {
+                ~tracks[i][\voice].set(\sliceMode, ~tracks[i][\sliceMode].asInteger);
             };
         };
         if(snapshot[\fxParams].notNil) {

@@ -92,8 +92,14 @@ var attackValues = [0.002, 0.005, 0.01, 0.015, 0.025, 0.04, 0.06, 0.09, 0.13, 0.
     if(paramPage == 0) {
         switch(paramIdx)
         { 0 } {
-            var bank = if(trackIdx.notNil && stepIdx.notNil) { ~tracks[trackIdx][\steps][stepIdx][\bank] } { 0 };
-            ~samplesInBank.(bank).max(1)
+            if(trackIdx.notNil) {
+                if(~tracks[trackIdx][\sliceMode] == true) { 16 } {
+                    var bank = if(stepIdx.notNil) { ~tracks[trackIdx][\steps][stepIdx][\bank] } { 0 };
+                    ~samplesInBank.(bank).max(1)
+                }
+            } {
+                ~samplesInBank.(0).max(1)
+            }
         }
         { 1 } { 15 }
         { 2 } { 15 }

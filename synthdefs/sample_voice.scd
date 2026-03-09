@@ -19,6 +19,8 @@
             fxSendBus = 0,
             trackAmp = 1.0,
             attack = 0.002,
+            sliceMode = 0,
+            sliceIdx = 0,
             lfoBus = 0,
             modPitch = 0, modVelocity = 0, modGateLength = 0, modFilter = 0,
             modPan = 0, modDelaySend = 0, modAttack = 0, modReverse = 0,
@@ -33,7 +35,8 @@
             sig,
             crushed, filterFreq, filterSig, filterSelect, lpf, hpf,
             panned,
-            lfo, lfoLatched;
+            lfo, lfoLatched,
+            sliceStartFrame, sliceEndFrame, slicePhasor, sliceSig;
 
         lfo = In.kr(lfoBus, 1);
 
@@ -107,6 +110,36 @@
             loop:          1 - oneShot,
             interpolation: 4
         );
+
+        // One-shot: silence after first pass through buffer to prevent looping
+        {
+            var playLen = (loopEnd - startFrame).abs.max(1);
+            var sweepSamples = Sweep.ar(combinedTrig, SampleRate.ir * bufRate * smoothRate.abs);
+            sig = sig * (1 - (oneShot * (sweepSamples >= playLen)));
+        }.value;
+
+        // Slice path — 16 equal divisions of buffer, simple repitch
+        sliceStartFrame = (sliceIdx / 16) * bufFrames;
+        sliceEndFrame   = ((sliceIdx + 1) / 16) * bufFrames;
+
+        slicePhasor = Phasor.ar(
+            trig:     combinedTrig,
+            rate:     Select.kr(reverse, [bufRate * smoothRate, bufRate * smoothRate * -1]),
+            start:    Select.kr(reverse, [sliceStartFrame, sliceEndFrame]),
+            end:      Select.kr(reverse, [sliceEndFrame, sliceStartFrame]),
+            resetPos: Select.kr(reverse, [sliceStartFrame, sliceEndFrame])
+        );
+
+        sliceSig = BufRd.ar(1, bufnum, slicePhasor, loop: 0, interpolation: 4);
+
+        // Slice one-shot: silence after first pass through slice region
+        {
+            var sliceLen = (sliceEndFrame - sliceStartFrame).abs.max(1);
+            var sweepSamples = Sweep.ar(combinedTrig, SampleRate.ir * bufRate * smoothRate.abs);
+            sliceSig = sliceSig * (1 - (sweepSamples >= sliceLen));
+        }.value;
+
+        sig = Select.ar(sliceMode, [sig, sliceSig]);
 
         sig = sig * env * smoothAmp * Lag.kr(trackAmp, 0.05);
 

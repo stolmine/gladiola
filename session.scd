@@ -24,7 +24,8 @@
 			\startStep -> t[\startStep],
 			\endStep -> t[\endStep],
 			\muted -> t[\muted],
-			\clockDiv -> t[\clockDiv]
+			\clockDiv -> t[\clockDiv],
+			\sliceMode -> t[\sliceMode]
 		]
 	};
 	snapshot[\presets] = ~presets.collect { |p|
@@ -38,6 +39,7 @@
 					\muted -> t[\muted]
 				];
 				if(t[\clockDiv].notNil) { td[\clockDiv] = t[\clockDiv] };
+				if(t[\sliceMode].notNil) { td[\sliceMode] = t[\sliceMode] };
 				td
 			};
 			copy[\clockDiv] = p[\clockDiv];
@@ -112,6 +114,7 @@
 							step[\subIdx] = 0;
 						};
 						if(step[\attack].isNil) { step[\attack] = 0.002 };
+						if(step[\sliceIdx].isNil) { step[\sliceIdx] = 0 };
 					};
 					~tracks[i][\steps] = saved[\steps].collect { |s| ~deepCopyStep.(s) };
 					~tracks[i][\startStep] = saved[\startStep];
@@ -122,6 +125,10 @@
 						~tracks[i][\clockDiv] = saved[\clockDiv];
 					} {
 						~tracks[i][\clockDiv] = 0.25;
+					};
+					~tracks[i][\sliceMode] = saved[\sliceMode] ?? { false };
+					if(~tracks[i][\voice].notNil) {
+						~tracks[i][\voice].set(\sliceMode, ~tracks[i][\sliceMode].asInteger);
 					};
 				};
 
@@ -169,6 +176,7 @@
 									step[\subIdx] = 0;
 								};
 								if(step[\attack].isNil) { step[\attack] = 0.002 };
+								if(step[\sliceIdx].isNil) { step[\sliceIdx] = 0 };
 							};
 							td = Dictionary[
 								\steps -> t[\steps].collect { |s| ~deepCopyStep.(s) },
@@ -177,6 +185,7 @@
 								\muted -> t[\muted]
 							];
 							if(t[\clockDiv].notNil) { td[\clockDiv] = t[\clockDiv] };
+							if(t[\sliceMode].notNil) { td[\sliceMode] = t[\sliceMode] };
 							td
 						};
 						copy[\clockDiv] = p[\clockDiv];
@@ -235,6 +244,7 @@
 			if(~tracks[i][\voice].notNil) { ~tracks[i][\voice].set(\trackAmp, 1.0) };
 		};
 		~numTracks.do { |i| ~resetModSettings.(i) };
+		~numTracks.do { |i| ~tracks[i][\sliceMode] = false };
 		~setTempo.(~bpm);
 
 		~presets = Array.fill(49, { nil });

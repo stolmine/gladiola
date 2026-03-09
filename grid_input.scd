@@ -159,7 +159,7 @@
             \subCols -> subCols, \subRows -> rows,
             \actionCols -> actionCols, \actionRows -> rows,
             \pageCol -> actionCols[0], \pageRow -> rows[0],
-            \copyCol -> actionCols[2], \copyRow -> rows[0],
+            \sliceCol -> actionCols[2], \sliceRow -> rows[0],
             \auditionCol -> actionCols[0], \auditionRow -> rows[2],
             \latchCol -> actionCols[2], \latchRow -> rows[2]
         ];
@@ -234,7 +234,7 @@
                     "[Gladiola] Fine track % -> %".format(paramNames[~fineParamIdx], val).postln;
                 };
                 if(~auditionEnabled && ~playing.not) {
-                    ~previewStep.(~fineTrackIdx, 0);
+                    ~previewStep.(~fineTrackIdx, 0, true);
                 };
             }
             { \fx } {
@@ -566,7 +566,7 @@
         ~selectedParam = 0;
         ~updateGridLEDs.();
     } {
-    if(x == layout[\copyCol] && (y == layout[\copyRow])) {
+    if(x == layout[\sliceCol] && (y == layout[\sliceRow])) {
         ~clipboard = ~deepCopyStep.(step);
         ~clipboard.removeAt(\on);
         "[Gladiola] Copied step params from track % step %".format(~heldTrack, ~heldStepIdx).postln;
@@ -598,16 +598,28 @@
             var paramIdx = ~paramIndexForRow.(y, ~heldTrack);
             if(paramIdx.notNil && (paramIdx < paramNames.size)) {
                 if(paramIdx == 0 && (~selectedParam == 0) && (effectivePage == 0)) {
-                    var numBanks = (~numBanks ? 1).max(1);
-                    var target = if(~subStepEditing && ~subStepEditIdx.notNil) {
-                        if(step[\subSteps][~subStepEditIdx].isNil) { step[\subSteps][~subStepEditIdx] = Dictionary.new };
-                        step[\subSteps][~subStepEditIdx]
-                    } { step };
-                    var curBank = target[\bank] ?? { step[\bank] };
-                    var newBank = (curBank + 1) % numBanks;
-                    target[\bank] = newBank;
-                    target[\sample] = 0;
-                    "[Gladiola] Track % step %: bank -> %".format(~heldTrack, ~heldStepIdx, newBank).postln;
+                    if(~tracks[~heldTrack][\sliceMode] == true) {
+                        var target = if(~subStepEditing && ~subStepEditIdx.notNil) {
+                            if(step[\subSteps][~subStepEditIdx].isNil) { step[\subSteps][~subStepEditIdx] = Dictionary.new };
+                            step[\subSteps][~subStepEditIdx]
+                        } { step };
+                        target[\sliceIdx] = ~heldStepIdx;
+                        "[Gladiola] Track % step %: sliceIdx -> %".format(~heldTrack, ~heldStepIdx, ~heldStepIdx).postln;
+                        if(~auditionEnabled && ~playing.not) {
+                            ~previewStep.(~heldTrack, ~heldStepIdx);
+                        };
+                    } {
+                        var numBanks = (~numBanks ? 1).max(1);
+                        var target = if(~subStepEditing && ~subStepEditIdx.notNil) {
+                            if(step[\subSteps][~subStepEditIdx].isNil) { step[\subSteps][~subStepEditIdx] = Dictionary.new };
+                            step[\subSteps][~subStepEditIdx]
+                        } { step };
+                        var curBank = target[\bank] ?? { step[\bank] };
+                        var newBank = (curBank + 1) % numBanks;
+                        target[\bank] = newBank;
+                        target[\sample] = 0;
+                        "[Gladiola] Track % step %: bank -> %".format(~heldTrack, ~heldStepIdx, newBank).postln;
+                    };
                 } {
                     ~selectedParam = paramIdx;
                     "[Gladiola] Param -> %".format(paramNames[paramIdx]).postln;
@@ -624,8 +636,13 @@
                         if(~subStepEditing && ~subStepEditIdx.notNil) {
                             if(step[\subSteps][~subStepEditIdx].isNil) { step[\subSteps][~subStepEditIdx] = Dictionary.new };
                             if(~selectedParam == 0 && (effectivePage == 0)) {
-                                step[\subSteps][~subStepEditIdx][\sample] = valIdx;
-                                "[Gladiola] Sub-step %: sample -> %".format(~subStepEditIdx, valIdx).postln;
+                                if(~tracks[~heldTrack][\sliceMode] == true) {
+                                    step[\subSteps][~subStepEditIdx][\sliceIdx] = valIdx;
+                                    "[Gladiola] Sub-step %: sliceIdx -> %".format(~subStepEditIdx, valIdx).postln;
+                                } {
+                                    step[\subSteps][~subStepEditIdx][\sample] = valIdx;
+                                    "[Gladiola] Sub-step %: sample -> %".format(~subStepEditIdx, valIdx).postln;
+                                };
                             } {
                                 var val = ~valueForPosition.(effectivePage, ~selectedParam, valIdx);
                                 step[\subSteps][~subStepEditIdx][paramNames[~selectedParam]] = val;
@@ -633,8 +650,13 @@
                             };
                         } {
                             if(~selectedParam == 0 && (effectivePage == 0)) {
-                                step[\sample] = valIdx;
-                                "[Gladiola] Track % step %: sample -> %".format(~heldTrack, ~heldStepIdx, valIdx).postln;
+                                if(~tracks[~heldTrack][\sliceMode] == true) {
+                                    step[\sliceIdx] = valIdx;
+                                    "[Gladiola] Track % step %: sliceIdx -> %".format(~heldTrack, ~heldStepIdx, valIdx).postln;
+                                } {
+                                    step[\sample] = valIdx;
+                                    "[Gladiola] Track % step %: sample -> %".format(~heldTrack, ~heldStepIdx, valIdx).postln;
+                                };
                             } {
                                 var val = ~valueForPosition.(effectivePage, ~selectedParam, valIdx);
                                 step[paramNames[~selectedParam]] = val;
@@ -676,9 +698,21 @@
         "[Gladiola] Track param page -> %".format(~paramPage).postln;
         ~updateGridLEDs.();
     } {
-    if(x == layout[\copyCol] && (y == layout[\copyRow])) {
-        // Slice stub
-        "[Gladiola] Slice toggle (stub) for track %".format(~trackParamTrack).postln;
+    if(x == layout[\sliceCol] && (y == layout[\sliceRow])) {
+        var wasSlice = ~tracks[~trackParamTrack][\sliceMode] == true;
+        ~tracks[~trackParamTrack][\sliceMode] = wasSlice.not;
+        if(~tracks[~trackParamTrack][\voice].notNil) {
+            ~tracks[~trackParamTrack][\voice].set(\sliceMode, wasSlice.not.asInteger);
+        };
+        if(wasSlice.not) {
+            // Enabling: init each step's sliceIdx to step index
+            ~stepsPerTrack.do { |stepIdx|
+                ~tracks[~trackParamTrack][\steps][stepIdx][\sliceIdx] = stepIdx;
+            };
+            "[Gladiola] Track %: slice mode ON, steps initialized".format(~trackParamTrack).postln;
+        } {
+            "[Gladiola] Track %: slice mode OFF".format(~trackParamTrack).postln;
+        };
         ~updateGridLEDs.();
     } {
     if(x == layout[\auditionCol] && (y == layout[\auditionRow])) {
@@ -686,7 +720,7 @@
         ~auditionEnabled = ~auditionEnabled.not;
         "[Gladiola] Audition -> %".format(~auditionEnabled).postln;
         if(~auditionEnabled && ~playing.not) {
-            ~previewStep.(~trackParamTrack, 0);
+            ~previewStep.(~trackParamTrack, 0, true);
         };
         ~updateGridLEDs.();
     } {
@@ -731,6 +765,7 @@
                     \ratchet, 1, \attack, 0.002, \gateLength, 1.0,
                     \reverse, false, \filter, 0.0, \pan, 0.0,
                     \probability, 1.0, \delaySend, 0.0, \bitcrush, 0.0,
+                    \sliceIdx, 0,
                     \subSteps, Array.fill(9, { nil }),
                     \subActive, Array.fill(9, { |i| i == 0 }),
                     \subIdx, 0
@@ -785,7 +820,7 @@
                         "[Gladiola] Track % all steps: % -> %".format(~trackParamTrack, paramNames[~selectedParam], val).postln;
                     };
                     if(~auditionEnabled && ~playing.not) {
-                        ~previewStep.(~trackParamTrack, 0);
+                        ~previewStep.(~trackParamTrack, 0, true);
                     };
                     ~updateGridLEDs.();
                 };

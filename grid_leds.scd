@@ -143,7 +143,7 @@
                 var paramIdx = ~paramIndexForRow.(row, ~heldTrack);
                 if(paramIdx.notNil && (paramIdx < numParams)) {
                     var brightness;
-                    if(paramIdx == 0 && (if(~subStepEditing) { ~subStepParamPage } { ~paramPage } == 0)) {
+                    if(paramIdx == 0 && (if(~subStepEditing) { ~subStepParamPage } { ~paramPage } == 0) && { ~tracks[~heldTrack][\sliceMode] != true }) {
                         var bankVal = step[\bank];
                         var numBanks = (~numBanks ? 1).max(1);
                         brightness = (GridInterface.ledDim + ((bankVal + 1) / numBanks * (GridInterface.ledFull - GridInterface.ledDim))).round.asInteger.clip(GridInterface.ledDim, GridInterface.ledFull);
@@ -163,9 +163,15 @@
             var effectivePage = ~subStepParamPage;
             var effectiveParamNames = if(effectivePage == 0) { ~paramNamesPage1 } { ~paramNamesPage2 };
             if(~selectedParam == 0 && (effectivePage == 0)) {
-                curVal = ~resolveSubStepParam.(step, ~subStepEditIdx, \sample);
-                curPos = curVal.asInteger;
-                numValid = ~numValidPositions.(0, 0, ~heldTrack, ~heldStepIdx);
+                if(~tracks[~heldTrack][\sliceMode] == true) {
+                    curVal = ~resolveSubStepParam.(step, ~subStepEditIdx, \sliceIdx);
+                    curPos = curVal.asInteger;
+                    numValid = 16;
+                } {
+                    curVal = ~resolveSubStepParam.(step, ~subStepEditIdx, \sample);
+                    curPos = curVal.asInteger;
+                    numValid = ~numValidPositions.(0, 0, ~heldTrack, ~heldStepIdx);
+                };
             } {
                 var resolvedVal = ~resolveSubStepParam.(step, ~subStepEditIdx, effectiveParamNames[~selectedParam]);
                 curVal = resolvedVal;
@@ -174,9 +180,15 @@
             };
         } {
             if(~selectedParam == 0 && (~paramPage == 0)) {
-                curVal = step[\sample];
-                curPos = curVal.asInteger;
-                numValid = ~numValidPositions.(0, 0, ~heldTrack, ~heldStepIdx);
+                if(~tracks[~heldTrack][\sliceMode] == true) {
+                    curVal = step[\sliceIdx];
+                    curPos = curVal.asInteger;
+                    numValid = 16;
+                } {
+                    curVal = step[\sample];
+                    curPos = curVal.asInteger;
+                    numValid = ~numValidPositions.(0, 0, ~heldTrack, ~heldStepIdx);
+                };
             } {
                 curVal = step[paramNames[~selectedParam]];
                 curPos = ~positionForValue.(~paramPage, ~selectedParam, curVal);
@@ -211,7 +223,7 @@
             var ep = if(~subStepEditing) { ~subStepParamPage } { ~paramPage };
             if(ep == 1) { GridInterface.ledFull } { GridInterface.ledMedium }
         }.value);
-        ~grid.led(layout[\copyCol], layout[\copyRow], {
+        ~grid.led(layout[\sliceCol], layout[\sliceRow], {
             if(~clipboard.isNil) { GridInterface.ledDim } {
                 var step = if(~subStepEditing) {
                     ~tracks[~heldTrack][\steps][~heldStepIdx][\subSteps][~subStepEditIdx]
@@ -462,7 +474,8 @@
             // Action grid LEDs
             ~grid.led(layout[\pageCol], layout[\pageRow],
                 if(~paramPage == 1) { GridInterface.ledFull } { GridInterface.ledMedium });
-            ~grid.led(layout[\copyCol], layout[\copyRow], GridInterface.ledDim);  // Slice stub
+            ~grid.led(layout[\sliceCol], layout[\sliceRow],
+                if(~tracks[~trackParamTrack][\sliceMode] == true) { GridInterface.ledFull } { GridInterface.ledDim });
             ~grid.led(layout[\auditionCol], layout[\auditionRow],
                 if(~auditionEnabled) { GridInterface.ledFull } { GridInterface.ledDim });
             ~grid.led(layout[\latchCol], layout[\latchRow],
