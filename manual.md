@@ -251,14 +251,32 @@ Both grids share the same 3 rows, positioned to maximise gap from the value row.
 
 ### Track Parameter Overlay
 
-Hold a mute key (cols 9-15, row 7) to open the track parameter overlay for that track. The overlay closes when the mute key is released. Tapping and releasing quickly still toggles mute — hold to enter the overlay.
+Hold a mute key (cols 9-15, row 7) to open the track parameter overlay for that track. The overlay closes when the mute key is released (unless latched). Tapping and releasing quickly still toggles mute — hold to enter the overlay.
+
+The overlay uses `~overlayLayout` for layout computation, placing two 3x3 grids side-by-side on the far side of the held column. Because track mute keys are cols 9-15 (right side), the grids always appear on the left: action grid on cols 4-6, phantom sub-step grid on cols 0-2.
 
 - **Param column**: The held mute key's column, rows 0-6. Tap a row to select a parameter.
-- **Value row**: Appears at the selected parameter's row number. Tap a column to set the value.
-- **Page toggle (P)**: Appears at `heldCol - 4`. Switches between page 1 and page 2. No copy button.
+- **Value row**: Appears at the selected parameter's row number. Tap a column to set the value. Value row has collision avoidance — action and sub grid cell positions are excluded.
 - **Held mute key LED**: Lit while the overlay is open.
 - **Scope**: Value changes apply to ALL steps in the track simultaneously.
 - **Unanimous indicator**: If all steps share the same value for the selected parameter, the current position lights full brightness. If steps have mixed values, no bright indicator is shown.
+- **Audition preview**: When audition is enabled and the transport is stopped, changing a parameter value automatically previews step 0 of the track with the new value applied.
+
+**Action grid** (cols 4-6, 3 rows determined by layout):
+
+```
+[P] [ ] [S]    P = Page toggle     S = Slice stub
+[ ] [M] [ ]    M = Mod stub
+[A] [ ] [L]    A = Audition         L = Latch
+```
+
+- **P (Page toggle)**: Switches between param page 1 and page 2. Medium = page 1, full = page 2.
+- **S (Slice stub)**: Placeholder for future slice mode toggle.
+- **M (Mod stub)**: Center key, placeholder for future modulation overlay.
+- **A (Audition)**: Toggles step preview. Full = enabled. Only active when transport is stopped.
+- **L (Latch)**: Keeps the overlay open after releasing the mute key. Pulses when engaged. Tap again to disengage and close the overlay.
+
+**Clear track** — center cell of the phantom sub-step grid (col 1, middle row): Two-tap confirmation. First tap arms the clear (LED pulses). Second tap confirms — resets all 16 steps on the track to defaults. Tapping any other button disarms. The clear state (`~trackClearArmed`) resets when the overlay closes.
 
 Cannot open the step param overlay while the track overlay is active, and vice versa.
 

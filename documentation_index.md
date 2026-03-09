@@ -39,5 +39,5 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 - Granular (MiClouds) with 1.5× input boost, per-parameter S&H mod depth (size/position/pitch), quantized pitch intervals
 - Clock-relative loop lengths (scales with tempo and clock division)
 - Start/end points with wrap-around for polymetric patterns
-- Per-track "macro" parameter overlay via mute key hold (apply params to all steps at once)
+- Per-track "macro" parameter overlay via mute key hold (apply params to all steps at once) with action grid (page, slice stub, audition, latch, mod stub), clear track (two-tap confirm), and audition preview
 - Input mutex system preventing gesture conflicts across modal states

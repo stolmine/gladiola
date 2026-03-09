@@ -106,6 +106,7 @@
 - [x] kill FX tails button on transport hold page at (2,7): tap to immediately free and recreate send FX synths
 - [x] fixed preset save to mapped slot: holding a preset button mapped to an empty slot now saves to the mapped slot instead of resetting to the button's default slot
 - [x] fixed gate length max: replaced 100 sentinel ("full sustain") with 16 steps (one full pattern cycle), clock-relative to track division — eliminates runaway sample playback
+- [x] per-track global overlay rework: uses ~overlayLayout instead of ad-hoc ~trackOverlayPagePos; action grid (page/slice stub/audition/latch corners + mod stub center) and phantom sub-step grid (center = clear with two-tap confirm via ~trackClearArmed); latch keeps overlay open after release; value row collision avoidance; audition preview on param change when transport stopped
 - [x] double-tap guard after step overlay close: records ~lastOverlayCloseTime on overlay release, double-tap handler checks 300ms cooldown to prevent false triggers
 - [x] bitcrush value curve: replaced linear pos/14.0 mapping with 15-value lookup table (approx quadratic curve), effect noticeable from position 2-3 onward
 - [x] compressor scaling: raised threshold floor (0.3), stronger ratio (8:1), wider attack (5ms-300ms) and release (30ms-1.5s) ranges, added auto makeup gain via thresh.reciprocal.pow(1 - ratio)
@@ -113,14 +114,15 @@
 
 ## per-track global overlay rework
 
-Currently a simple hold-to-open param editor. Needs to become a proper track control surface with action grid before mod/slice features can land.
+Reworked from simple hold-to-open param editor to proper track control surface using ~overlayLayout. Action grid always on left (cols 4-6) since track mute keys are cols 9-15.
 
-### overlay structure
-- action grid keys: slice toggle, audition, modulation, clear track (with confirmation)
-- latch: to the right of held key (or left for col 15)
-- page toggle for param pages (existing behavior)
-- we can use a 3x3 like step overlay action cluster, with an additional button at center for modulation or slice toggle
-- mix fader: horizontal fader on row 7 for track volume — more real estate than transport overlay's vertical faders, can be wider
+### overlay structure (done)
+- [x] action grid keys: page toggle (TL), slice stub (TR), audition (BL), latch (BR), mod stub (center)
+- [x] latch via action grid corner key (BR), keeps overlay open after mute key release
+- [x] page toggle via action grid corner key (TL)
+- [x] clear track via phantom sub-step grid center cell — two-tap confirmation (~trackClearArmed)
+- [x] value row collision avoidance with action/sub grid cells
+- [x] audition preview on param change when transport stopped
 
 ### per-track LFO modulation system
 - one LFO per track, available to all 14 param destinations via mod depth faders
@@ -173,10 +175,12 @@ Currently a simple hold-to-open param editor. Needs to become a proper track con
 - single-layer undo has limited value when the grid provides full visual state feedback; user can manually revert any change in the same number of gestures
 - optimistic execute + rollback was attempted but rollback still arrives too late (audible transport blip)
 
-### phase 3 — per-track global overlay rework
-- [ ] overlay structure — action grid (3x3 with corners + center), latch key, horizontal mix fader on row 7. scaffold only, no new features yet.
-- [ ] audition in track overlay — port audition toggle from step overlay
-- [ ] clear track with confirmation — new action key
+### phase 3 — per-track global overlay rework ✓
+- [x] overlay structure — uses ~overlayLayout for layout (action grid 3x3 with corners + center, phantom sub grid for clear). track keys always on right so grids always on left.
+- [x] audition in track overlay — audition toggle in action grid (BL corner), preview on param change when transport stopped
+- [x] clear track with confirmation — center cell of phantom sub grid, two-tap arm/confirm via ~trackClearArmed
+- [x] latch support — action grid BR corner, engage keeps overlay open after release, disengage closes it
+- [x] value row collision avoidance with action/sub grid cells
 
 foundation for phases 4 and 5. get solid and tested before building on top.
 
