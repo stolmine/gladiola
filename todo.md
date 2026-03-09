@@ -61,7 +61,7 @@
 - [x] Server.sync after ~freeSamples in sample_loader.scd to prevent buffer exhaustion on session load
 - [x] ~basePath stored globally in main.scd; ~sessionsDir set to ~/gladiola-sessions/ with auto-create
 - [x] session GUI auto-opens on boot
-- [x] double-tap transport panic kills FX tails (frees and recreates send FX synths)
+- [x] double-tap transport panic kills FX tails (frees and recreates send FX synths) — panic relocated to transport hold page (3,7) in phase 2
 - [x] step audition: A button in param overlay toggles auto-preview on param changes (transport stopped only)
 - [x] granular (MiClouds) improvements: 1.5× input boost, step-triggered S&H modulation via Latch.kr, user-controllable mod depth (\granModDepth param)
 - [x] loop length changed from buffer-relative to step-relative (clock-scaled): 0=one-shot, 1/16-1.0=sub-step fractions, 2/4/8=multi-step loops
@@ -110,6 +110,13 @@
 - [x] bitcrush value curve: replaced linear pos/14.0 mapping with 15-value lookup table (approx quadratic curve), effect noticeable from position 2-3 onward
 - [x] compressor scaling: raised threshold floor (0.3), stronger ratio (8:1), wider attack (5ms-300ms) and release (30ms-1.5s) ranges, added auto makeup gain via thresh.reciprocal.pow(1 - ratio)
 - [x] saturation redesign: 7 discrete types (fold, tanh, softclip, hard clip, sqrt, rectify, quantize) replacing 3-type crossfade; baked-in DC offset (0.05) for asymmetric harmonic character with LeakDC cleanup; satType value table now integer indices 0-6
+- [x] undo system: single-layer undo with ~saveUndo/~performUndo covering 16 mutation types (step toggle, step/sub-step params, step/sub-step bank, track bank/param, FX param, paste, sub-step toggle/clear, clock div, transpose, swing, track volume, sequence length)
+  - double-tap (0,7) triggers undo from main view and most overlays
+  - action grid center button triggers undo inside step param overlay (avoids collision with sub-step/action 3×3 grids)
+  - LED at action grid center: medium when undo available, dim when empty
+  - undo state cleared on preset recall and pattern clear
+- [x] deferred transport toggle: single-tap (0,7) deferred 260ms past double-tap window so undo fires without toggling transport
+- [x] panic relocated to transport hold page at (3,7): stop + silence + kill FX tails
 
 ## per-track global overlay rework
 
@@ -167,34 +174,14 @@ Currently a simple hold-to-open param editor. Needs to become a proper track con
 - [x] compressor scaling
 - [x] saturation redesign
 
-### phase 2 — undo system
-- [ ] fix double-tap (0,7) timing — defer single-tap past double-tap window (same pattern as pendingToggle). prerequisite for undo.
-- [ ] move panic to transport hold page — frees double-tap for undo. add panic button next to kill FX tails.
-- [ ] implement undo — double-tap (0,7) to undo
-  - single layer, no redo — ~undoState holds one `[action_type, target, old_value]` tuple, overwritten on each new undoable action
-  - covered actions:
-    - step toggle on/off
-    - any step param value change (step overlay)
-    - track overlay param changes (stash all 16 old step values as array)
-    - FX matrix param changes
-    - step copy/paste
-    - sub-step toggle/clear
-    - clock division changes
-    - transpose changes
-    - swing changes
-    - track volume changes (mixer faders)
-    - sequence length changes (start/end points)
-  - excluded:
-    - transport start/stop
-    - preset recall/save/clear (save/clear are confirmation-guarded, recall is snapshot-level)
-    - global reverse toggles
-    - mute toggles (performance gestures, quick to re-toggle)
-    - overlay open/close, latch engage/disengage (navigation/UI state)
-    - panics and kills
-  - implementation concerns:
-    - verify (0,7) is accessible in all overlay states — check for conflicts with transport hold, utility overlays, param overlay, track overlay, length modal
-
-cross-cutting change that touches grid_input.scd heavily. do before overlay reworks to avoid retrofitting into new code.
+### phase 2 — undo system ✓
+- [x] fix double-tap (0,7) timing — defer single-tap 260ms past double-tap window
+- [x] move panic to transport hold page (3,7)
+- [x] implement undo — double-tap (0,7) from main/overlays, action grid center from step overlay
+  - single layer, no redo — ~undoState Dictionary overwritten on each undoable action
+  - 16 undo types: stepToggle, stepParam, subStepParam, stepBank, subStepBank, trackBank, trackParam, fxParam, paste, subToggle, subClear, clockDiv, transpose, swing, trackVolume, seqLength
+  - excluded: transport, preset recall/save/clear, global reverse, mutes, navigation, panics
+  - note: track global overlay will need its own undo button (center occupied by mod toggle); plan undo above or below mod in that action grid
 
 ### phase 3 — per-track global overlay rework
 - [ ] overlay structure — action grid (3x3 with corners + center), latch key, horizontal mix fader on row 7. scaffold only, no new features yet.
@@ -256,6 +243,7 @@ most open design questions and heaviest DSP work. save for last.
 - [ ] clock sync (MIDI clock, Link)
 - [ ] audio output routing options (bus selection)
 - [ ] legato mode for preset switching: start presets from the same position the previous one was at instead of resetting to start, given instant switching is enabled (clock div interpolation would be goofy but worth a try)
+- [ ] add record button to session manager
 
 ## abandoned
 - [0] groove templates (swing is implemented; templates would be preset swing curves beyond linear)
