@@ -234,47 +234,31 @@
                 ~grid.led(1, row, brightness);
             };
 
-            // Cols 2-15: Depth faders with LFO slink visualization
-            // Slink fills from base (row 6) up to the LFO's current position.
-            // Bunching: brightness concentrates near the head using exponential falloff,
-            // creating a dense bright cluster that compresses into the peak on arrival
-            // and dissolves into the base when retreating.
+            // Cols 2-15: Depth faders — single LED shows LFO position
             14.do { |destIdx|
                 var col = destIdx + 2;
                 var depth = ms[\depths][destIdx];
                 var depthRow = ~modRowForDepth.(depth);
                 if(depth > 0) {
+                    var polarity = ms[\polarities][destIdx];
                     var span = (6 - depthRow).max(1);
-                    var lfoAmount = lfoVal.abs * depth;
-                    var headRowFloat = 6.0 - (lfoAmount * span);
-                    var headRow = headRowFloat.round.asInteger.clip(depthRow, 6);
+                    var t = ((lfoVal * polarity).max(0) * depth).clip(0, 1);
+                    var posRow = (6.0 - (t * span)).round.asInteger.clip(depthRow, 6);
                     7.do { |row|
                         var brightness;
                         if(row == depthRow) {
-                            // Peak: brightens when head arrives (bunching into peak)
-                            if(headRow <= (depthRow + 1)) {
-                                brightness = GridInterface.ledFull;
-                            } {
-                                // Peak indicator when head is far away
-                                brightness = GridInterface.ledBright;
-                            };
+                            // Peak: absorbs position LED when it arrives
+                            brightness = if(posRow == depthRow) {
+                                GridInterface.ledFull
+                            } { GridInterface.ledBright };
                         } {
-                            if(row >= headRow && (row < 6)) {
-                                // Slink body with exponential bunching toward head
-                                var distFromHead = (row - headRow).max(0);
-                                var bodyLen = (6 - headRow).max(1);
-                                var normDist = distFromHead / bodyLen;
-                                // Exponential falloff: bunches brightness near head
-                                var fade = (1.0 - (normDist * normDist)).max(0);
-                                brightness = (GridInterface.ledDim + (fade * (GridInterface.ledMedium - GridInterface.ledDim))).round.asInteger;
-                            } {
-                                brightness = GridInterface.ledDim;
-                            };
+                            brightness = if(row == posRow) {
+                                GridInterface.ledMedium
+                            } { GridInterface.ledDim };
                         };
                         ~grid.led(col, row, brightness);
                     };
                 } {
-                    // No depth — static display
                     7.do { |row|
                         var brightness = if(row == 6) { GridInterface.ledFull } { GridInterface.ledDim };
                         ~grid.led(col, row, brightness);
