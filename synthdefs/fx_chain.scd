@@ -15,7 +15,7 @@
         arg fxSendBus = 0, sizeMod = 0, posMod = 0, pitchRange = 0, level = 0;
         var input, sig, trig, stepTrig, posVal, sizeVal, densVal, pitchVal;
         var pitchOffsets = #[-0.396, -0.25, -0.146, 0, 0.146, 0.25, 0.396];
-        var pitchIdx, densAvg, rvbVal, fbVal;
+        var pitchIdx, densAvg;
         input = In.ar(fxSendBus, 2) * 3;
         stepTrig = \t_trig.tr;
         posVal = 0.5 + (Latch.kr(WhiteNoise.kr, stepTrig) * Lag.kr(posMod, 0.1));
@@ -24,8 +24,6 @@
         densVal = 0.6 + (Latch.kr(WhiteNoise.kr, stepTrig) * densAvg);
         pitchIdx = (3 + (Latch.kr(WhiteNoise.kr, stepTrig) * Lag.kr(pitchRange, 0.1) * 3)).round.clip(0, 6);
         pitchVal = 0.5 + Select.kr(pitchIdx, pitchOffsets);
-        rvbVal = Lag.kr(sizeMod, 0.1) * 0.5;
-        fbVal = Lag.kr(posMod, 0.1) * 0.4;
         trig = Dust.kr(LFNoise1.kr(0.1).linlin(-1, 1, 4, 12));
         sig = MiClouds.ar(
             input[0], input[1],
@@ -34,8 +32,7 @@
             size: sizeVal,
             dens: densVal,
             tex: 0.5,
-            rvb: rvbVal,
-            fb: fbVal,
+            rvb: 0,
             freeze: 0,
             mode: 0,
             lofi: 0,
@@ -54,7 +51,7 @@
             Lag.kr(damping, 0.1),
             Lag.kr(size, 0.3),
             0.1,
-            Lag.kr(size, 0.3).linlin(0, 1, 0.1, 0.5)
+            Lag.kr(size, 0.3).linlin(0, 1, 0.5, 2)
         );
         Out.ar(0, sig * Lag.kr(level, 0.05));
     }).add;

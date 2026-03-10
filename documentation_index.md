@@ -22,7 +22,7 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 | `grid_params.scd` | Parameter definitions, value tables, mapping, sub-step resolution helpers |
 | `grid_leds.scd` | LED rendering for all display modes |
 | `grid_input.scd` | Grid input handling — 8 extracted key handlers with flat case dispatch, gesture recognition, modal state |
-| `session.scd` | Session save/load/new, GUI window with metering, recording, and quit button |
+| `session.scd` | Session save/load/new, GUI window with metering and quit button |
 | `synthdefs/lfo.scd` | Per-track LFO SynthDefs (one per track, outputting to control bus) |
 | `lfo_params.scd` | LFO parameter definitions, mod depth tables, shape/rate helpers |
 
@@ -35,8 +35,8 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 - Global reverse toggle (XOR with per-step reverse)
 - Clock division, FX matrix, and transpose overlays, each with a latch key (one column right on row 7) to lock the overlay open hands-free
 - Transport hold page: hold transport 500ms for BPM nudge, swing nudge, kill FX tails, and VU meters; latched via (1, 7)
-- Session manager: save/load/new sessions as `.gladiola` archives with GUI, stereo metering, and audio recording
-- Session GUI with grid connection button, live status, and record toggle (AIFF int24 to SC default recordings directory)
+- Session manager: save/load/new sessions as `.gladiola` archives with GUI and stereo metering
+- Session GUI with grid connection button and live status
 - Full FX chain (delay, granular, reverb, saturation (7 types: fold/tanh/softclip/hard clip/sqrt/rectify/quantize), tilt EQ, compressor with auto makeup gain, limiter), bitcrush, bipolar filter, pan, probability
 - Granular (MiClouds) with 3× input boost, per-parameter S&H mod depth (size/position/pitch), quantized pitch intervals
 - Clock-relative loop lengths (scales with tempo and clock division)

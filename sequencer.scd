@@ -258,7 +258,6 @@ var defaultStep = {
         Out.kr(\out.kr(0), amp);
     }).play(s, [\out, ~meterBus], addAction: \addToTail);
     ~meterLevel = [0, 0];
-    ~recordStartTime = nil;
     ~meterUpdateRoutine = Routine({
         loop {
             if(~meterBus.isNil) { nil.yield }; // exit if bus freed
