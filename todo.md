@@ -275,6 +275,9 @@ biggest single feature. SynthDef work and UI work can be developed somewhat in p
 - [x] removed: ~delaySynth, ~granularSynth, ~reverbSynth and their SynthDefs
 - [x] session/preset persistence with migration for old sessions
 - [x] files modified: synthdefs/fx_chain.scd, fx_params.scd, sequencer.scd, grid_input.scd, grid_leds.scd, session.scd
+- [x] FX mod detail phase edit: tap-to-exit pattern (hold polarity key enters phase mode, tap exits it), matching per-track LFO overlay
+- [x] FX mod detail polarity pending guard: hold handler checks ~fxPolarityPending == destIdx before toggling phase edit
+- [x] FX mod debug messages use parameter names (inGain, pit, pos, etc.) instead of numerical indices
 
 ### proposals
 

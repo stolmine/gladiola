@@ -451,14 +451,14 @@
                         // Phase fader
                         var phase = ~phaseValues[y];
                         ~setFxModPhase.(destIdx, phase);
-                        "[Gladiola] FX mod phase dest % -> %".format(destIdx, phase).postln;
+                        "[Gladiola] FX mod phase % -> %".format(~fxModDestKeys[destIdx], phase).postln;
                         ~updateGridLEDs.();
                     } {
                         // Depth fader
                         var depth = ~modDepthForRow.(y);
                         var polarity = ~fxModSettings[\polarities][destIdx];
                         ~setFxModDepth.(destIdx, depth, polarity);
-                        "[Gladiola] FX mod depth dest % -> %".format(destIdx, depth).postln;
+                        "[Gladiola] FX mod depth % -> %".format(~fxModDestKeys[destIdx], depth).postln;
                         ~updateGridLEDs.();
                     };
                 };
@@ -1213,7 +1213,7 @@
                             ~fineModDest = destIdx;
                             ~latchActive = true;
                             ~startPulseRoutine.();
-                            "[Gladiola] FX mod phase fine fader (dest %)".format(destIdx).postln;
+                            "[Gladiola] FX mod phase fine fader (%)".format(~fxModDestKeys[destIdx]).postln;
                             ~updateGridLEDs.();
                         };
                     } {
@@ -1226,18 +1226,20 @@
                             ~fineModDest = destIdx;
                             ~latchActive = true;
                             ~startPulseRoutine.();
-                            "[Gladiola] FX mod depth fine fader (dest %)".format(destIdx).postln;
+                            "[Gladiola] FX mod depth fine fader (%)".format(~fxModDestKeys[destIdx]).postln;
                             ~updateGridLEDs.();
                         };
                     };
                 };
                 if(x >= 4 && (x <= 15) && (y == 7)) {
-                    // Hold on row 7 polarity key → phase edit toggle
+                    // Hold on row 7 polarity key → enter phase edit
                     var destIdx = x - 4;
-                    ~fxPolarityPending = nil;
-                    ~fxPhaseEditActive[destIdx] = ~fxPhaseEditActive[destIdx].not;
-                    "[Gladiola] FX mod phase edit dest % -> %".format(destIdx, ~fxPhaseEditActive[destIdx]).postln;
-                    ~updateGridLEDs.();
+                    if(~fxPolarityPending == destIdx) {
+                        ~fxPhaseEditActive[destIdx] = ~fxPhaseEditActive[destIdx].not;
+                        "[Gladiola] FX mod phase edit % -> %".format(~fxModDestKeys[destIdx], ~fxPhaseEditActive[destIdx]).postln;
+                        ~fxPolarityPending = nil;
+                        ~updateGridLEDs.();
+                    };
                 };
             } {
                 // Main FX page hold handler
@@ -1580,14 +1582,20 @@
                         };
                         if(x >= 4 && (x <= 15) && (y == 7)) {
                             var destIdx = x - 4;
-                            if(~fxPolarityPending.notNil && (~fxPolarityPending == destIdx)) {
-                                // Polarity toggle (hold didn't fire)
-                                var newPol = ~fxModSettings[\polarities][destIdx].neg;
-                                ~setFxModDepth.(destIdx, ~fxModSettings[\depths][destIdx], newPol);
-                                "[Gladiola] FX mod polarity dest % -> %".format(destIdx, newPol).postln;
+                            if(~fxPolarityPending == destIdx) {
+                                if(~fxPhaseEditActive[destIdx]) {
+                                    // Tap exits phase mode (no polarity toggle)
+                                    ~fxPhaseEditActive[destIdx] = false;
+                                    "[Gladiola] FX mod phase edit % off".format(~fxModDestKeys[destIdx]).postln;
+                                } {
+                                    // Normal polarity toggle
+                                    var newPol = ~fxModSettings[\polarities][destIdx].neg;
+                                    ~setFxModDepth.(destIdx, ~fxModSettings[\depths][destIdx], newPol);
+                                    "[Gladiola] FX mod polarity % -> %".format(~fxModDestKeys[destIdx], newPol).postln;
+                                };
+                                ~fxPolarityPending = nil;
                                 ~updateGridLEDs.();
                             };
-                            ~fxPolarityPending = nil;
                         };
                     } {
                         if(x == 0 && (y == 7) && ~fxShapePending.notNil) {

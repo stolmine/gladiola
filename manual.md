@@ -217,7 +217,15 @@ The FX mod detail overlay provides per-destination depth faders and polarity/pha
 | 12 | mode | discrete (sclang S&H) |
 | 13 | lofi | discrete (sclang S&H) |
 
-Within each column, the depth fader layout matches the per-track mod overlay (rows 0-5 = depth levels 6→1, row 6 = zero, row 7 = polarity toggle). Phase offset entry works the same as for per-track LFO destinations: hold a polarity key 500ms to enter phase fader mode.
+Within each column, the depth fader layout matches the per-track mod overlay (rows 0-5 = depth levels 6→1, row 6 = zero, row 7 = polarity toggle).
+
+**Phase offset**: Each of the 12 destinations can have an independent phase offset, shifting that destination's LFO signal relative to the others.
+
+- **Hold** a polarity key (row 7, cols 4-15) for 500ms to enter phase fader mode for that column
+- **Tap** a polarity key to exit phase mode (when phase mode is active) or toggle polarity (when not active)
+- Multiple columns can be in phase mode simultaneously — each is independent
+- Phase-active polarity keys show a sawtooth-down LED animation (bright→dim ramp)
+- Phase fader positions and fine fader behavior match the per-track LFO phase faders (see [LFO Modulation](#lfo-modulation))
 
 ### Fine Fader in FX Page
 

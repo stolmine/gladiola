@@ -37,7 +37,7 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 - Transport hold page: hold transport 500ms for BPM nudge, swing nudge, kill FX tails, and VU meters; latched via (1, 7)
 - Session manager: save/load/new sessions as `.gladiola` archives with GUI, stereo metering, and audio recording
 - Session GUI with grid connection button, live status, and record toggle (AIFF int24 to SC default recordings directory)
-- Full FX chain: single expanded MiClouds instance (9 continuous params + freeze/mode/lofi toggles + auto-trigger), feeding into saturation (7 types: fold/tanh/softclip/hard clip/sqrt/rectify/quantize), tilt EQ, compressor with auto makeup gain, limiter; FX page has dedicated LFO with 12 mod destinations and full blocking mod detail overlay
+- Full FX chain: single expanded MiClouds instance (9 continuous params + freeze/mode/lofi toggles + auto-trigger), feeding into saturation (7 types: fold/tanh/softclip/hard clip/sqrt/rectify/quantize), tilt EQ, compressor with auto makeup gain, limiter; FX page has dedicated LFO with 12 mod destinations, per-destination phase offsets, and full blocking mod detail overlay
 - Per-step bitcrush, bipolar filter, pan, probability
 - Clock-relative loop lengths (scales with tempo and clock division)
 - Start/end points with wrap-around for polymetric patterns
