@@ -281,7 +281,7 @@
 		s.recHeaderFormat = "aiff";
 		s.recSampleFormat = "int24";
 
-		~sessionWindow = Window("Gladiola", Rect(100, 100, 460, 130), resizable: false)
+		~sessionWindow = Window("Gladiola — %".format(~sessionName ? "unsaved"), Rect(100, 100, 460, 130), resizable: false)
 		.alwaysOnTop_(true);
 
 		bpmLabel = StaticText().string_("BPM: %".format(~bpm));
@@ -306,6 +306,7 @@
 						peakR = if(r > peakR) { r } { peakR * peakDecay };
 						meterL.value = smoothL; meterL.peakLevel = peakL;
 						meterR.value = smoothR; meterR.peakLevel = peakR;
+						~sessionWindow.name = "Gladiola — %".format(~sessionName ? "unsaved");
 						bpmLabel.string = "BPM: %".format(~bpm);
 						swingLabel.string = "Swing: %%".format(~swing, "%");
 						sampleDirLabel.string = "Samples: %".format(
