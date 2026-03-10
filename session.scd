@@ -118,6 +118,10 @@
 						};
 						if(step[\attack].isNil) { step[\attack] = 0.002 };
 						if(step[\sliceIdx].isNil) { step[\sliceIdx] = 0 };
+						if(step[\condMode].isNil) { step[\condMode] = false };
+						if(step[\condN].isNil) { step[\condN] = 1 };
+						if(step[\condM].isNil) { step[\condM] = 2 };
+						if(step[\condCount].isNil) { step[\condCount] = 0 };
 					};
 					~tracks[i][\steps] = saved[\steps].collect { |s| ~deepCopyStep.(s) };
 					~tracks[i][\startStep] = saved[\startStep];
@@ -180,6 +184,10 @@
 								};
 								if(step[\attack].isNil) { step[\attack] = 0.002 };
 								if(step[\sliceIdx].isNil) { step[\sliceIdx] = 0 };
+						if(step[\condMode].isNil) { step[\condMode] = false };
+						if(step[\condN].isNil) { step[\condN] = 1 };
+						if(step[\condM].isNil) { step[\condM] = 2 };
+						if(step[\condCount].isNil) { step[\condCount] = 0 };
 							};
 							td = Dictionary[
 								\steps -> t[\steps].collect { |s| ~deepCopyStep.(s) },

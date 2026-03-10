@@ -42,6 +42,7 @@
 ~lfoModActive = false;
 ~lfoModTrack = nil;
 ~lfoHoldActive = false;
+~condEditMode = false;
 
 ~fineActive = false;
 ~fineContext = nil;
@@ -565,6 +566,7 @@
             "[Gladiola] Param page -> %".format(~paramPage).postln;
         };
         ~selectedParam = 0;
+        ~condEditMode = false;
         ~updateGridLEDs.();
     } {
     if(x == layout[\sliceCol] && (y == layout[\sliceRow])) {
@@ -586,6 +588,7 @@
             ~pendingSubToggle = nil;
             ~savedParamPage = nil;
             ~savedSelectedParam = nil;
+            ~condEditMode = false;
             "[Gladiola] Latch disengaged, overlay closed".postln;
             ~updateGridLEDs.();
         } {
@@ -640,8 +643,16 @@
                         "[Gladiola] Track % step %: bank -> %".format(~heldTrack, ~heldStepIdx, newBank).postln;
                     };
                 } {
-                    ~selectedParam = paramIdx;
-                    "[Gladiola] Param -> %".format(paramNames[paramIdx]).postln;
+                    if(paramIdx == ~selectedParam && (paramIdx == 5) && (effectivePage == 1)) {
+                        ~condEditMode = ~condEditMode.not;
+                        "[Gladiola] Cond edit mode -> %".format(~condEditMode).postln;
+                    } {
+                        if(~condEditMode && (paramIdx != 5 || (effectivePage != 1))) {
+                            ~condEditMode = false;
+                        };
+                        ~selectedParam = paramIdx;
+                        "[Gladiola] Param -> %".format(paramNames[paramIdx]).postln;
+                    };
                 };
                 ~updateGridLEDs.();
             };
@@ -650,6 +661,27 @@
             var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
             var isSliceRow = ~tracks[~heldTrack][\sliceMode] == true && { ~selectedParam == 0 } && { effectivePage == 0 };
             if(y == valueRow && ((x != ~heldStepIdx) || isSliceRow)) {
+                if(~condEditMode && (effectivePage == 1) && (~selectedParam == 5)) {
+                    // Conditional mode value row: positions 0-6 = N, 7-14 = M
+                    var valIdx = ~valueIdxForCol.(x, ~heldStepIdx);
+                    if(valIdx.notNil) {
+                        if(valIdx <= 6) {
+                            var newN = valIdx + 1;
+                            step[\condMode] = true;
+                            step[\condN] = newN.min(step[\condM]);
+                            "[Gladiola] Track % step %: condN -> %".format(~heldTrack, ~heldStepIdx, step[\condN]).postln;
+                        } {
+                            if(valIdx <= 14) {
+                                var newM = valIdx - 7 + 2;
+                                step[\condMode] = true;
+                                step[\condM] = newM;
+                                if(step[\condN] > newM) { step[\condN] = newM };
+                                "[Gladiola] Track % step %: condM -> %, condN -> %".format(~heldTrack, ~heldStepIdx, step[\condM], step[\condN]).postln;
+                            };
+                        };
+                        ~updateGridLEDs.();
+                    };
+                } {
                 var valIdx = if(isSliceRow) { x } { ~valueIdxForCol.(x, ~heldStepIdx) };
                 if(valIdx.notNil) {
                     var numValid = ~numValidPositions.(effectivePage, ~selectedParam, ~heldTrack, ~heldStepIdx);
@@ -689,6 +721,7 @@
                         };
                         ~updateGridLEDs.();
                     };
+                };
                 };
             };
         };
@@ -1215,6 +1248,7 @@
                     ~latchActive = false;
                     ~savedParamPage = nil;
                     ~savedSelectedParam = nil;
+                    ~condEditMode = false;
                     ~updateGridLEDs.();
                 };
             } {

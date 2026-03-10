@@ -1,0 +1,5 @@
+# Gladiola
+
+7-track × 16-step sample groovebox for monome grid + SuperCollider.
+
+Each step has 14 parameters across 2 pages and up to 9 sub-steps that cycle on each trigger. Tracks can be set to slice mode, which divides the buffer into 16 equal parts selectable per step. Each track has a tempo-synced LFO that can modulate any combination of the 14 parameters. The FX chain has parallel delay, granular (MiClouds), and reverb (Greyhole) sends feeding into saturation, tilt EQ, compressor, and limiter. Tracks have independent clock divisions, start/end points with wrap-around, and swing. There are 49 preset slots with optional quantized switching. Parameters are edited through hold-to-reveal grid overlays with latching, a 127-position fine fader, copy/paste. Steps can also have conditional playback — deterministic "fire on pass N of every M" gating that stacks with probability. Steps audition automatically on making changes, this can be toggled. Sessions save and load through a simple desktop GUI.

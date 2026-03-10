@@ -152,7 +152,9 @@
                             brightness = (GridInterface.ledDim + ((bankVal + 1) / numBanks * (GridInterface.ledFull - GridInterface.ledDim))).round.asInteger.clip(GridInterface.ledDim, GridInterface.ledFull);
                         } {
                             brightness = if(paramIdx == ~selectedParam) {
-                                GridInterface.ledBright
+                                if(~condEditMode && (paramIdx == 5) && (if(~subStepEditing) { ~subStepParamPage } { ~paramPage } == 1)) {
+                                    pulseBright
+                                } { GridInterface.ledBright }
                             } {
                                 GridInterface.ledDim
                             };
@@ -200,6 +202,27 @@
             };
         };
 
+        if(~condEditMode && (if(~subStepEditing) { ~subStepParamPage } { ~paramPage } == 1) && (~selectedParam == 5)) {
+            // Conditional mode value row: N zone (0-6), M zone (7-14)
+            var nPos = step[\condN] - 1;
+            var mPos = step[\condM] - 2 + 7;
+            16.do { |col|
+                if(col != ~heldStepIdx) {
+                    if((layout[\actionCols].includes(col) || layout[\subCols].includes(col)) && layout[\actionRows].includes(valueRow)) {
+                    } {
+                        var valIdx = if(col < ~heldStepIdx) { col } { col - 1 };
+                        if(valIdx <= 14) {
+                            var brightness = if(valIdx <= 6) {
+                                if(valIdx == nPos) { GridInterface.ledFull } { GridInterface.ledDim }
+                            } {
+                                if(valIdx == mPos) { GridInterface.ledFull } { GridInterface.ledMedium }
+                            };
+                            ~grid.led(col, valueRow, brightness);
+                        };
+                    };
+                };
+            };
+        } {
         16.do { |col|
             var isSliceRow = (numValid == 16) && { ~tracks[~heldTrack][\sliceMode] == true };
             if(isSliceRow || (col != ~heldStepIdx)) {
@@ -222,6 +245,7 @@
                     };
                 };
             };
+        };
         };
 
         ~grid.led(layout[\pageCol], layout[\pageRow], {

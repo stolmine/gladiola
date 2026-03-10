@@ -18,6 +18,10 @@ var defaultStep = {
         \delaySend,   0.0,
         \bitcrush,    0.0,
         \sliceIdx,    0,
+        \condMode,    false,
+        \condN,       1,
+        \condM,       2,
+        \condCount,   0,
         \subSteps,    Array.fill(9, { nil }),
         \subActive,   Array.fill(9, { |i| i == 0 }),
         \subIdx,      0
@@ -293,12 +297,20 @@ var defaultStep = {
                     var buf, stepDur, numBanks, nextStep;
 
                     if(track[\muted].not && step[\on] && {
-                        var lfoVal = ~lfoBus.getSynchronous(trackIdx);
-                        var modProb = ~trackModSettings[trackIdx][\depths][12] * ~trackModSettings[trackIdx][\polarities][12];
-                        var effectiveProb = if(modProb != 0) {
-                            (step[\probability] + (lfoVal * modProb)).clip(0, 1)
-                        } { step[\probability] };
-                        effectiveProb.coin
+                        var probPass = {
+                            var lfoVal = ~lfoBus.getSynchronous(trackIdx);
+                            var modProb = ~trackModSettings[trackIdx][\depths][12] * ~trackModSettings[trackIdx][\polarities][12];
+                            var effectiveProb = if(modProb != 0) {
+                                (step[\probability] + (lfoVal * modProb)).clip(0, 1)
+                            } { step[\probability] };
+                            effectiveProb.coin
+                        }.value;
+                        var condPass = if(step[\condMode] == true) {
+                            step[\condCount] = step[\condCount] + 1;
+                            if(step[\condCount] > step[\condM]) { step[\condCount] = 1 };
+                            step[\condCount] == step[\condN]
+                        } { true };
+                        probPass && condPass
                     }.value) {
                         var activeSubs, lastActive, subLen, curSub;
                         var bank, sample, pitch, velocity, loopLength, loopRegion, ratchet;
@@ -665,6 +677,10 @@ var defaultStep = {
                 };
                 if(step[\attack].isNil) { step[\attack] = 0.002 };
                 if(step[\sliceIdx].isNil) { step[\sliceIdx] = 0 };
+                if(step[\condMode].isNil) { step[\condMode] = false };
+                if(step[\condN].isNil) { step[\condN] = 1 };
+                if(step[\condM].isNil) { step[\condM] = 2 };
+                if(step[\condCount].isNil) { step[\condCount] = 0 };
             };
             ~tracks[i][\steps] = saved[\steps].collect { |s| ~deepCopyStep.(s) };
             ~tracks[i][\startStep] = saved[\startStep];

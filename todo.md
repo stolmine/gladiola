@@ -238,23 +238,26 @@ biggest single feature. SynthDef work and UI work can be developed somewhat in p
 ### phase 7a — time stretch (not started)
 - [ ] time stretch SynthDef — per-track toggle, behavior outside slice mode TBD
 
-### conditional playback (not started)
-- [ ] per-step conditional gate: deterministic "fire on pass N of every M" cycling
-  - alternate mode on probability param selector (tap once = probability, tap again = conditional)
-  - value row splits into two zones: left 7 positions = numerator (which pass, 1-7), right 8 positions = denominator (cycle length, 1-8)
-  - mid-brightness LED at the boundary between zones
-  - numerator clamped to denominator (can't exceed it, but equal is valid — N/N fires on the Nth pass)
-  - per-step hit counter resets at denominator
-  - mutex or stackable with probability TBD
+### phase 8 — conditional playback (✓ done)
+- [x] per-step conditional gate: deterministic "fire on pass N of every M" cycling
+  - stackable with probability (both must pass for gate to fire)
+  - free-running counter (resets at M, not on pattern loop)
+  - per-step keys: \condMode (bool), \condN (1-7), \condM (2-9), \condCount (runtime counter)
+  - UI: double-tap probability param selector (page 2 idx 5) toggles ~condEditMode
+  - value row: positions 0-6 = N zone (ledDim), 7-14 = M zone (ledMedium), ledFull at selection
+  - N clamped to M; tapping zones auto-enables condMode
+  - param selector pulses when condEditMode active
+  - persisted in presets/sessions with migration
 
 ### unsequenced (implement whenever)
 - [ ] clock sync (MIDI clock, Link)
 - [ ] audio output routing options (bus selection)
 - [ ] legato mode for preset switching: start presets from the same position the previous one was at instead of resetting to start, given instant switching is enabled (clock div interpolation would be goofy but worth a try)
-- [ ] session manager: project name should appear in window/title area
-- [ ] session save animation (visual feedback on save like scatter on load)
-- [ ] slink LFO shape switching: shape is still not updating consistently — needs investigation
-- [ ] slice mode: enforce track-level sample selection on previously-used steps when converting a track to slice mode (currently, steps that were toggled off retain old params which causes issues on re-engage)
+- [x] session manager: project name appears in window title
+- [x] session save animation (concentric ring fill to medium brightness)
+- [x] slink LFO shape switching: shape is still not updating consistently — needs investigation
+- [x] slice mode: enforce track-level sample selection — sequencer resolves bank/sample from earliest engaged step in slice mode; step overlay value row uses all 16 columns for slice index
+- [x] grid animations (handshake/save/load) capped at ledMedium brightness
 - [x] add record button to session manager — two-state Rec toggle (gray/red), s.record AIFF int24, elapsed MM:SS timer, stops on quit
 - [x] stop audio with high gate length from looping — fixed: sweep-based gate on both normal and slice BufRd paths, samples are one-shots by default
 

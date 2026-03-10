@@ -391,6 +391,31 @@ Tap any depth row to set the depth for that destination. The selected depth ligh
 | Probability | 1/15 - 1.0 | Chance step fires each pass |
 | Bitcrush | 0.0 - 1.0 | Sample rate and bit depth reduction |
 
+### Conditional Playback
+
+Each step can have a deterministic "fire on pass N of every M" condition, stackable with probability. When both are active, the step must pass both checks to fire.
+
+**Entering conditional mode**: In the step parameter overlay, navigate to page 2 and select the Probability parameter. Tap the probability param selector again (double-tap the same row) to toggle into conditional edit mode. The param selector cell pulses when conditional mode is active. Tap it again to return to probability editing.
+
+**Value row in conditional mode**: The 15 value positions split into two zones:
+
+| Positions | Zone | Values | Base brightness |
+|-----------|------|--------|-----------------|
+| 0-6 | N (numerator) | 1-7 (which pass fires) | Dim |
+| 7-14 | M (denominator) | 2-9 (cycle length) | Medium |
+
+The current N and M selections show at full brightness. Tapping either zone automatically enables conditional mode on the step.
+
+**Behavior**:
+- N is clamped to M (cannot exceed the cycle length; N = M fires on the last pass)
+- The counter increments every time the sequencer reaches the step, regardless of probability
+- The counter resets at M (free-running — does not reset on pattern loop)
+- Conditional mode and probability are stackable: both must pass for the step to sound
+
+**Persistence**: Conditional settings (\condMode, \condN, \condM, \condCount) are saved in presets and sessions. The counter persists across save/load for seamless performance continuity.
+
+Conditional edit mode (~condEditMode) resets when closing the overlay, toggling pages, or switching parameters.
+
 ## Sub-Sequencing
 
 Each of the 16 steps per track has a 3x3 grid of up to 9 sub-steps. Sub-steps cycle each time the parent step fires, adding variation without using more steps.
