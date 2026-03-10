@@ -597,6 +597,24 @@
     } {
         if(x == ~heldStepIdx && (y != ~heldTrack)) {
             var paramIdx = ~paramIndexForRow.(y, ~heldTrack);
+            var sliceValueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
+            var isSliceValueTap = (y == sliceValueRow) && { ~tracks[~heldTrack][\sliceMode] == true } && { ~selectedParam == 0 } && { effectivePage == 0 };
+            if(isSliceValueTap) {
+                // In slice mode, heldStepIdx column is a value cell on the value row
+                var valIdx = x;
+                if(~subStepEditing && ~subStepEditIdx.notNil) {
+                    if(step[\subSteps][~subStepEditIdx].isNil) { step[\subSteps][~subStepEditIdx] = Dictionary.new };
+                    step[\subSteps][~subStepEditIdx][\sliceIdx] = valIdx;
+                    "[Gladiola] Sub-step %: sliceIdx -> %".format(~subStepEditIdx, valIdx).postln;
+                } {
+                    step[\sliceIdx] = valIdx;
+                    "[Gladiola] Track % step %: sliceIdx -> %".format(~heldTrack, ~heldStepIdx, valIdx).postln;
+                };
+                if(~auditionEnabled && ~playing.not) {
+                    ~previewStep.(~heldTrack, ~heldStepIdx);
+                };
+                ~updateGridLEDs.();
+            } {
             if(paramIdx.notNil && (paramIdx < paramNames.size)) {
                 if(paramIdx == 0 && (~selectedParam == 0) && (effectivePage == 0)) {
                     if(~tracks[~heldTrack][\sliceMode] == true) {
@@ -627,10 +645,12 @@
                 };
                 ~updateGridLEDs.();
             };
+            };
         } {
             var valueRow = ~paramRowForIndex.(~selectedParam, ~heldTrack);
-            if(y == valueRow && (x != ~heldStepIdx)) {
-                var valIdx = ~valueIdxForCol.(x, ~heldStepIdx);
+            var isSliceRow = ~tracks[~heldTrack][\sliceMode] == true && { ~selectedParam == 0 } && { effectivePage == 0 };
+            if(y == valueRow && ((x != ~heldStepIdx) || isSliceRow)) {
+                var valIdx = if(isSliceRow) { x } { ~valueIdxForCol.(x, ~heldStepIdx) };
                 if(valIdx.notNil) {
                     var numValid = ~numValidPositions.(effectivePage, ~selectedParam, ~heldTrack, ~heldStepIdx);
                     if(valIdx < numValid) {

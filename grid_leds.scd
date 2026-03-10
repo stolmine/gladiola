@@ -143,19 +143,22 @@
             if(row != ~heldTrack) {
                 var paramIdx = ~paramIndexForRow.(row, ~heldTrack);
                 if(paramIdx.notNil && (paramIdx < numParams)) {
-                    var brightness;
-                    if(paramIdx == 0 && (if(~subStepEditing) { ~subStepParamPage } { ~paramPage } == 0) && { ~tracks[~heldTrack][\sliceMode] != true }) {
-                        var bankVal = step[\bank];
-                        var numBanks = (~numBanks ? 1).max(1);
-                        brightness = (GridInterface.ledDim + ((bankVal + 1) / numBanks * (GridInterface.ledFull - GridInterface.ledDim))).round.asInteger.clip(GridInterface.ledDim, GridInterface.ledFull);
-                    } {
-                        brightness = if(paramIdx == ~selectedParam) {
-                            GridInterface.ledBright
+                    var inSliceValue = (row == valueRow) && { ~tracks[~heldTrack][\sliceMode] == true } && { ~selectedParam == 0 } && { if(~subStepEditing) { ~subStepParamPage } { ~paramPage } == 0 };
+                    if(inSliceValue.not) {
+                        var brightness;
+                        if(paramIdx == 0 && (if(~subStepEditing) { ~subStepParamPage } { ~paramPage } == 0) && { ~tracks[~heldTrack][\sliceMode] != true }) {
+                            var bankVal = step[\bank];
+                            var numBanks = (~numBanks ? 1).max(1);
+                            brightness = (GridInterface.ledDim + ((bankVal + 1) / numBanks * (GridInterface.ledFull - GridInterface.ledDim))).round.asInteger.clip(GridInterface.ledDim, GridInterface.ledFull);
                         } {
-                            GridInterface.ledDim
+                            brightness = if(paramIdx == ~selectedParam) {
+                                GridInterface.ledBright
+                            } {
+                                GridInterface.ledDim
+                            };
                         };
+                        ~grid.led(~heldStepIdx, row, brightness);
                     };
-                    ~grid.led(~heldStepIdx, row, brightness);
                 };
             };
         };
@@ -198,11 +201,12 @@
         };
 
         16.do { |col|
-            if(col != ~heldStepIdx) {
+            var isSliceRow = (numValid == 16) && { ~tracks[~heldTrack][\sliceMode] == true };
+            if(isSliceRow || (col != ~heldStepIdx)) {
                 // Skip grid cells to avoid visual collision
                 if((layout[\actionCols].includes(col) || layout[\subCols].includes(col)) && layout[\actionRows].includes(valueRow)) {
                 } {
-                    var valIdx = if(col < ~heldStepIdx) { col } { col - 1 };
+                    var valIdx = if(isSliceRow) { col } { if(col < ~heldStepIdx) { col } { col - 1 } };
                     if(valIdx < numValid) {
                         var centerPos = ~paramCenterPos.(if(~subStepEditing) { ~subStepParamPage } { ~paramPage }, ~selectedParam);
                         var brightness = if(valIdx == curPos) {

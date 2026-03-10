@@ -312,6 +312,12 @@ var defaultStep = {
 
                         bank       = ~resolveSubStepParam.(step, curSub, \bank);
                         sample     = ~resolveSubStepParam.(step, curSub, \sample);
+
+                        if(track[\sliceMode] == true) {
+                            var refStep = track[\steps].detect { |s| s[\on] };
+                            bank = if(refStep.notNil) { refStep[\bank] } { 0 };
+                            sample = if(refStep.notNil) { refStep[\sample] } { 0 };
+                        };
                         pitch      = ~resolveSubStepParam.(step, curSub, \pitch);
                         velocity   = ~resolveSubStepParam.(step, curSub, \velocity);
                         loopLength = ~resolveSubStepParam.(step, curSub, \loopLength);
