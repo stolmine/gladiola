@@ -223,16 +223,19 @@
 
         if(~condEditMode && (if(~subStepEditing) { ~subStepParamPage } { ~paramPage } == 1) && (~selectedParam == 5)) {
             // Conditional mode value row: N zone (0-6), M zone (7-14)
-            var nPos = step[\condN] - 1;
-            var mPos = step[\condM] - 2 + 7;
+            var nPos = (step[\condN] ? 1) - 1;
+            var mPos = (step[\condM] ? 2) - 2 + 7;
             16.do { |col|
                 if(col != ~heldStepIdx) {
                     if((layout[\actionCols].includes(col) || layout[\subCols].includes(col)) && layout[\actionRows].includes(valueRow)) {
                     } {
                         var valIdx = if(col < ~heldStepIdx) { col } { col - 1 };
                         if(valIdx <= 14) {
+                            var mVal = (step[\condM] ? 2);
                             var brightness = if(valIdx <= 6) {
-                                if(valIdx == nPos) { GridInterface.ledFull } { GridInterface.ledDim }
+                                if(valIdx < mVal) {
+                                    if(valIdx == nPos) { GridInterface.ledFull } { GridInterface.ledDim }
+                                } { GridInterface.ledOff }
                             } {
                                 if(valIdx == mPos) { GridInterface.ledFull } { GridInterface.ledMedium }
                             };
