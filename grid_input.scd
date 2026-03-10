@@ -830,11 +830,18 @@
                             "[Gladiola] Track % step %: condN -> %".format(~heldTrack, ~heldStepIdx, step[\condN]).postln;
                         } {
                             if(valIdx <= 14) {
-                                var newM = valIdx - 7 + 2;
-                                step[\condMode] = true;
-                                step[\condM] = newM;
-                                if(step[\condN] > newM) { step[\condN] = newM };
-                                "[Gladiola] Track % step %: condM -> %, condN -> %".format(~heldTrack, ~heldStepIdx, step[\condM], step[\condN]).postln;
+                                var newM = valIdx - 7 + 1;
+                                if(newM == 1) {
+                                    step[\condMode] = false;
+                                    step[\condN] = 1;
+                                    step[\condM] = 1;
+                                    "[Gladiola] Track % step %: cond off (1:1)".format(~heldTrack, ~heldStepIdx).postln;
+                                } {
+                                    step[\condMode] = true;
+                                    step[\condM] = newM;
+                                    if(step[\condN] > newM) { step[\condN] = newM };
+                                    "[Gladiola] Track % step %: condM -> %, condN -> %".format(~heldTrack, ~heldStepIdx, step[\condM], step[\condN]).postln;
+                                };
                             };
                         };
                         ~updateGridLEDs.();
