@@ -87,7 +87,7 @@ s.waitForBoot({
 			~grid.clear;
 			8.do { |y|
 				16.do { |x|
-					~grid.led(x, y, GridInterface.ledBright);
+					~grid.led(x, y, GridInterface.ledMedium);
 					(0.005).wait;
 				};
 			};
@@ -97,29 +97,29 @@ s.waitForBoot({
 	};
 
 	~gridAnimScatter = { |callback|
-		// Random fill: each cell fades 0→full over several frames
+		// Random fill: each cell fades 0→medium over several frames
 		var positions = 128.collect { |i| [i % 16, i div: 16] }.scramble;
 		var levels = Array.fill(128, { 0 });
 		var steps = 4;
-		var inc = (GridInterface.ledFull / steps).ceil.asInteger;
+		var inc = (GridInterface.ledMedium / steps).ceil.asInteger;
 		Routine {
 			~grid.clear;
 			positions.do { |pos, idx|
 				levels[idx] = 1;
 				// Fade up any cell that has been started
 				levels.do { |lvl, j|
-					if(lvl > 0 && (lvl < GridInterface.ledFull)) {
-						levels[j] = (lvl + inc).min(GridInterface.ledFull);
+					if(lvl > 0 && (lvl < GridInterface.ledMedium)) {
+						levels[j] = (lvl + inc).min(GridInterface.ledMedium);
 						~grid.led(positions[j][0], positions[j][1], levels[j]);
 					};
 				};
 				(0.02).wait;
 			};
-			// Finish fading any cells not yet at full
+			// Finish fading any cells not yet at medium
 			steps.do {
 				levels.do { |lvl, j|
-					if(lvl > 0 && (lvl < GridInterface.ledFull)) {
-						levels[j] = (lvl + inc).min(GridInterface.ledFull);
+					if(lvl > 0 && (lvl < GridInterface.ledMedium)) {
+						levels[j] = (lvl + inc).min(GridInterface.ledMedium);
 						~grid.led(positions[j][0], positions[j][1], levels[j]);
 					};
 				};
