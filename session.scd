@@ -273,15 +273,19 @@
 	if(~sessionWindow.notNil && { ~sessionWindow.isClosed.not }) {
 		~sessionWindow.front;
 	} {
-		var bpmLabel, swingLabel, sampleDirLabel, gridStatusLabel, meterL, meterR, updateTask;
+		var bpmLabel, swingLabel, sampleDirLabel, gridStatusLabel, recordLabel, meterL, meterR, updateTask, smoothL = 0, smoothR = 0, peakL = 0, peakR = 0, peakDecay = 0.985;
 
-		~sessionWindow = Window("Gladiola", Rect(100, 100, 400, 130), resizable: false)
+		s.recHeaderFormat = "aiff";
+		s.recSampleFormat = "int24";
+
+		~sessionWindow = Window("Gladiola", Rect(100, 100, 460, 130), resizable: false)
 		.alwaysOnTop_(true);
 
 		bpmLabel = StaticText().string_("BPM: %".format(~bpm));
 		swingLabel = StaticText().string_("Swing: %%".format(~swing, "%"));
 		sampleDirLabel = StaticText().string_("Samples: %".format(~sampleDir ? "—"));
 		gridStatusLabel = StaticText().string_(if(~grid.notNil) { "Grid: connected" } { "Grid: —" });
+		recordLabel = StaticText().string_("00:00");
 		meterL = LevelIndicator().style_(\continuous).drawsPeak_(true).warning_(0.7).critical_(0.9);
 		meterR = LevelIndicator().style_(\continuous).drawsPeak_(true).warning_(0.7).critical_(0.9);
 
@@ -291,14 +295,29 @@
 					if(~sessionWindow.notNil && { ~sessionWindow.isClosed.not }) {
 						var l = ~meterLevel[0];
 						var r = ~meterLevel[1];
-						meterL.value = l; meterL.peakLevel = l;
-						meterR.value = r; meterR.peakLevel = r;
+						var coefL = if(l > smoothL) { 0.6 } { 0.15 };
+						var coefR = if(r > smoothR) { 0.6 } { 0.15 };
+						smoothL = smoothL + (coefL * (l - smoothL));
+						smoothR = smoothR + (coefR * (r - smoothR));
+						peakL = if(l > peakL) { l } { peakL * peakDecay };
+						peakR = if(r > peakR) { r } { peakR * peakDecay };
+						meterL.value = smoothL; meterL.peakLevel = peakL;
+						meterR.value = smoothR; meterR.peakLevel = peakR;
 						bpmLabel.string = "BPM: %".format(~bpm);
 						swingLabel.string = "Swing: %%".format(~swing, "%");
 						sampleDirLabel.string = "Samples: %".format(
 							if(~sampleDir.notNil) { PathName(~sampleDir).folderName } { "—" }
 						);
 						gridStatusLabel.string = if(~grid.notNil) { "Grid: connected" } { "Grid: —" };
+						if(~recordStartTime.notNil) {
+							var elapsed = (Main.elapsedTime - ~recordStartTime).asInteger;
+							var mins = (elapsed / 60).floor.asInteger;
+							var secs = elapsed % 60;
+							recordLabel.string = "%:%".format(
+								mins.asString.padLeft(2, "0"),
+								secs.asString.padLeft(2, "0")
+							);
+						};
 					};
 				}.defer;
 				0.05.wait;
@@ -311,6 +330,7 @@
 				swingLabel,
 				nil,
 				gridStatusLabel,
+				recordLabel,
 				nil,
 				sampleDirLabel
 			),
@@ -385,6 +405,19 @@
 				Button().states_([["Grid"]]).action_({
 					~connectSerialosc.();
 				}),
+				Button().states_([
+					["Rec", Color.white, Color(0.4, 0.4, 0.4)],
+					["Rec", Color.white, Color(0.8, 0.2, 0.2)]
+				]).action_({ |btn|
+					if(btn.value == 1) {
+						s.record;
+						~recordStartTime = Main.elapsedTime;
+					} {
+						s.stopRecording;
+						~recordStartTime = nil;
+						recordLabel.string = "00:00";
+					};
+				}),
 				Button().states_([["Quit", Color.white, Color(0.6, 0.2, 0.2)]]).action_({
 					var dlg = Window("Quit Gladiola?", Rect(200, 200, 250, 60), resizable: false);
 					dlg.layout_(HLayout(
@@ -392,6 +425,7 @@
 						Button().states_([["Quit", Color.white, Color(0.6, 0.2, 0.2)]]).action_({
 							dlg.close;
 							"[Gladiola] Shutting down...".postln;
+							if(s.isRecording) { s.stopRecording; ~recordStartTime = nil };
 							if(~playing) { ~stopTransport.() };
 							~stopPulseRoutine.();
 							~panicVoices.();

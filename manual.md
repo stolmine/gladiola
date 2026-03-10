@@ -442,13 +442,14 @@ The session manager window provides:
 - **BPM display**: Current tempo, updated live
 - **Samples display**: Folder name of the loaded sample directory
 - **Grid status**: Shows "Grid: connected" or "Grid: —", updated live
-- **Stereo level meters**: Amplitude of the main output bus (L/R), updated at 20Hz with peak hold
+- **Stereo level meters**: Amplitude of the main output bus (L/R), updated at 20Hz with exponential smoothing (fast attack, slow release) and peak hold with decay
 - **New**: Prompt for a session name and a folder picker for the sample directory, then initialize a blank session
 - **Save**: Save to the current session name; prompts for a name first if none is set
 - **Save As**: Prompt for a new name and save a copy
 - **Load**: List all `.gladiola` files in `~/gladiola-sessions/` and load the selected one
 - **Grid**: Connect to serialosc grid controller
-- **Quit**: Shutdown with confirmation — stops transport, silences voices, kills FX tails, clears and frees the grid, closes the window, and quits the server
+- **Rec**: Toggle audio recording on/off. Gray when idle, red when recording. Starts `s.record` (AIFF int24 format) and shows elapsed MM:SS in the info row. Recording stops automatically on quit.
+- **Quit**: Shutdown with confirmation — stops transport, silences voices, kills FX tails, stops recording if active, clears and frees the grid, closes the window, and quits the server
 
 ### What Sessions Capture
 

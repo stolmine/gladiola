@@ -124,6 +124,8 @@
 - [x] LFO slink fix: bipolar range mapping for full throw (was half-rectified due to .max(0))
 - [x] re-evaluation safety: main.scd calls ~cleanup before re-init; nil guards in meter routine, pulse routine, and ~updateGridLEDs prevent orphaned routine crashes
 - [x] LFO shape fix: .asInteger coercion in ~setModShape and .round in SynthDef Select.kr ensures shape switching works reliably after session restore
+- [x] session GUI record toggle: two-state Rec button (gray/red), starts/stops s.record, shows elapsed MM:SS in info row, stops recording on quit; outputs AIFF int24 to SC default recordings directory; ~recordStartTime state in sequencer.scd
+- [x] session GUI meter smoothing: exponential smoothing on level readouts — fast attack (0.6), slow release (0.15), peak hold with decay (0.985); recording format configured via s.recHeaderFormat/s.recSampleFormat
 
 ## per-track global overlay rework
 
@@ -236,11 +238,20 @@ biggest single feature. SynthDef work and UI work can be developed somewhat in p
 ### phase 7a — time stretch (not started)
 - [ ] time stretch SynthDef — per-track toggle, behavior outside slice mode TBD
 
+### conditional playback (not started)
+- [ ] per-step conditional gate: deterministic "fire on pass N of every M" cycling
+  - alternate mode on probability param selector (tap once = probability, tap again = conditional)
+  - value row splits into two zones: left 7 positions = numerator (which pass, 1-7), right 8 positions = denominator (cycle length, 1-8)
+  - mid-brightness LED at the boundary between zones
+  - numerator clamped to denominator (can't exceed it, but equal is valid — N/N fires on the Nth pass)
+  - per-step hit counter resets at denominator
+  - mutex or stackable with probability TBD
+
 ### unsequenced (implement whenever)
 - [ ] clock sync (MIDI clock, Link)
 - [ ] audio output routing options (bus selection)
 - [ ] legato mode for preset switching: start presets from the same position the previous one was at instead of resetting to start, given instant switching is enabled (clock div interpolation would be goofy but worth a try)
-- [ ] add record button to session manager
+- [x] add record button to session manager — two-state Rec toggle (gray/red), s.record AIFF int24, elapsed MM:SS timer, stops on quit
 - [x] stop audio with high gate length from looping — fixed: sweep-based gate on both normal and slice BufRd paths, samples are one-shots by default
 
 ## abandoned
