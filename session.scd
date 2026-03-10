@@ -15,7 +15,8 @@
 	snapshot[\trackModSettings] = ~numTracks.collect { |i|
 		var ms = ~trackModSettings[i];
 		Dictionary[\shape -> ms[\shape], \rate16ths -> ms[\rate16ths],
-			\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy]
+			\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy,
+			\phases -> ms[\phases].copy]
 	};
 	snapshot[\tracks] = ~numTracks.collect { |i|
 		var t = ~tracks[i];
@@ -49,7 +50,8 @@
 			copy[\globalReverse] = p[\globalReverse];
 				if(p[\trackModSettings].notNil) { copy[\trackModSettings] = p[\trackModSettings].collect { |ms|
 					Dictionary[\shape -> ms[\shape], \rate16ths -> ms[\rate16ths],
-						\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy]
+						\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy,
+					\phases -> (ms[\phases] ?? { Array.fill(14, { 0.0 }) }).copy]
 				} };
 			copy
 		} { nil }
@@ -148,7 +150,8 @@
 				~numTracks.do { |i|
 					var saved = snapshot[\trackModSettings][i];
 					~trackModSettings[i] = Dictionary[\shape -> saved[\shape], \rate16ths -> saved[\rate16ths],
-						\depths -> saved[\depths].copy, \polarities -> saved[\polarities].copy];
+						\depths -> saved[\depths].copy, \polarities -> saved[\polarities].copy,
+						\phases -> (saved[\phases] ?? { Array.fill(14, { 0.0 }) }).copy];
 					~setModShape.(i, saved[\shape]); ~updateLfoRate.(i); ~applyModDepths.(i);
 				};
 			} { ~numTracks.do { |i| ~resetModSettings.(i) } };
@@ -206,7 +209,8 @@
 						copy[\globalReverse] = p[\globalReverse];
 							if(p[\trackModSettings].notNil) { copy[\trackModSettings] = p[\trackModSettings].collect { |ms|
 								Dictionary[\shape -> ms[\shape], \rate16ths -> ms[\rate16ths],
-									\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy]
+									\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy,
+									\phases -> (ms[\phases] ?? { Array.fill(14, { 0.0 }) }).copy]
 							} };
 						copy
 					} { nil }

@@ -24,7 +24,11 @@
             lfoBus = 0,
             modPitch = 0, modVelocity = 0, modGateLength = 0, modFilter = 0,
             modPan = 0, modDelaySend = 0, modAttack = 0, modReverse = 0,
-            modLoopLength = 0, modLoopRegion = 0, modRatchet = 0, modBitcrush = 0;
+            modLoopLength = 0, modLoopRegion = 0, modRatchet = 0, modBitcrush = 0,
+            lfoRate = 1,
+            phasePitch = 0, phaseVelocity = 0, phaseGateLength = 0, phaseFilter = 0,
+            phasePan = 0, phaseDelaySend = 0, phaseAttack = 0, phaseReverse = 0,
+            phaseLoopLength = 0, phaseLoopRegion = 0, phaseRatchet = 0, phaseBitcrush = 0;
 
         var smoothRate, smoothAmp,
             clampedRatchet, safeStepDur, ratchetFreq, ratchetImpulse,
@@ -36,9 +40,27 @@
             crushed, filterFreq, filterSig, filterSelect, lpf, hpf,
             panned,
             lfo, lfoLatched,
+            lfoPitch, lfoVelocity, lfoGateLength, lfoFilter, lfoPan, lfoDelaySend,
+            lfoAttack, lfoReverse, lfoLoopLength, lfoLoopRegion, lfoRatchet, lfoBitcrush,
+            safeLfoRate,
             sliceStartFrame, sliceEndFrame, slicePhasor, sliceSig;
 
         lfo = In.kr(lfoBus, 1);
+        safeLfoRate = lfoRate.max(0.01);
+
+        // Per-destination phase-shifted LFO signals via DelayC
+        lfoPitch      = DelayC.kr(lfo, 1.0, (1.0 - phasePitch).mod(1.0) / safeLfoRate);
+        lfoVelocity   = DelayC.kr(lfo, 1.0, (1.0 - phaseVelocity).mod(1.0) / safeLfoRate);
+        lfoGateLength = DelayC.kr(lfo, 1.0, (1.0 - phaseGateLength).mod(1.0) / safeLfoRate);
+        lfoFilter     = DelayC.kr(lfo, 1.0, (1.0 - phaseFilter).mod(1.0) / safeLfoRate);
+        lfoPan        = DelayC.kr(lfo, 1.0, (1.0 - phasePan).mod(1.0) / safeLfoRate);
+        lfoDelaySend  = DelayC.kr(lfo, 1.0, (1.0 - phaseDelaySend).mod(1.0) / safeLfoRate);
+        lfoAttack     = DelayC.kr(lfo, 1.0, (1.0 - phaseAttack).mod(1.0) / safeLfoRate);
+        lfoReverse    = DelayC.kr(lfo, 1.0, (1.0 - phaseReverse).mod(1.0) / safeLfoRate);
+        lfoLoopLength = DelayC.kr(lfo, 1.0, (1.0 - phaseLoopLength).mod(1.0) / safeLfoRate);
+        lfoLoopRegion = DelayC.kr(lfo, 1.0, (1.0 - phaseLoopRegion).mod(1.0) / safeLfoRate);
+        lfoRatchet    = DelayC.kr(lfo, 1.0, (1.0 - phaseRatchet).mod(1.0) / safeLfoRate);
+        lfoBitcrush   = DelayC.kr(lfo, 1.0, (1.0 - phaseBitcrush).mod(1.0) / safeLfoRate);
 
         smoothRate = Lag.kr(rate, 0.05);
         smoothAmp  = Lag.kr(amp,  0.05);
@@ -57,19 +79,19 @@
 
         lfoLatched = Latch.kr(lfo, combinedTrig);
 
-        // Apply LFO modulation
-        smoothRate = smoothRate * (2 ** (lfo * modPitch));
-        smoothAmp = (smoothAmp + (lfo * modVelocity * 0.5)).clip(0, 2);
-        gateLength = (gateLength * (1 + (lfo * modGateLength))).clip(0.01, 100);
-        filter = (filter + (lfo * modFilter)).clip(-1, 1);
-        pan = (pan + (lfo * modPan)).clip(-1, 1);
-        delaySend = (delaySend + (lfo * modDelaySend)).clip(0, 1);
-        attack = (attack * (1 + (lfo * modAttack * 4))).clip(0.002, 0.5);
-        reverse = Select.kr((lfoLatched * modReverse).abs > 0.5, [reverse, 1 - reverse]);
-        loopLength = (loopLength + (lfo * modLoopLength * 4)).clip(0, 8);
-        loopRegion = (loopRegion + (lfo * modLoopRegion)).clip(0, 1);
-        ratchet = (ratchet + (lfoLatched * modRatchet * 7)).round.clip(1, 8);
-        bitcrush = (bitcrush + (lfo * modBitcrush)).clip(0, 1);
+        // Apply LFO modulation (per-destination phase-shifted signals)
+        smoothRate = smoothRate * (2 ** (lfoPitch * modPitch));
+        smoothAmp = (smoothAmp + (lfoVelocity * modVelocity * 0.5)).clip(0, 2);
+        gateLength = (gateLength * (1 + (lfoGateLength * modGateLength))).clip(0.01, 100);
+        filter = (filter + (lfoFilter * modFilter)).clip(-1, 1);
+        pan = (pan + (lfoPan * modPan)).clip(-1, 1);
+        delaySend = (delaySend + (lfoDelaySend * modDelaySend)).clip(0, 1);
+        attack = (attack * (1 + (lfoAttack * modAttack * 4))).clip(0.002, 0.5);
+        reverse = Select.kr((Latch.kr(lfoReverse, combinedTrig) * modReverse).abs > 0.5, [reverse, 1 - reverse]);
+        loopLength = (loopLength + (lfoLoopLength * modLoopLength * 4)).clip(0, 8);
+        loopRegion = (loopRegion + (lfoLoopRegion * modLoopRegion)).clip(0, 1);
+        ratchet = (ratchet + (Latch.kr(lfoRatchet, combinedTrig) * modRatchet * 7)).round.clip(1, 8);
+        bitcrush = (bitcrush + (lfoBitcrush * modBitcrush)).clip(0, 1);
 
         gateDur = safeStepDur * gateLength.clip(0.01, 100.0) / clampedRatchet;
         holdDur = (gateDur - (attack + 0.01)).max(0.0);

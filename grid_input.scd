@@ -42,7 +42,10 @@
 ~lfoModActive = false;
 ~lfoModTrack = nil;
 ~lfoHoldActive = false;
+~lfoFrozenVal = nil;
 ~condEditMode = false;
+~phaseEditActive = Array.fill(14, { false });
+~polarityPending = nil;
 
 ~fineActive = false;
 ~fineContext = nil;
@@ -255,6 +258,11 @@
                 var polarity = ~trackModSettings[~fineTrackIdx][\polarities][~fineModDest];
                 ~setModDepth.(~fineTrackIdx, ~fineModDest, val, polarity);
                 "[Gladiola] Fine mod % depth -> %".format(~modDestKeys[~fineModDest], val).postln;
+            }
+            { \modPhase } {
+                var val = ~phaseFineValue.(pos);
+                ~setModPhase.(~fineTrackIdx, ~fineModDest, val);
+                "[Gladiola] Fine mod % phase -> % deg".format(~modDestKeys[~fineModDest], (val * 360).round).postln;
             };
             ~updateGridLEDs.();
         };
@@ -480,29 +488,33 @@
         ~updateGridLEDs.();
     };
     if(x >= 2 && (x <= 15) && (y < 7)) {
-        // Depth fader
         var destIdx = x - 2;
-        var depth = ~modDepthForRow.(y);
-        var polarity = ms[\polarities][destIdx];
-        ~setModDepth.(~lfoModTrack, destIdx, depth, polarity);
-        "[Gladiola] LFO % depth -> %".format(~modDestKeys[destIdx], depth).postln;
-        ~updateGridLEDs.();
+        if(~phaseEditActive[destIdx]) {
+            // Phase fader
+            var phase = ~phaseValues[y];
+            ~setModPhase.(~lfoModTrack, destIdx, phase);
+            "[Gladiola] LFO % phase -> % deg".format(~modDestKeys[destIdx], ((phase * 360) % 360).round).postln;
+            ~updateGridLEDs.();
+        } {
+            // Depth fader
+            var depth = ~modDepthForRow.(y);
+            var polarity = ms[\polarities][destIdx];
+            ~setModDepth.(~lfoModTrack, destIdx, depth, polarity);
+            "[Gladiola] LFO % depth -> %".format(~modDestKeys[destIdx], depth).postln;
+            ~updateGridLEDs.();
+        };
     };
     if(x >= 2 && (x <= 15) && (y == 7)) {
-        // Polarity toggle
+        // Polarity — defer to release (hold enters phase mode)
         var destIdx = x - 2;
-        var newPol = ms[\polarities][destIdx].neg;
-        ms[\polarities][destIdx] = newPol;
-        if(ms[\depths][destIdx] > 0) {
-            ~setModDepth.(~lfoModTrack, destIdx, ms[\depths][destIdx], newPol);
-        };
-        "[Gladiola] LFO % polarity -> %".format(~modDestKeys[destIdx], if(newPol > 0) { "+" } { "-" }).postln;
-        ~updateGridLEDs.();
+        ~polarityPending = destIdx;
     };
     if(x == 0 && (y == 7)) {
         // Exit — return to track overlay
         ~lfoModActive = false;
         ~lfoHoldActive = false;
+        ~lfoFrozenVal = nil;
+        ~phaseEditActive = Array.fill(14, { false });
         ~trackParamActive = true;
         ~trackParamCol = 9 + ~lfoModTrack;
         ~trackParamTrack = ~lfoModTrack;
@@ -514,6 +526,7 @@
     if(x == 1 && (y == 7)) {
         // Hold (freeze) — press
         ~lfoHoldActive = true;
+        ~lfoFrozenVal = ~lfoBus.getSynchronous(~lfoModTrack);
         if(~lfoSynths.notNil) { if(~lfoSynths[~lfoModTrack].notNil) {
             ~lfoSynths[~lfoModTrack].set(\freeze, 1)
         } };
@@ -1077,17 +1090,46 @@
             ~fdbg.("MOD", [x, y]);
             if(x >= 2 && (x <= 15) && (y < 7)) {
                 var destIdx = x - 2;
-                var depth = ~trackModSettings[~lfoModTrack][\depths][destIdx];
-                var depthRow = ~modRowForDepth.(depth);
-                ~fdbg.("MOD2", [destIdx, depthRow, y, y == depthRow]);
-                if(y == depthRow) {
-                    ~fineActive = true;
-                    ~fineContext = \modDepth;
-                    ~fineModDest = destIdx;
-                    ~fineTrackIdx = ~lfoModTrack;
-                    ~latchActive = true;
-                    ~startPulseRoutine.();
-                    "[Gladiola] Fine fader opened (mod %)".format(~modDestKeys[destIdx]).postln;
+                if(~phaseEditActive[destIdx]) {
+                    // Fine fader for phase
+                    var phase = ~trackModSettings[~lfoModTrack][\phases][destIdx];
+                    var phaseRow = ~phaseRowForValue.(phase);
+                    if(y == phaseRow) {
+                        ~fineActive = true;
+                        ~fineContext = \modPhase;
+                        ~fineModDest = destIdx;
+                        ~fineTrackIdx = ~lfoModTrack;
+                        ~latchActive = true;
+                        ~startPulseRoutine.();
+                        "[Gladiola] Fine fader opened (phase %)".format(~modDestKeys[destIdx]).postln;
+                        ~updateGridLEDs.();
+                    };
+                } {
+                    // Fine fader for depth
+                    var depth = ~trackModSettings[~lfoModTrack][\depths][destIdx];
+                    var depthRow = ~modRowForDepth.(depth);
+                    ~fdbg.("MOD2", [destIdx, depthRow, y, y == depthRow]);
+                    if(y == depthRow) {
+                        ~fineActive = true;
+                        ~fineContext = \modDepth;
+                        ~fineModDest = destIdx;
+                        ~fineTrackIdx = ~lfoModTrack;
+                        ~latchActive = true;
+                        ~startPulseRoutine.();
+                        "[Gladiola] Fine fader opened (mod %)".format(~modDestKeys[destIdx]).postln;
+                        ~updateGridLEDs.();
+                    };
+                };
+            };
+            if(x >= 2 && (x <= 15) && (y == 7)) {
+                // Hold on polarity key — toggle phase edit mode
+                var destIdx = x - 2;
+                if(~polarityPending == destIdx) {
+                    if(~destHasPhase.(destIdx)) {
+                        ~phaseEditActive[destIdx] = ~phaseEditActive[destIdx].not;
+                        "[Gladiola] LFO % phase edit -> %".format(~modDestKeys[destIdx], ~phaseEditActive[destIdx]).postln;
+                    };
+                    ~polarityPending = nil;
                     ~updateGridLEDs.();
                 };
             };
@@ -1268,11 +1310,34 @@
             if(~lfoModActive) {
                 if(x == 1 && (y == 7)) {
                     ~lfoHoldActive = false;
+                    ~lfoFrozenVal = nil;
                     if(~lfoSynths.notNil) { if(~lfoSynths[~lfoModTrack].notNil) {
                         ~lfoSynths[~lfoModTrack].set(\freeze, 0)
                     } };
                     "[Gladiola] LFO hold released".postln;
                     ~updateGridLEDs.();
+                };
+                if(x >= 2 && (x <= 15) && (y == 7)) {
+                    // Deferred polarity toggle or phase exit (hold didn't fire)
+                    var destIdx = x - 2;
+                    if(~polarityPending == destIdx) {
+                        if(~phaseEditActive[destIdx]) {
+                            // Tap exits phase mode (no polarity toggle)
+                            ~phaseEditActive[destIdx] = false;
+                            "[Gladiola] LFO % phase edit off".format(~modDestKeys[destIdx]).postln;
+                        } {
+                            // Normal polarity toggle
+                            var ms = ~trackModSettings[~lfoModTrack];
+                            var newPol = ms[\polarities][destIdx].neg;
+                            ms[\polarities][destIdx] = newPol;
+                            if(ms[\depths][destIdx] > 0) {
+                                ~setModDepth.(~lfoModTrack, destIdx, ms[\depths][destIdx], newPol);
+                            };
+                            "[Gladiola] LFO % polarity -> %".format(~modDestKeys[destIdx], if(newPol > 0) { "+" } { "-" }).postln;
+                        };
+                        ~polarityPending = nil;
+                        ~updateGridLEDs.();
+                    };
                 };
             } {
             if(~trackParamActive) {

@@ -357,7 +357,28 @@ Within each column:
 
 Tap any depth row to set the depth for that destination. The selected depth lights full brightness; all other rows in the column are dim. The polarity toggle is independent of depth and can be set at any depth level.
 
-**Slink visualization**: Each depth fader column shows a moving LED (medium brightness) tracking the current LFO position. The slink travels the full throw from row 6 (zero) to the depth anchor row — at zenith (LFO peak) the slink merges into the anchor (full brightness), at nadir it disappears into row 6. Polarity-aware: negative polarity inverts the direction.
+**Phase offset**: Each destination can have an independent phase offset, shifting that destination's LFO signal relative to the others. For example, filter and pan at 90° offset creates circular stereo motion; pitch and velocity at 180° means one rises as the other falls.
+
+- **Hold** a polarity key (row 7, cols 2-15) for 500ms to enter phase fader mode for that column
+- **Tap** a polarity key to exit phase mode (when phase mode is active) or toggle polarity (when not active)
+- Multiple columns can be in phase mode simultaneously — each is independent
+- Phase-active polarity keys show a sawtooth-down LED animation (bright→dim ramp)
+
+Phase fader positions (rows 0-6):
+
+| Row | Offset |
+|-----|--------|
+| 0 | -180° |
+| 1 | -120° |
+| 2 | -60° |
+| 3 | 0° (center, no offset) |
+| 4 | +60° |
+| 5 | +120° |
+| 6 | +180° |
+
+Center dent at row 3 = no offset. Hold the current phase position for 500ms to open a 127-position fine fader (center dent at position 63 = 0°). Phase edit mode resets for all columns when exiting the mod overlay.
+
+**Slink visualization**: Each depth fader column shows a moving LED (medium brightness) tracking the current LFO position. The slink travels the full throw from row 6 (zero) to the depth anchor row — at zenith (LFO peak) the slink merges into the anchor (full brightness), at nadir it disappears into row 6. Polarity-aware: negative polarity inverts the direction. Phase-aware: destinations with non-zero phase offset show shifted LFO positions. When the hold/freeze key is engaged, all slink dots freeze in place.
 
 **~overlayLayout note**: The mod overlay is a full blocking overlay entered from the track overlay. It replaces the track overlay display entirely for the duration of the session. Closing the mod overlay returns to the track overlay, preserving latch state.
 
@@ -479,7 +500,7 @@ The session manager window provides:
 ### What Sessions Capture
 
 - All 7 tracks: steps, per-step parameters, sub-step data, start/end points, mute state
-- Per-track mod settings: LFO shape, rate, depth per destination, polarity per destination
+- Per-track mod settings: LFO shape, rate, depth per destination, polarity per destination, phase offset per destination
 - BPM, clock division, FX parameters, transpose, global reverse
 - All 49 preset slots, slot map, confirm mode, quantize mode
 - Sample directory path
@@ -529,6 +550,7 @@ Loading a session stops transport, frees existing buffers (with a server sync to
 | `~setModDepth.(track, dest, depth)` | Set LFO mod depth for a destination (0-6) on a track |
 | `~setModShape.(track, shape)` | Set LFO shape for a track (0=sine, 1=square, 2=triangle, 3=brownian, 4=random, 5=sawUp, 6=sawDown) |
 | `~setModRate.(track, sixteenths)` | Set LFO rate in sixteenths (1-128) for a track |
+| `~setModPhase.(track, dest, phase)` | Set LFO phase offset for a destination (0.0-1.0 normalized cycle fraction) |
 | `~resetModSettings.(track)` | Reset all LFO mod settings for a track to defaults |
 | `~debugLfo.(track)` | Print current LFO state for a track to the post window |
 

@@ -88,6 +88,11 @@
         { \modDepth } {
             var depth = ~trackModSettings[~fineTrackIdx][\depths][~fineModDest];
             currentPos = ~modDepthFinePosition.(depth);
+        }
+        { \modPhase } {
+            var phase = ~trackModSettings[~fineTrackIdx][\phases][~fineModDest];
+            currentPos = ~phaseFinePosition.(phase);
+            centerPos = 63;
         };
 
         // Render 127 value cells
@@ -315,7 +320,7 @@
             ~grid.clear;
 
             range = GridInterface.ledFull - GridInterface.ledDim;
-            lfoVal = ~lfoBus.getSynchronous(~lfoModTrack);
+            lfoVal = if(~lfoHoldActive && ~lfoFrozenVal.notNil) { ~lfoFrozenVal } { ~lfoBus.getSynchronous(~lfoModTrack) };
 
 
             // Shape animation brightness per shape (freeze when held)
@@ -370,34 +375,59 @@
                 ~grid.led(1, row, brightness);
             };
 
-            // Cols 2-15: Depth faders — single LED shows LFO position
+            // Cols 2-15: Depth or Phase faders — single LED shows LFO position
             14.do { |destIdx|
                 var col = destIdx + 2;
-                var depth = ms[\depths][destIdx];
-                var depthRow = ~modRowForDepth.(depth);
-                if(depth > 0) {
-                    var polarity = ms[\polarities][destIdx];
-                    var span = (6 - depthRow).max(1);
-                    var t = ((lfoVal * polarity) + 1 * 0.5).clip(0, 1);
-                    var posRow = (6.0 - (t * span)).round.asInteger.clip(depthRow, 6);
+                if(~phaseEditActive[destIdx]) {
+                    // Phase fader mode
+                    var phase = ms[\phases][destIdx];
+                    var phaseRow = ~phaseRowForValue.(phase);
                     7.do { |row|
-                        var brightness;
-                        if(row == depthRow) {
-                            // Peak: absorbs position LED when it arrives
-                            brightness = if(posRow == depthRow) {
-                                GridInterface.ledFull
-                            } { GridInterface.ledBright };
+                        var brightness = if(row == phaseRow) {
+                            GridInterface.ledFull
                         } {
-                            brightness = if(row == posRow) {
-                                GridInterface.ledMedium
-                            } { GridInterface.ledDim };
+                            if(row == 3) { GridInterface.ledMedium } { GridInterface.ledDim }
                         };
                         ~grid.led(col, row, brightness);
                     };
                 } {
-                    7.do { |row|
-                        var brightness = if(row == 6) { GridInterface.ledFull } { GridInterface.ledDim };
-                        ~grid.led(col, row, brightness);
+                    // Depth fader mode
+                    var depth = ms[\depths][destIdx];
+                    var depthRow = ~modRowForDepth.(depth);
+                    var destLfoVal;
+                    // Per-destination shifted slink (frozen when hold active)
+                    if(~lfoHoldActive) {
+                        destLfoVal = lfoVal;
+                    } {
+                        if(ms[\phases][destIdx] != 0 && { [3, 4].includes(ms[\shape]).not }) {
+                            var lfoHz = ~lfoRateHz.(ms[\rate16ths]);
+                            var cyclePos = (Main.elapsedTime * lfoHz + ms[\phases][destIdx]).mod(1.0);
+                            destLfoVal = ~lfoValueAtPhase.(ms[\shape], cyclePos);
+                        } { destLfoVal = lfoVal };
+                    };
+                    if(depth > 0) {
+                        var polarity = ms[\polarities][destIdx];
+                        var span = (6 - depthRow).max(1);
+                        var t = ((destLfoVal * polarity) + 1 * 0.5).clip(0, 1);
+                        var posRow = (6.0 - (t * span)).round.asInteger.clip(depthRow, 6);
+                        7.do { |row|
+                            var brightness;
+                            if(row == depthRow) {
+                                brightness = if(posRow == depthRow) {
+                                    GridInterface.ledFull
+                                } { GridInterface.ledBright };
+                            } {
+                                brightness = if(row == posRow) {
+                                    GridInterface.ledMedium
+                                } { GridInterface.ledDim };
+                            };
+                            ~grid.led(col, row, brightness);
+                        };
+                    } {
+                        7.do { |row|
+                            var brightness = if(row == 6) { GridInterface.ledFull } { GridInterface.ledDim };
+                            ~grid.led(col, row, brightness);
+                        };
                     };
                 };
             };
@@ -408,12 +438,18 @@
             // Row 7: Hold key (col 1) — off until engaged
             ~grid.led(1, 7, if(~lfoHoldActive) { GridInterface.ledFull } { GridInterface.ledOff });
 
-            // Row 7, cols 2-15: Polarity toggles (frozen when held)
+            // Row 7, cols 2-15: Polarity toggles (sawtooth-down when phase edit active)
             14.do { |destIdx|
                 var col = destIdx + 2;
-                var pol = ms[\polarities][destIdx];
-                var brightness = if(pol > 0) { GridInterface.ledFull } {
-                    if(~lfoHoldActive) { GridInterface.ledMedium } { pulseBright }
+                var brightness;
+                if(~phaseEditActive[destIdx]) {
+                    var range = GridInterface.ledFull - GridInterface.ledDim;
+                    brightness = GridInterface.ledFull - ((pulsePhase / 15) * range).round.asInteger;
+                } {
+                    var pol = ms[\polarities][destIdx];
+                    brightness = if(pol > 0) { GridInterface.ledFull } {
+                        if(~lfoHoldActive) { GridInterface.ledMedium } { pulseBright }
+                    };
                 };
                 ~grid.led(col, 7, brightness);
             };
