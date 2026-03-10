@@ -610,11 +610,7 @@
     if(x == 0 && (y < 7)) {
         // Shape selector
         ~setModShape.(~lfoModTrack, y);
-        "[Gladiola] LFO shape track % -> % (synth nodeID=%, bus=%)".format(
-            ~lfoModTrack, ~modShapeNames[y],
-            if(~lfoSynths[~lfoModTrack].notNil) { ~lfoSynths[~lfoModTrack].nodeID } { "nil" },
-            ~lfoBus.index + ~lfoModTrack
-        ).postln;
+        "[Gladiola] LFO shape track % -> %".format(~lfoModTrack, ~modShapeNames[y]).postln;
         ~updateGridLEDs.();
     };
     if(x == 1 && (y < 7)) {
@@ -669,9 +665,7 @@
         ~trackParamTrack = ~lfoModTrack;
         ~selectedParam = 0;
         ~paramPage = 0;
-        "[Gladiola] LFO mod overlay closed (was track %, shape=%)".format(
-            ~lfoModTrack, ~trackModSettings[~lfoModTrack][\shape]
-        ).postln;
+        "[Gladiola] LFO mod overlay closed.".postln;
         ~updateGridLEDs.();
     };
     if(x == 1 && (y == 7)) {
@@ -977,11 +971,7 @@
         ~trackClearArmed = false;
         ~latchActive = true;
         ~startPulseRoutine.();
-        "[Gladiola] LFO mod overlay opened for track % (trackParamTrack=%, shape=%, bus=%)".format(
-            ~lfoModTrack, ~trackParamTrack,
-            ~trackModSettings[~lfoModTrack][\shape],
-            ~lfoBus.index + ~lfoModTrack
-        ).postln;
+        "[Gladiola] LFO mod overlay opened for track %".format(~lfoModTrack).postln;
         ~updateGridLEDs.();
     } {
     if(x == layout[\subCols][1] && (y == layout[\subRows][1])) {
