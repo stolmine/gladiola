@@ -610,7 +610,11 @@
     if(x == 0 && (y < 7)) {
         // Shape selector
         ~setModShape.(~lfoModTrack, y);
-        "[Gladiola] LFO shape -> %".format(~modShapeNames[y]).postln;
+        "[Gladiola] LFO shape track % -> % (synth nodeID=%, bus=%)".format(
+            ~lfoModTrack, ~modShapeNames[y],
+            if(~lfoSynths[~lfoModTrack].notNil) { ~lfoSynths[~lfoModTrack].nodeID } { "nil" },
+            ~lfoBus.index + ~lfoModTrack
+        ).postln;
         ~updateGridLEDs.();
     };
     if(x == 1 && (y < 7)) {
@@ -665,13 +669,15 @@
         ~trackParamTrack = ~lfoModTrack;
         ~selectedParam = 0;
         ~paramPage = 0;
-        "[Gladiola] LFO mod overlay closed, back to track overlay".postln;
+        "[Gladiola] LFO mod overlay closed (was track %, shape=%)".format(
+            ~lfoModTrack, ~trackModSettings[~lfoModTrack][\shape]
+        ).postln;
         ~updateGridLEDs.();
     };
     if(x == 1 && (y == 7)) {
         // Hold (freeze) — press
         ~lfoHoldActive = true;
-        ~lfoFrozenVal = ~lfoBus.getSynchronous(~lfoModTrack);
+        ~lfoFrozenVal = s.getControlBusValue(~lfoBus.index + ~lfoModTrack);
         if(~lfoSynths.notNil) { if(~lfoSynths[~lfoModTrack].notNil) {
             ~lfoSynths[~lfoModTrack].set(\freeze, 1)
         } };
@@ -971,7 +977,11 @@
         ~trackClearArmed = false;
         ~latchActive = true;
         ~startPulseRoutine.();
-        "[Gladiola] LFO mod overlay opened for track %".format(~lfoModTrack).postln;
+        "[Gladiola] LFO mod overlay opened for track % (trackParamTrack=%, shape=%, bus=%)".format(
+            ~lfoModTrack, ~trackParamTrack,
+            ~trackModSettings[~lfoModTrack][\shape],
+            ~lfoBus.index + ~lfoModTrack
+        ).postln;
         ~updateGridLEDs.();
     } {
     if(x == layout[\subCols][1] && (y == layout[\subRows][1])) {

@@ -337,7 +337,18 @@
             ~grid.clear;
 
             range = GridInterface.ledFull - GridInterface.ledDim;
-            lfoVal = if(~lfoHoldActive && ~lfoFrozenVal.notNil) { ~lfoFrozenVal } { ~lfoBus.getSynchronous(~lfoModTrack) };
+            lfoVal = if(~lfoHoldActive && ~lfoFrozenVal.notNil) { ~lfoFrozenVal } { s.getControlBusValue(~lfoBus.index + ~lfoModTrack) };
+
+            // Debug: log every 2 seconds
+            if(~lfoLedDebugTime.isNil) { ~lfoLedDebugTime = 0 };
+            if(Main.elapsedTime - ~lfoLedDebugTime > 2) {
+                ~lfoLedDebugTime = Main.elapsedTime;
+                "[DBG] LED render: lfoModTrack=%, shape=%, lfoVal=%, bus ch=%, allShapes=[%]".format(
+                    ~lfoModTrack, ms[\shape], lfoVal.round(0.01),
+                    ~lfoModTrack,
+                    ~numTracks.collect { |i| ~trackModSettings[i][\shape] }
+                ).postln;
+            };
 
 
             // Shape animation brightness per shape (freeze when held)

@@ -90,7 +90,7 @@ var defaultStep = {
     var ms = ~trackModSettings[trackIdx];
     "[Gladiola] === LFO DEBUG track % ===".format(trackIdx).postln;
     "[Gladiola]   synth: %, nodeID: %".format(synth, if(synth.notNil) { synth.nodeID } { "nil" }).postln;
-    "[Gladiola]   bus index: %, getSynchronous: %".format(busIdx, ~lfoBus.getSynchronous(trackIdx)).postln;
+    "[Gladiola]   bus index: %, getSynchronous: %".format(busIdx, s.getControlBusValue(~lfoBus.index + trackIdx)).postln;
     "[Gladiola]   rate16ths: %, hz: %".format(ms[\rate16ths], ~lfoRateHz.(ms[\rate16ths]).round(0.001)).postln;
     "[Gladiola]   shape: %".format(ms[\shape]).postln;
     // Query the server for the node
@@ -385,7 +385,7 @@ var defaultStep = {
 
                     if(track[\muted].not && step[\on] && {
                         var probPass = {
-                            var lfoVal = ~lfoBus.getSynchronous(trackIdx);
+                            var lfoVal = s.getControlBusValue(~lfoBus.index + trackIdx);
                             var ms = ~trackModSettings[trackIdx];
                             var modProb = ms[\depths][12] * ms[\polarities][12];
                             var probLfo = if(modProb != 0 && { ms[\phases][12] != 0 } && { [3, 4].includes(ms[\shape]).not }) {
@@ -440,7 +440,7 @@ var defaultStep = {
 
                         // LFO sample/slice modulation (sclang-side, phase-aware)
                         {
-                            var lfoVal = ~lfoBus.getSynchronous(trackIdx);
+                            var lfoVal = s.getControlBusValue(~lfoBus.index + trackIdx);
                             var ms = ~trackModSettings[trackIdx];
                             var modSample = ms[\depths][0] * ms[\polarities][0];
                             var sampleLfo = if(modSample != 0 && { ms[\phases][0] != 0 } && { [3, 4].includes(ms[\shape]).not }) {
