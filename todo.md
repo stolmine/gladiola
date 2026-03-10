@@ -261,8 +261,22 @@ biggest single feature. SynthDef work and UI work can be developed somewhat in p
 - [x] add record button to session manager — two-state Rec toggle (gray/red), s.record AIFF int24, elapsed MM:SS timer, stops on quit
 - [x] stop audio with high gate length from looping — fixed: sweep-based gate on both normal and slice BufRd paths, samples are one-shots by default
 
+### phase 9b — MiClouds FX rework (✓ done)
+- [x] replaced 3 parallel send FX (delay, granular, reverb) with single expanded MiClouds instance
+- [x] signal path: Voice send → fxSendBus → \gladiolaClouds → bus 0 (master bus unchanged)
+- [x] 9 continuous Clouds params: inGain, pit, pos, size, dens, tex, spread, fb, rvb
+- [x] 3 discrete toggles: freeze (bool), mode (0-3), lofi (bool)
+- [x] trigRate: auto-trigger rate via Dust.kr
+- [x] dedicated FX LFO with 12 mod destinations (9 continuous in SynthDef, 3 discrete in sclang)
+- [x] FX page layout: col 0 LFO rate/shape, cols 1-9 Clouds faders, col 10 toggles, cols 11-15 master bus
+- [x] FX mod detail overlay: entered by holding (0,7) on FX page, full blocking, same layout as per-track mod overlay
+- [x] fine fader contexts: \fxClouds, \fxMaster, \fxModDepth, \fxModPhase
+- [x] state: ~fxCloudsParams, ~fxModSettings, ~cloudsSynth, ~fxLfoBus, ~fxLfoSynth
+- [x] removed: ~delaySynth, ~granularSynth, ~reverbSynth and their SynthDefs
+- [x] session/preset persistence with migration for old sessions
+- [x] files modified: synthdefs/fx_chain.scd, fx_params.scd, sequencer.scd, grid_input.scd, grid_leds.scd, session.scd
+
 ### proposals
-- [ ] replace delay and reverb with expanded MiClouds: consolidate FX chain to just Clouds, spreading its parameters across the full FX UI space currently occupied by delay + reverb
 
 ## abandoned
 - [0] groove templates (swing is implemented; templates would be preset swing curves beyond linear)

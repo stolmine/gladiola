@@ -46,6 +46,12 @@
 ~condEditMode = false;
 ~phaseEditActive = Array.fill(14, { false });
 ~polarityPending = nil;
+~fxModActive = false;
+~fxPhaseEditActive = Array.fill(12, { false });
+~fxPolarityPending = nil;
+~fxLfoHoldActive = false;
+~fxLfoFrozenVal = nil;
+~fxShapePending = nil;
 
 ~fineActive = false;
 ~fineContext = nil;
@@ -242,11 +248,28 @@
                     ~previewStep.(~fineTrackIdx, 0, true);
                 };
             }
-            { \fx } {
-                var val = ~fxFineValueForPosition.(~fineFxCol, pos);
-                var key = ~fxParamKeys[~fineFxCol];
-                ~setFxParam.(key, val);
-                "[Gladiola] Fine FX % -> %".format(key, val).postln;
+            { \fxClouds } {
+                var key = ~fxCloudsKeys[~fineFxCol];
+                var value = ~fxCloudsFineValueForPosition.(key, pos);
+                ~setFxCloudsParam.(key, value);
+                ~updateGridLEDs.();
+            }
+            { \fxMaster } {
+                var key = ~fxMasterKeys[~fineFxCol];
+                var value = ~fxMasterFineValueForPosition.(key, pos);
+                ~setFxParam.(key, value);
+                ~updateGridLEDs.();
+            }
+            { \fxModDepth } {
+                var depth = ~modDepthFineValue.(pos);
+                var polarity = ~fxModSettings[\polarities][~fineModDest];
+                ~setFxModDepth.(~fineModDest, depth, polarity);
+                ~updateGridLEDs.();
+            }
+            { \fxModPhase } {
+                var phase = ~phaseFineValue.(pos);
+                ~setFxModPhase.(~fineModDest, phase);
+                ~updateGridLEDs.();
             }
             { \mixer } {
                 var val = ~mixerFineValue.(pos);
@@ -377,12 +400,134 @@
         };
     }
     { \fxMatrix } {
-        if(x < 16 && (y < 7)) {
-            var key = ~fxParamKeys[x];
-            var value = ~fxValueForPosition.(x, y);
-            ~setFxParam.(key, value);
-            "[Gladiola] FX: % -> %".format(key, value).postln;
-            ~updateGridLEDs.();
+        if(~fxModActive == true) {
+            // FX Mod Detail Page press
+            if(x == 0 && (y < 7)) {
+                // Shape selector
+                ~setFxModShape.(y);
+                "[Gladiola] FX LFO shape -> %".format(~modShapeNames[y]).postln;
+                ~updateGridLEDs.();
+            };
+            if(x == 0 && (y == 7)) {
+                // Exit mod detail
+                ~fxModActive = false;
+                ~fxLfoHoldActive = false;
+                ~fxLfoFrozenVal = nil;
+                ~fxPhaseEditActive = Array.fill(12, { false });
+                ~fxPolarityPending = nil;
+                "[Gladiola] FX mod detail closed.".postln;
+                ~updateGridLEDs.();
+            };
+            if(x == 1 && (y < 7)) {
+                // Rate nudge
+                var nudge = ~modRateNudges[y];
+                if(nudge == 0) {
+                    ~setFxModRate.(16);
+                } {
+                    ~setFxModRate.(~fxModSettings[\rate16ths] + nudge);
+                };
+                "[Gladiola] FX LFO rate -> % sixteenths".format(~fxModSettings[\rate16ths]).postln;
+                ~updateGridLEDs.();
+            };
+            if(x == 1 && (y == 7)) {
+                // Hold/Freeze
+                ~fxLfoHoldActive = true;
+                ~fxLfoFrozenVal = ~fxLfoBus.getSynchronous;
+                if(~fxLfoSynth.notNil) { ~fxLfoSynth.set(\freeze, 1) };
+                "[Gladiola] FX LFO hold engaged.".postln;
+                ~updateGridLEDs.();
+            };
+            if(x == 2 && (y < 7)) {
+                // TrigRate fader
+                var rate = ~fxTrigRateForRow.(y);
+                ~setFxCloudsParam.(\trigRate, rate);
+                "[Gladiola] FX trigRate -> %".format(rate).postln;
+                ~updateGridLEDs.();
+            };
+            if(x >= 4 && (x <= 15)) {
+                var destIdx = x - 4;
+                if(y < 7) {
+                    if(~fxPhaseEditActive[destIdx]) {
+                        // Phase fader
+                        var phase = ~phaseValues[y];
+                        ~setFxModPhase.(destIdx, phase);
+                        "[Gladiola] FX mod phase dest % -> %".format(destIdx, phase).postln;
+                        ~updateGridLEDs.();
+                    } {
+                        // Depth fader
+                        var depth = ~modDepthForRow.(y);
+                        var polarity = ~fxModSettings[\polarities][destIdx];
+                        ~setFxModDepth.(destIdx, depth, polarity);
+                        "[Gladiola] FX mod depth dest % -> %".format(destIdx, depth).postln;
+                        ~updateGridLEDs.();
+                    };
+                };
+                if(y == 7) {
+                    // Polarity/phase pending
+                    ~fxPolarityPending = destIdx;
+                };
+            };
+        } {
+            // Main FX Page press
+            if(x == 0 && (y < 7)) {
+                // Rate nudge
+                var nudge = ~modRateNudges[y];
+                if(nudge == 0) {
+                    ~setFxModRate.(16);
+                } {
+                    ~setFxModRate.(~fxModSettings[\rate16ths] + nudge);
+                };
+                "[Gladiola] FX LFO rate -> % sixteenths".format(~fxModSettings[\rate16ths]).postln;
+                ~updateGridLEDs.();
+            };
+            if(x == 0 && (y == 7)) {
+                // Shape cycle pending (defer to release; hold enters mod detail)
+                ~fxShapePending = true;
+            };
+            if(x >= 1 && (x <= 9) && (y < 7)) {
+                // Clouds param fader
+                var key = ~fxCloudsKeys[x - 1];
+                var value = ~fxCloudsValueForPosition.(key, y);
+                ~setFxCloudsParam.(key, value);
+                "[Gladiola] FX Clouds: % -> %".format(key, value).postln;
+                ~updateGridLEDs.();
+            };
+            if(x == 10) {
+                if(y == 0) {
+                    // Freeze toggle
+                    var newFreeze = if(~fxCloudsParams[\freeze] > 0) { 0 } { 1 };
+                    ~setFxCloudsParam.(\freeze, newFreeze);
+                    "[Gladiola] FX freeze -> %".format(newFreeze).postln;
+                    ~updateGridLEDs.();
+                };
+                if(y == 2) {
+                    // Mode cycle
+                    var newMode = (~fxCloudsParams[\mode] + 1) % 4;
+                    ~setFxCloudsParam.(\mode, newMode);
+                    "[Gladiola] FX mode -> %".format(newMode).postln;
+                    ~updateGridLEDs.();
+                };
+                if(y == 4) {
+                    // Lofi toggle
+                    var newLofi = if(~fxCloudsParams[\lofi] > 0) { 0 } { 1 };
+                    ~setFxCloudsParam.(\lofi, newLofi);
+                    "[Gladiola] FX lofi -> %".format(newLofi).postln;
+                    ~updateGridLEDs.();
+                };
+                if(y == 7) {
+                    // Manual trig
+                    if(~cloudsSynth.notNil) { ~cloudsSynth.set(\t_trig, 1) };
+                    "[Gladiola] FX manual trig.".postln;
+                };
+            };
+            if(x >= 11 && (x <= 15) && (y < 7)) {
+                // Master bus params (unchanged)
+                var key = ~fxMasterKeys[x - 11];
+                var value = ~fxMasterValueForPosition.(key, y);
+                ~setFxParam.(key, value);
+                "[Gladiola] FX master: % -> %".format(key, value).postln;
+                ~updateGridLEDs.();
+            };
         };
     }
     { \transpose } {
@@ -1051,20 +1196,88 @@
             };
         };
         if(~fineActive.not && ~utilityOverlayActive && (~utilityOverlayType == \fxMatrix)) {
-            ~fdbg.("FX", [x, y]);
-            if(x < 16 && (y < 7)) {
-                var key = ~fxParamKeys[x];
-                var currentRow = ~fxPositionForValue.(x, ~fxParams[key]);
-                ~fdbg.("FX2", [x, currentRow, y, y == currentRow]);
-                if(y == currentRow) {
-                    if(~fxHasFine.(x)) {
+            if(~fxModActive == true) {
+                // FX Mod detail hold handler
+                if(x == 0 && (y == 7)) {
+                    // Already in mod detail — ignore
+                };
+                if(x >= 4 && (x <= 15) && (y < 7)) {
+                    var destIdx = x - 4;
+                    if(~fxPhaseEditActive[destIdx]) {
+                        // Hold on phase fader → fine fader for phase
+                        var phase = ~fxModSettings[\phases][destIdx];
+                        var phaseRow = ~phaseRowForValue.(phase);
+                        if(y == phaseRow) {
+                            ~fineActive = true;
+                            ~fineContext = \fxModPhase;
+                            ~fineModDest = destIdx;
+                            ~latchActive = true;
+                            ~startPulseRoutine.();
+                            "[Gladiola] FX mod phase fine fader (dest %)".format(destIdx).postln;
+                            ~updateGridLEDs.();
+                        };
+                    } {
+                        // Hold on depth fader → fine fader for depth
+                        var depth = ~fxModSettings[\depths][destIdx];
+                        var depthRow = ~modRowForDepth.(depth);
+                        if(y == depthRow) {
+                            ~fineActive = true;
+                            ~fineContext = \fxModDepth;
+                            ~fineModDest = destIdx;
+                            ~latchActive = true;
+                            ~startPulseRoutine.();
+                            "[Gladiola] FX mod depth fine fader (dest %)".format(destIdx).postln;
+                            ~updateGridLEDs.();
+                        };
+                    };
+                };
+                if(x >= 4 && (x <= 15) && (y == 7)) {
+                    // Hold on row 7 polarity key → phase edit toggle
+                    var destIdx = x - 4;
+                    ~fxPolarityPending = nil;
+                    ~fxPhaseEditActive[destIdx] = ~fxPhaseEditActive[destIdx].not;
+                    "[Gladiola] FX mod phase edit dest % -> %".format(destIdx, ~fxPhaseEditActive[destIdx]).postln;
+                    ~updateGridLEDs.();
+                };
+            } {
+                // Main FX page hold handler
+                if(x == 0 && (y == 7)) {
+                    // Hold on col 0 row 7 → enter mod detail
+                    ~fxShapePending = nil;
+                    ~fxModActive = true;
+                    ~latchActive = true;
+                    ~startPulseRoutine.();
+                    "[Gladiola] FX mod detail opened.".postln;
+                    ~updateGridLEDs.();
+                };
+                if(x >= 1 && (x <= 9) && (y < 7)) {
+                    // Hold on Clouds fader → fine fader
+                    var key = ~fxCloudsKeys[x - 1];
+                    var currentRow = ~fxCloudsPositionForValue.(key, ~fxCloudsParams[key]);
+                    if(y == currentRow) {
                         ~fineActive = true;
-                        ~fineContext = \fx;
-                        ~fineFxCol = x;
+                        ~fineContext = \fxClouds;
+                        ~fineFxCol = x - 1;
                         ~latchActive = true;
                         ~startPulseRoutine.();
-                        "[Gladiola] Fine fader opened (FX col %)".format(x).postln;
+                        "[Gladiola] Fine fader opened (Clouds %)".format(key).postln;
                         ~updateGridLEDs.();
+                    };
+                };
+                if(x >= 11 && (x <= 15) && (y < 7)) {
+                    // Hold on master bus fader → fine fader
+                    var key = ~fxMasterKeys[x - 11];
+                    if(~fxMasterHasFine.(key)) {
+                        var currentRow = ~fxMasterPositionForValue.(key, ~fxParams[key]);
+                        if(y == currentRow) {
+                            ~fineActive = true;
+                            ~fineContext = \fxMaster;
+                            ~fineFxCol = x - 11;
+                            ~latchActive = true;
+                            ~startPulseRoutine.();
+                            "[Gladiola] Fine fader opened (Master %)".format(key).postln;
+                            ~updateGridLEDs.();
+                        };
                     };
                 };
             };
@@ -1354,6 +1567,39 @@
                     };
                 };
             } {
+                if(~utilityOverlayActive && (~utilityOverlayType == \fxMatrix)) {
+                    // FX-specific release handlers
+                    if(~fxModActive == true) {
+                        if(x == 1 && (y == 7)) {
+                            // Release hold
+                            ~fxLfoHoldActive = false;
+                            ~fxLfoFrozenVal = nil;
+                            if(~fxLfoSynth.notNil) { ~fxLfoSynth.set(\freeze, 0) };
+                            "[Gladiola] FX LFO hold released.".postln;
+                            ~updateGridLEDs.();
+                        };
+                        if(x >= 4 && (x <= 15) && (y == 7)) {
+                            var destIdx = x - 4;
+                            if(~fxPolarityPending.notNil && (~fxPolarityPending == destIdx)) {
+                                // Polarity toggle (hold didn't fire)
+                                var newPol = ~fxModSettings[\polarities][destIdx].neg;
+                                ~setFxModDepth.(destIdx, ~fxModSettings[\depths][destIdx], newPol);
+                                "[Gladiola] FX mod polarity dest % -> %".format(destIdx, newPol).postln;
+                                ~updateGridLEDs.();
+                            };
+                            ~fxPolarityPending = nil;
+                        };
+                    } {
+                        if(x == 0 && (y == 7) && ~fxShapePending.notNil) {
+                            // Shape cycle (hold didn't fire → mod detail)
+                            var newShape = (~fxModSettings[\shape] + 1) % 7;
+                            ~setFxModShape.(newShape);
+                            ~fxShapePending = nil;
+                            "[Gladiola] FX LFO shape -> %".format(~modShapeNames[newShape]).postln;
+                            ~updateGridLEDs.();
+                        };
+                    };
+                };
                 if(~utilityOverlayActive) {
                     if(y == 7 && (x == ~utilityHeldButton)) {
                         if(~latchActive) {
@@ -1372,6 +1618,12 @@
                                 ~updateGridLEDs.();
                             } {
                                 "[Gladiola] Overlay closed".postln;
+                                ~fxModActive = false;
+                                ~fxPhaseEditActive = Array.fill(12, { false });
+                                ~fxPolarityPending = nil;
+                                ~fxLfoHoldActive = false;
+                                ~fxLfoFrozenVal = nil;
+                                ~fxShapePending = nil;
                                 ~utilityOverlayActive = false;
                                 ~utilityOverlayType = nil;
                                 ~utilityHeldButton = nil;

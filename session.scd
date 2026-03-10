@@ -18,6 +18,12 @@
 			\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy,
 			\phases -> ms[\phases].copy]
 	};
+	snapshot[\fxCloudsParams] = ~fxCloudsParams.copy;
+	snapshot[\fxModSettings] = Dictionary[\shape -> ~fxModSettings[\shape],
+		\rate16ths -> ~fxModSettings[\rate16ths],
+		\depths -> ~fxModSettings[\depths].copy,
+		\polarities -> ~fxModSettings[\polarities].copy,
+		\phases -> ~fxModSettings[\phases].copy];
 	snapshot[\tracks] = ~numTracks.collect { |i|
 		var t = ~tracks[i];
 		Dictionary[
@@ -53,6 +59,13 @@
 						\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy,
 					\phases -> (ms[\phases] ?? { Array.fill(14, { 0.0 }) }).copy]
 				} };
+			if(p[\fxCloudsParams].notNil) { copy[\fxCloudsParams] = p[\fxCloudsParams].copy };
+			if(p[\fxModSettings].notNil) { copy[\fxModSettings] = {
+				var ms = p[\fxModSettings];
+				Dictionary[\shape -> ms[\shape], \rate16ths -> ms[\rate16ths],
+					\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy,
+					\phases -> (ms[\phases] ?? { Array.fill(12, { 0.0 }) }).copy]
+			}.value };
 			copy
 		} { nil }
 	};
@@ -170,6 +183,22 @@
 						~setFxParam.(\delayDiv, snapshot[\delayDiv]);
 					};
 				};
+				if(snapshot[\fxCloudsParams].notNil) {
+					snapshot[\fxCloudsParams].keysValuesDo { |key, val|
+						~setFxCloudsParam.(key, val);
+					};
+				} {
+					~fxCloudsDefaults.keysValuesDo { |key, val|
+						~setFxCloudsParam.(key, val);
+					};
+				};
+				if(snapshot[\fxModSettings].notNil) {
+					var saved = snapshot[\fxModSettings];
+					~fxModSettings = Dictionary[\shape -> saved[\shape], \rate16ths -> saved[\rate16ths],
+						\depths -> saved[\depths].copy, \polarities -> saved[\polarities].copy,
+						\phases -> (saved[\phases] ?? { Array.fill(12, { 0.0 }) }).copy];
+					~setFxModShape.(saved[\shape]); ~updateFxLfoRate.(); ~applyFxModDepths.();
+				} { ~resetFxModSettings.() };
 				~transpose = snapshot[\transpose];
 				~globalReverse = snapshot[\globalReverse] ? false;
 				~swing = snapshot[\swing] ?? { 50 };
@@ -212,6 +241,13 @@
 									\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy,
 									\phases -> (ms[\phases] ?? { Array.fill(14, { 0.0 }) }).copy]
 							} };
+						if(p[\fxCloudsParams].notNil) { copy[\fxCloudsParams] = p[\fxCloudsParams].copy };
+						if(p[\fxModSettings].notNil) { copy[\fxModSettings] = {
+							var ms = p[\fxModSettings];
+							Dictionary[\shape -> ms[\shape], \rate16ths -> ms[\rate16ths],
+								\depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy,
+								\phases -> (ms[\phases] ?? { Array.fill(12, { 0.0 }) }).copy]
+						}.value };
 						copy
 					} { nil }
 				};
@@ -259,6 +295,10 @@
 			if(~tracks[i][\voice].notNil) { ~tracks[i][\voice].set(\trackAmp, 1.0) };
 		};
 		~numTracks.do { |i| ~resetModSettings.(i) };
+		~fxCloudsDefaults.keysValuesDo { |key, val|
+			~setFxCloudsParam.(key, val);
+		};
+		~resetFxModSettings.();
 		~numTracks.do { |i| ~tracks[i][\sliceMode] = false };
 		~setTempo.(~bpm);
 

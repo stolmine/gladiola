@@ -77,10 +77,24 @@
                 centerPos = ~fineCenterPos.(~fineParamPage, ~fineParamIdx);
             };
         }
-        { \fx } {
-            var key = ~fxParamKeys[~fineFxCol];
-            currentPos = ~fxFinePositionForValue.(~fineFxCol, ~fxParams[key]);
-            centerPos = ~fxFineCenterPos.(~fineFxCol);
+        { \fxClouds } {
+            var key = ~fxCloudsKeys[~fineFxCol];
+            currentPos = ~fxCloudsFinePositionForValue.(key, ~fxCloudsParams[key]);
+            centerPos = ~fxCloudsFineCenterPos.(key);
+        }
+        { \fxMaster } {
+            var key = ~fxMasterKeys[~fineFxCol];
+            currentPos = ~fxMasterFinePositionForValue.(key, ~fxParams[key]);
+            centerPos = ~fxMasterFineCenterPos.(key);
+        }
+        { \fxModDepth } {
+            var depth = ~fxModSettings[\depths][~fineModDest];
+            currentPos = ~modDepthFinePosition.(depth);
+        }
+        { \fxModPhase } {
+            var phase = ~fxModSettings[\phases][~fineModDest];
+            currentPos = ~phaseFinePosition.(phase);
+            centerPos = 63;
         }
         { \mixer } {
             currentPos = ~mixerFinePosition.(~trackVolumes[~fineMixerTrack]);
@@ -573,24 +587,219 @@
                     ~grid.led(~utilityHeldButton + 1, 7, if(~latchActive) { pulseBright } { GridInterface.ledDim });
                 } {
                     if(~utilityOverlayType == \fxMatrix) {
-                        16.do { |col|
-                            var key = ~fxParamKeys[col];
-                            var currentRow = ~fxPositionForValue.(col, ~fxParams[key]);
-                            7.do { |row|
-                                var brightness = if(row == currentRow) {
-                                    GridInterface.ledFull
-                                } {
-                                    if(row > currentRow) {
-                                        GridInterface.ledMedium
+                        if(~fxModActive == true) {
+                            // FX Mod Detail Page
+                            var ms = ~fxModSettings;
+                            var lfoHz = ~lfoRateHz.(ms[\rate16ths]);
+                            var animPhase = ((Main.elapsedTime * lfoHz % 1.0) * 16).asInteger;
+                            var shapeAnim, range, lfoVal;
+
+                            range = GridInterface.ledFull - GridInterface.ledDim;
+                            lfoVal = if(~fxLfoHoldActive && ~fxLfoFrozenVal.notNil) { ~fxLfoFrozenVal } { ~fxLfoBus.getSynchronous };
+
+                            shapeAnim = if(~fxLfoHoldActive) { GridInterface.ledFull } { case
+                                { ms[\shape] == 0 } {
+                                    if(animPhase < 8) {
+                                        GridInterface.ledDim + ((animPhase / 7) * range).round.asInteger
                                     } {
-                                        GridInterface.ledDim
+                                        GridInterface.ledFull - (((animPhase - 8) / 7) * range).round.asInteger
                                     }
-                                };
-                                ~grid.led(col, row, brightness);
+                                }
+                                { ms[\shape] == 1 } { if(animPhase < 8) { GridInterface.ledFull } { GridInterface.ledDim } }
+                                { ms[\shape] == 2 } {
+                                    if(animPhase < 8) {
+                                        GridInterface.ledDim + ((animPhase / 7) * range).round.asInteger
+                                    } {
+                                        GridInterface.ledFull - (((animPhase - 8) / 7) * range).round.asInteger
+                                    }
+                                }
+                                { ms[\shape] == 3 } { (GridInterface.ledDim + (range * (animPhase.hash % 100 / 100))).round.asInteger }
+                                { ms[\shape] == 4 } { (GridInterface.ledDim + (range * (animPhase.hash % 100 / 100))).round.asInteger }
+                                { ms[\shape] == 5 } { (GridInterface.ledDim + (animPhase / 15 * range)).round.asInteger }
+                                { ms[\shape] == 6 } { (GridInterface.ledFull - (animPhase / 15 * range)).round.asInteger }
+                                { true } { GridInterface.ledDim } };
+
+                            // Col 0: Shape selector
+                            7.do { |row|
+                                ~grid.led(0, row, if(row == ms[\shape]) { shapeAnim } { GridInterface.ledDim });
                             };
+
+                            // Col 1: Rate nudge
+                            7.do { |row|
+                                ~grid.led(1, row, if(row == 3) { GridInterface.ledBright } { GridInterface.ledDim });
+                            };
+
+                            // Col 2: TrigRate fader
+                            {
+                                var trRow = ~fxTrigRateRowForValue.(~fxCloudsParams[\trigRate]);
+                                7.do { |row|
+                                    ~grid.led(2, row, if(row == trRow) { GridInterface.ledFull } {
+                                        if(row > trRow) { GridInterface.ledMedium } { GridInterface.ledDim }
+                                    });
+                                };
+                            }.value;
+
+                            // Col 3: dark separator (all off)
+
+                            // Cols 4-15: Depth faders with slink
+                            12.do { |destIdx|
+                                var col = destIdx + 4;
+                                if(~fxPhaseEditActive[destIdx]) {
+                                    var phase = ms[\phases][destIdx];
+                                    var phaseRow = ~phaseRowForValue.(phase);
+                                    7.do { |row|
+                                        ~grid.led(col, row, if(row == phaseRow) { GridInterface.ledFull } {
+                                            if(row == 3) { GridInterface.ledMedium } { GridInterface.ledDim }
+                                        });
+                                    };
+                                } {
+                                    var depth = ms[\depths][destIdx];
+                                    var depthRow = ~modRowForDepth.(depth);
+                                    var destLfoVal;
+                                    if(~fxLfoHoldActive) {
+                                        destLfoVal = lfoVal;
+                                    } {
+                                        if(ms[\phases][destIdx] != 0 && { [3, 4].includes(ms[\shape]).not }) {
+                                            var cyclePos = (Main.elapsedTime * lfoHz + ms[\phases][destIdx]).mod(1.0);
+                                            destLfoVal = ~lfoValueAtPhase.(ms[\shape], cyclePos);
+                                        } { destLfoVal = lfoVal };
+                                    };
+                                    if(depth > 0) {
+                                        var polarity = ms[\polarities][destIdx];
+                                        var span = (6 - depthRow).max(1);
+                                        var t = ((destLfoVal * polarity) + 1 * 0.5).clip(0, 1);
+                                        var posRow = (6.0 - (t * span)).round.asInteger.clip(depthRow, 6);
+                                        7.do { |row|
+                                            var brightness;
+                                            if(row == depthRow) {
+                                                brightness = if(posRow == depthRow) { GridInterface.ledFull } { GridInterface.ledBright };
+                                            } {
+                                                brightness = if(row == posRow) { GridInterface.ledMedium } { GridInterface.ledDim };
+                                            };
+                                            ~grid.led(col, row, brightness);
+                                        };
+                                    } {
+                                        7.do { |row|
+                                            ~grid.led(col, row, if(row == 6) { GridInterface.ledFull } { GridInterface.ledDim });
+                                        };
+                                    };
+                                };
+                            };
+
+                            // Row 7: Exit (col 0), Hold (col 1)
+                            ~grid.led(0, 7, if(~fxLfoHoldActive) { GridInterface.ledMedium } { pulseBright });
+                            ~grid.led(1, 7, if(~fxLfoHoldActive) { GridInterface.ledFull } { GridInterface.ledOff });
+                            // Col 2 row 7: nothing
+                            // Col 3 row 7: nothing
+
+                            // Row 7, cols 4-15: Polarity toggles
+                            12.do { |destIdx|
+                                var col = destIdx + 4;
+                                var brightness;
+                                if(~fxPhaseEditActive[destIdx]) {
+                                    var phaseRange = GridInterface.ledFull - GridInterface.ledDim;
+                                    brightness = GridInterface.ledFull - ((pulsePhase / 15) * phaseRange).round.asInteger;
+                                } {
+                                    var pol = ms[\polarities][destIdx];
+                                    brightness = if(pol > 0) { GridInterface.ledFull } {
+                                        if(~fxLfoHoldActive) { GridInterface.ledMedium } { pulseBright }
+                                    };
+                                };
+                                ~grid.led(col, 7, brightness);
+                            };
+                        } {
+                            // Main FX Page
+
+                            // Col 0: LFO rate nudge
+                            7.do { |row|
+                                ~grid.led(0, row, if(row == 3) { GridInterface.ledBright } { GridInterface.ledDim });
+                            };
+                            // Col 0 row 7: shape-animated brightness
+                            {
+                                var ms = ~fxModSettings;
+                                var lfoHz = ~lfoRateHz.(ms[\rate16ths]);
+                                var animPhase = ((Main.elapsedTime * lfoHz % 1.0) * 16).asInteger;
+                                var range = GridInterface.ledFull - GridInterface.ledDim;
+                                var shapeAnim = case
+                                    { ms[\shape] == 0 } {
+                                        if(animPhase < 8) {
+                                            GridInterface.ledDim + ((animPhase / 7) * range).round.asInteger
+                                        } {
+                                            GridInterface.ledFull - (((animPhase - 8) / 7) * range).round.asInteger
+                                        }
+                                    }
+                                    { ms[\shape] == 1 } { if(animPhase < 8) { GridInterface.ledFull } { GridInterface.ledDim } }
+                                    { ms[\shape] == 2 } {
+                                        if(animPhase < 8) {
+                                            GridInterface.ledDim + ((animPhase / 7) * range).round.asInteger
+                                        } {
+                                            GridInterface.ledFull - (((animPhase - 8) / 7) * range).round.asInteger
+                                        }
+                                    }
+                                    { ms[\shape] == 3 } { (GridInterface.ledDim + (range * (animPhase.hash % 100 / 100))).round.asInteger }
+                                    { ms[\shape] == 4 } { (GridInterface.ledDim + (range * (animPhase.hash % 100 / 100))).round.asInteger }
+                                    { ms[\shape] == 5 } { (GridInterface.ledDim + (animPhase / 15 * range)).round.asInteger }
+                                    { ms[\shape] == 6 } { (GridInterface.ledFull - (animPhase / 15 * range)).round.asInteger }
+                                    { true } { GridInterface.ledDim };
+                                ~grid.led(0, 7, shapeAnim);
+                            }.value;
+
+                            // Cols 1-9: Clouds parameter faders
+                            ~fxCloudsKeys.do { |key, i|
+                                var col = i + 1;
+                                var currentRow = ~fxCloudsPositionForValue.(key, ~fxCloudsParams[key]);
+                                var centerPos = ~fxCloudsCenterPos.(key);
+                                7.do { |row|
+                                    var brightness = if(row == currentRow) {
+                                        GridInterface.ledFull
+                                    } {
+                                        if(centerPos.notNil && (row == centerPos)) {
+                                            GridInterface.ledMedium
+                                        } {
+                                            if(row > currentRow) { GridInterface.ledMedium } { GridInterface.ledDim }
+                                        }
+                                    };
+                                    ~grid.led(col, row, brightness);
+                                };
+                            };
+
+                            // Col 10: Toggles
+                            ~grid.led(10, 0, if(~fxCloudsParams[\freeze] > 0) { GridInterface.ledFull } { GridInterface.ledDim });
+                            ~grid.led(10, 1, GridInterface.ledOff);
+                            {
+                                var modeVal = ~fxCloudsParams[\mode];
+                                var modeBright = (GridInterface.ledDim + (modeVal / 3.0 * (GridInterface.ledFull - GridInterface.ledDim))).round.asInteger;
+                                ~grid.led(10, 2, modeBright.clip(GridInterface.ledDim, GridInterface.ledFull));
+                            }.value;
+                            ~grid.led(10, 3, GridInterface.ledOff);
+                            ~grid.led(10, 4, if(~fxCloudsParams[\lofi] > 0) { GridInterface.ledFull } { GridInterface.ledDim });
+                            ~grid.led(10, 5, GridInterface.ledOff);
+                            ~grid.led(10, 6, GridInterface.ledOff);
+                            ~grid.led(10, 7, GridInterface.ledDim);
+
+                            // Cols 11-15: Master bus params (unchanged rendering)
+                            ~fxMasterKeys.do { |key, i|
+                                var col = i + 11;
+                                var currentRow = ~fxMasterPositionForValue.(key, ~fxParams[key]);
+                                var centerPos = ~fxMasterCenterPos.(key);
+                                7.do { |row|
+                                    var brightness = if(row == currentRow) {
+                                        GridInterface.ledFull
+                                    } {
+                                        if(centerPos.notNil && (row == centerPos)) {
+                                            GridInterface.ledMedium
+                                        } {
+                                            if(row > currentRow) { GridInterface.ledMedium } { GridInterface.ledDim }
+                                        }
+                                    };
+                                    ~grid.led(col, row, brightness);
+                                };
+                            };
+
+                            // Utility row
+                            ~grid.led(~utilityHeldButton, 7, GridInterface.ledFull);
+                            ~grid.led(~utilityHeldButton + 1, 7, if(~latchActive) { pulseBright } { GridInterface.ledDim });
                         };
-                        ~grid.led(~utilityHeldButton, 7, GridInterface.ledFull);
-                        ~grid.led(~utilityHeldButton + 1, 7, if(~latchActive) { pulseBright } { GridInterface.ledDim });
                     } {
                         if(~utilityOverlayType == \transpose) {
                             var transposeValues = [0.333, 0.5, 0.667, 1.0, 1.5, 2.0, 3.0];

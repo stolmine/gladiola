@@ -32,12 +32,18 @@ var defaultStep = {
 ~stepsPerTrack = 16;
 ~bpm           = 120;
 ~fxParams = Dictionary.newFrom([
-    \delayDiv, 0.25, \delayFeedback, 0, \delayTone, 0, \delayLevel, 0,
-    \granSizeMod, 0, \granPosMod, 0, \granPitchRange, 0, \granLevel, 0,
-    \reverbSize, 0.5, \reverbDamp, 0.5, \reverbLevel, 0,
     \satDepth, 0, \satType, 0, \tilt, 0, \compAmount, 0, \compColor, 0
 ]);
 ~fxParamDefaults = ~fxParams.copy;
+~fxCloudsParams = Dictionary.newFrom([
+    \inGain, 1.0, \pit, 0, \pos, 0.5, \size, 0.25,
+    \dens, 0.4, \tex, 0.5, \spread, 0.5, \fb, 0, \rvb, 0,
+    \freeze, 0, \mode, 0, \lofi, 0, \trigRate, 0
+]);
+~fxCloudsDefaults = ~fxCloudsParams.copy;
+~fxModSettings = Dictionary[\shape -> 0, \rate16ths -> 16,
+    \depths -> Array.fill(12, { 0.0 }), \polarities -> Array.fill(12, { 1 }),
+    \phases -> Array.fill(12, { 0.0 })];
 ~playing       = false;
 ~transpose     = 1.0;
 ~globalReverse = false;
@@ -143,6 +149,68 @@ var defaultStep = {
     ~applyModDepths.(trackIdx)
 };
 
+~updateFxLfoRate = {
+    if(~fxLfoSynth.notNil) {
+        var hz = ~lfoRateHz.(~fxModSettings[\rate16ths]);
+        ~fxLfoSynth.set(\rate, hz);
+        if(~cloudsSynth.notNil) { ~cloudsSynth.set(\lfoRate, hz) };
+    }
+};
+~setFxModDepth = { |destIdx, depth, polarity|
+    ~fxModSettings[\depths][destIdx] = depth;
+    ~fxModSettings[\polarities][destIdx] = polarity;
+    if(~fxModArgNames[destIdx].notNil) {
+        if(~cloudsSynth.notNil) {
+            ~cloudsSynth.set(~fxModArgNames[destIdx], depth * polarity)
+        }
+    }
+};
+~setFxModPhase = { |destIdx, phase|
+    ~fxModSettings[\phases][destIdx] = phase;
+    if(~fxModPhaseArgNames[destIdx].notNil) {
+        if(~cloudsSynth.notNil) {
+            ~cloudsSynth.set(~fxModPhaseArgNames[destIdx], phase)
+        }
+    }
+};
+~setFxModShape = { |shape|
+    shape = shape.asInteger;
+    ~fxModSettings[\shape] = shape;
+    if(~fxLfoSynth.notNil) { ~fxLfoSynth.set(\shape, shape) }
+};
+~setFxModRate = { |rate16ths|
+    ~fxModSettings[\rate16ths] = rate16ths.clip(1, 128);
+    ~updateFxLfoRate.()
+};
+~applyFxModDepths = {
+    var ms = ~fxModSettings;
+    if(~cloudsSynth.notNil) {
+        9.do { |i|
+            if(~fxModArgNames[i].notNil) {
+                ~cloudsSynth.set(~fxModArgNames[i], ms[\depths][i] * ms[\polarities][i])
+            };
+            if(~fxModPhaseArgNames[i].notNil) {
+                ~cloudsSynth.set(~fxModPhaseArgNames[i], ms[\phases][i])
+            }
+        };
+        ~cloudsSynth.set(\lfoRate, ~lfoRateHz.(ms[\rate16ths]))
+    }
+};
+~resetFxModSettings = {
+    ~fxModSettings = Dictionary[\shape -> 0, \rate16ths -> 16,
+        \depths -> Array.fill(12, { 0.0 }), \polarities -> Array.fill(12, { 1 }),
+        \phases -> Array.fill(12, { 0.0 })];
+    ~setFxModShape.(0);
+    ~updateFxLfoRate.();
+    ~applyFxModDepths.()
+};
+~setFxCloudsParam = { |key, value|
+    ~fxCloudsParams[key] = value;
+    if(~cloudsSynth.notNil) {
+        ~cloudsSynth.set(key, value)
+    }
+};
+
 ~setTrackVolume = { |trackIdx, vol|
     ~trackVolumes[trackIdx] = vol;
     if(~tracks[trackIdx][\voice].notNil) { ~tracks[trackIdx][\voice].set(\trackAmp, vol) };
@@ -153,9 +221,9 @@ var defaultStep = {
 ~fxGroup       = nil;
 ~masterGroup   = nil;
 ~fxSendBus     = nil;
-~delaySynth    = nil;
-~granularSynth = nil;
-~reverbSynth   = nil;
+~cloudsSynth   = nil;
+~fxLfoBus      = nil;
+~fxLfoSynth    = nil;
 ~satSynth      = nil;
 ~tiltSynth     = nil;
 ~compSynth     = nil;
@@ -235,27 +303,27 @@ var defaultStep = {
         ], ~voiceGroup);
     };
 
-    ~delaySynth = Synth(\gladiolaDelay, [
-        \fxSendBus, ~fxSendBus.index,
-        \delaytime, ~fxParams[\delayDiv] * 60 / ~bpm,
-        \feedback, ~fxParams[\delayFeedback],
-        \tone, ~fxParams[\delayTone],
-        \level, ~fxParams[\delayLevel]
-    ], ~fxGroup);
+    ~fxLfoBus = Bus.control(s, 1);
+    ~fxLfoSynth = Synth(\gladiolaLFO, [\out, ~fxLfoBus.index, \shape, 0,
+        \rate, ~lfoRateHz.(16), \freeze, 0], ~lfoGroup);
 
-    ~granularSynth = Synth(\gladiolaGranular, [
+    ~cloudsSynth = Synth(\gladiolaClouds, [
         \fxSendBus, ~fxSendBus.index,
-        \sizeMod, ~fxParams[\granSizeMod],
-        \posMod, ~fxParams[\granPosMod],
-        \pitchRange, ~fxParams[\granPitchRange],
-        \level, ~fxParams[\granLevel]
-    ], ~fxGroup);
-
-    ~reverbSynth = Synth(\gladiolaReverb, [
-        \fxSendBus, ~fxSendBus.index,
-        \size, ~fxParams[\reverbSize],
-        \damping, ~fxParams[\reverbDamp],
-        \level, ~fxParams[\reverbLevel]
+        \inGain, ~fxCloudsParams[\inGain],
+        \pit, ~fxCloudsParams[\pit],
+        \pos, ~fxCloudsParams[\pos],
+        \size, ~fxCloudsParams[\size],
+        \dens, ~fxCloudsParams[\dens],
+        \tex, ~fxCloudsParams[\tex],
+        \spread, ~fxCloudsParams[\spread],
+        \fb, ~fxCloudsParams[\fb],
+        \rvb, ~fxCloudsParams[\rvb],
+        \freeze, ~fxCloudsParams[\freeze],
+        \mode, ~fxCloudsParams[\mode],
+        \lofi, ~fxCloudsParams[\lofi],
+        \trigRate, ~fxCloudsParams[\trigRate],
+        \lfoBus, ~fxLfoBus.index,
+        \lfoRate, ~lfoRateHz.(~fxModSettings[\rate16ths])
     ], ~fxGroup);
 
     ~satSynth = Synth(\gladiolaSaturation, [
@@ -419,8 +487,24 @@ var defaultStep = {
                                 \t_trig,     1
                             );
                             if(resolvedDelaySend > 0) {
-                                if(~granularSynth.notNil) {
-                                    ~granularSynth.set(\t_trig, 1);
+                                if(~cloudsSynth.notNil) {
+                                    ~cloudsSynth.set(\t_trig, 1);
+                                    {
+                                        var fxLfoVal = ~fxLfoBus.getSynchronous;
+                                        var ms = ~fxModSettings;
+                                        if(ms[\depths][9] > 0) {
+                                            var modVal = fxLfoVal * ms[\depths][9] * ms[\polarities][9];
+                                            ~cloudsSynth.set(\freeze, if(modVal > 0) { 1 } { 0 });
+                                        };
+                                        if(ms[\depths][10] > 0) {
+                                            var modVal = ((fxLfoVal + 1) * 0.5 * ms[\depths][10]).clip(0, 1);
+                                            ~cloudsSynth.set(\mode, (modVal * 3).round.asInteger.clip(0, 3));
+                                        };
+                                        if(ms[\depths][11] > 0) {
+                                            var modVal = fxLfoVal * ms[\depths][11] * ms[\polarities][11];
+                                            ~cloudsSynth.set(\lofi, if(modVal > 0) { 1 } { 0 });
+                                        };
+                                    }.value;
                                 };
                             };
                         };
@@ -483,32 +567,26 @@ var defaultStep = {
 };
 
 ~killFxTails = {
-    if(~delaySynth.notNil) { ~delaySynth.free };
-    ~delaySynth = Synth(\gladiolaDelay, [
+    if(~cloudsSynth.notNil) { ~cloudsSynth.free };
+    ~cloudsSynth = Synth(\gladiolaClouds, [
         \fxSendBus, ~fxSendBus.index,
-        \delaytime, ~fxParams[\delayDiv] * 60 / ~bpm,
-        \feedback, ~fxParams[\delayFeedback],
-        \tone, ~fxParams[\delayTone],
-        \level, ~fxParams[\delayLevel]
+        \inGain, ~fxCloudsParams[\inGain],
+        \pit, ~fxCloudsParams[\pit],
+        \pos, ~fxCloudsParams[\pos],
+        \size, ~fxCloudsParams[\size],
+        \dens, ~fxCloudsParams[\dens],
+        \tex, ~fxCloudsParams[\tex],
+        \spread, ~fxCloudsParams[\spread],
+        \fb, ~fxCloudsParams[\fb],
+        \rvb, ~fxCloudsParams[\rvb],
+        \freeze, ~fxCloudsParams[\freeze],
+        \mode, ~fxCloudsParams[\mode],
+        \lofi, ~fxCloudsParams[\lofi],
+        \trigRate, ~fxCloudsParams[\trigRate],
+        \lfoBus, ~fxLfoBus.index,
+        \lfoRate, ~lfoRateHz.(~fxModSettings[\rate16ths])
     ], ~fxGroup);
-
-    if(~granularSynth.notNil) { ~granularSynth.free };
-    ~granularSynth = Synth(\gladiolaGranular, [
-        \fxSendBus, ~fxSendBus.index,
-        \sizeMod, ~fxParams[\granSizeMod],
-        \posMod, ~fxParams[\granPosMod],
-        \pitchRange, ~fxParams[\granPitchRange],
-        \level, ~fxParams[\granLevel]
-    ], ~fxGroup);
-
-    if(~reverbSynth.notNil) { ~reverbSynth.free };
-    ~reverbSynth = Synth(\gladiolaReverb, [
-        \fxSendBus, ~fxSendBus.index,
-        \size, ~fxParams[\reverbSize],
-        \damping, ~fxParams[\reverbDamp],
-        \level, ~fxParams[\reverbLevel]
-    ], ~fxGroup);
-
+    ~applyFxModDepths.();
     "[Gladiola] FX tails killed.".postln;
 };
 
@@ -605,36 +683,14 @@ var defaultStep = {
     };
 };
 
-~setDelayDiv = { |div|
-    ~setFxParam.(\delayDiv, div.clip(0.0625, 4.0));
-    "[Gladiola] Delay division set to %.".format(~fxParams[\delayDiv]).postln;
-};
-
-~updateDelayTime = {
-    if(~delaySynth.notNil) {
-        ~delaySynth.set(\delaytime, ~fxParams[\delayDiv] * 60 / ~bpm);
-    };
-};
-
 ~setFxParam = { |key, value|
     ~fxParams[key] = value;
     switch(key)
-    { \delayDiv }      { ~updateDelayTime.() }
-    { \delayFeedback } { if(~delaySynth.notNil) { ~delaySynth.set(\feedback, value) } }
-    { \delayTone }     { if(~delaySynth.notNil) { ~delaySynth.set(\tone, value) } }
-    { \delayLevel }    { if(~delaySynth.notNil) { ~delaySynth.set(\level, value) } }
-    { \granSizeMod }   { if(~granularSynth.notNil) { ~granularSynth.set(\sizeMod, value) } }
-    { \granPosMod }    { if(~granularSynth.notNil) { ~granularSynth.set(\posMod, value) } }
-    { \granPitchRange }{ if(~granularSynth.notNil) { ~granularSynth.set(\pitchRange, value) } }
-    { \granLevel }     { if(~granularSynth.notNil) { ~granularSynth.set(\level, value) } }
-    { \reverbSize }    { if(~reverbSynth.notNil) { ~reverbSynth.set(\size, value) } }
-    { \reverbDamp }    { if(~reverbSynth.notNil) { ~reverbSynth.set(\damping, value) } }
-    { \reverbLevel }   { if(~reverbSynth.notNil) { ~reverbSynth.set(\level, value) } }
-    { \satDepth }      { if(~satSynth.notNil) { ~satSynth.set(\depth, value) } }
-    { \satType }       { if(~satSynth.notNil) { ~satSynth.set(\type, value) } }
-    { \tilt }          { if(~tiltSynth.notNil) { ~tiltSynth.set(\tilt, value) } }
-    { \compAmount }    { if(~compSynth.notNil) { ~compSynth.set(\amount, value) } }
-    { \compColor }     { if(~compSynth.notNil) { ~compSynth.set(\color, value) } };
+    { \satDepth }    { if(~satSynth.notNil) { ~satSynth.set(\depth, value) } }
+    { \satType }     { if(~satSynth.notNil) { ~satSynth.set(\type, value) } }
+    { \tilt }        { if(~tiltSynth.notNil) { ~tiltSynth.set(\tilt, value) } }
+    { \compAmount }  { if(~compSynth.notNil) { ~compSynth.set(\amount, value) } }
+    { \compColor }   { if(~compSynth.notNil) { ~compSynth.set(\color, value) } };
 };
 
 ~setTempo = { |bpm|
@@ -642,8 +698,8 @@ var defaultStep = {
     if(~seqClock.notNil) {
         ~seqClock.tempo = ~bpm / 60;
     };
-    ~updateDelayTime.();
     ~updateAllLfoRates.();
+    ~updateFxLfoRate.();
     "[Gladiola] Tempo set to % BPM.".format(~bpm).postln;
 };
 
@@ -664,6 +720,10 @@ var defaultStep = {
     ~fxParamDefaults.keysValuesDo { |key, val|
         ~setFxParam.(key, val);
     };
+    ~fxCloudsDefaults.keysValuesDo { |key, val|
+        ~setFxCloudsParam.(key, val);
+    };
+    ~resetFxModSettings.();
     ~numTracks.do { |i| ~resetModSettings.(i) };
     "[Gladiola] All patterns cleared.".postln;
 };
@@ -692,6 +752,12 @@ var defaultStep = {
             \depths -> ms[\depths].copy, \polarities -> ms[\polarities].copy,
             \phases -> ms[\phases].copy]
     };
+    snapshot[\fxCloudsParams] = ~fxCloudsParams.copy;
+    snapshot[\fxModSettings] = Dictionary[\shape -> ~fxModSettings[\shape],
+        \rate16ths -> ~fxModSettings[\rate16ths],
+        \depths -> ~fxModSettings[\depths].copy,
+        \polarities -> ~fxModSettings[\polarities].copy,
+        \phases -> ~fxModSettings[\phases].copy];
     ~presets[slot] = snapshot;
     "[Gladiola] Preset % saved.".format(slot + 1).postln;
 };
@@ -733,14 +799,26 @@ var defaultStep = {
                 ~setFxParam.(key, val);
             };
         } {
-            // legacy preset: reset fx to defaults then apply delayDiv if present
             ~fxParamDefaults.keysValuesDo { |key, val|
                 ~setFxParam.(key, val);
             };
-            if(snapshot[\delayDiv].notNil) {
-                ~setFxParam.(\delayDiv, snapshot[\delayDiv]);
+        };
+        if(snapshot[\fxCloudsParams].notNil) {
+            snapshot[\fxCloudsParams].keysValuesDo { |key, val|
+                ~setFxCloudsParam.(key, val);
+            };
+        } {
+            ~fxCloudsDefaults.keysValuesDo { |key, val|
+                ~setFxCloudsParam.(key, val);
             };
         };
+        if(snapshot[\fxModSettings].notNil) {
+            var saved = snapshot[\fxModSettings];
+            ~fxModSettings = Dictionary[\shape -> saved[\shape], \rate16ths -> saved[\rate16ths],
+                \depths -> saved[\depths].copy, \polarities -> saved[\polarities].copy,
+                \phases -> (saved[\phases] ?? { Array.fill(12, { 0.0 }) }).copy];
+            ~setFxModShape.(saved[\shape]); ~updateFxLfoRate.(); ~applyFxModDepths.();
+        } { ~resetFxModSettings.() };
         ~transpose = snapshot[\transpose];
         ~globalReverse = snapshot[\globalReverse] ? false;
         ~swing = snapshot[\swing] ?? { 50 };

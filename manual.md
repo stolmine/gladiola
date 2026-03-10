@@ -80,7 +80,7 @@ Tap any nudge button to apply the adjustment immediately. The anchor tempo (row 
 
 Swing ranges from 50% (straight) to 100% (full shuffle). Even steps are delayed by the swing amount; odd steps are advanced correspondingly.
 
-**Kill FX tails** — (2, 7): Tap to immediately free and recreate all send FX synths, silencing delay trails, granular clouds, and reverb.
+**Kill FX tails** — (2, 7): Tap to immediately free and recreate the MiClouds synth, silencing any held granular cloud.
 
 **VU meters** — columns 7-8: Stereo output level displayed as vertical segment fills with fractional brightness at the top.
 
@@ -110,47 +110,127 @@ Hold column 1 (clock) on the utility row. Options appear vertically in the colum
 
 Tap a row to select. Release the held button to close, or tap (2, 7) to latch the overlay open. The latch key pulses when engaged; tap again to close. While latched, releasing the held button does not close the overlay.
 
-## FX Matrix
+## FX Page
 
-Hold column 2 on the utility row to open the FX matrix overlay. A 16×7 grid appears showing all FX parameters. Each column controls one parameter, rows 0-6 select from 7 preset values. One bright LED per column shows the current setting.
-
-Tap any position to set that parameter to the corresponding value. Changes take effect immediately. Release the held button to close, or tap (3, 7) to latch the overlay open. The latch key pulses when engaged; tap again to close. While latched, releasing the held button does not close the overlay.
+Hold column 2 on the utility row to open the FX page overlay. The FX page is fully blocking — all grid input is captured while it is open. Release the held button to close, or tap (3, 7) to latch the overlay open. The latch key pulses when engaged; tap again to close.
 
 ### Signal Flow
 
 ```
-Voice dry → bus 0 → Saturation → Tilt EQ → Compressor → Limiter → Out
-Voice send → FX bus ─┬─ Delay ──→ bus 0
-                     ├─ Granular → bus 0
-                     └─ Reverb ──→ bus 0
+Voice dry  → bus 0 → Saturation → Tilt EQ → Compressor → Limiter → Out
+Voice send → FX bus → MiClouds  → bus 0
 ```
 
-### Parameters
+The per-step "Delay Send" parameter (page 1) controls how much of each voice is sent to the shared FX bus. MiClouds reads from this bus.
+
+### FX Page Layout
+
+| Cols | Content |
+|------|---------|
+| Col 0 | FX LFO shape (rows 0-6) and rate/mod detail controls (row 7) |
+| Cols 1-9 | MiClouds parameter faders (9 continuous params) |
+| Col 10 | Toggle buttons (freeze, mode, lofi) |
+| Cols 11-15 | Master bus faders (saturation, tilt EQ, compressor, compressor color, spare) |
+
+One lit cell per column shows the current value. Tap a row to set the value for that column.
+
+### MiClouds Parameters (Cols 1-9)
+
+| Col | Parameter | Range | Notes |
+|-----|-----------|-------|-------|
+| 1 | inGain | 0.0 – 2.0 | Input gain into Clouds |
+| 2 | pit | 0.0 – 1.0 | Pitch transposition |
+| 3 | pos | 0.0 – 1.0 | Playback position in buffer |
+| 4 | size | 0.0 – 1.0 | Grain size |
+| 5 | dens | 0.0 – 1.0 | Grain density |
+| 6 | tex | 0.0 – 1.0 | Texture (grain envelope shape) |
+| 7 | spread | 0.0 – 1.0 | Stereo spread |
+| 8 | fb | 0.0 – 1.0 | Feedback |
+| 9 | rvb | 0.0 – 1.0 | Reverb mix |
+
+### MiClouds Toggles (Col 10)
+
+| Row | Toggle | States |
+|-----|--------|--------|
+| 0 | freeze | off / on — freeze buffer capture |
+| 2 | mode | 0-3 — Clouds processing mode (granular, pitch shift, looping, spectral) |
+| 4 | lofi | off / on — low-fi mode (reduces bit depth) |
+
+Tap a toggle cell to cycle its state. Full brightness = on or next mode value; dim = off or current.
+
+### trigRate
+
+MiClouds uses `Dust.kr` for auto-triggering grain density. The trigger rate is set by the `trigRate` parameter in `~fxCloudsParams` and can be updated via `~setFxParam.(\trigRate, value)`.
+
+### Master Bus Parameters (Cols 11-15)
 
 | Col | Parameter | Values (row 0→6) |
-|-----|-----------|-------------------|
-| 0 | Delay division | 1/16, dot 1/16, 1/8, dot 1/8, 1/4, 1/2, 1 |
-| 1 | Delay feedback | 0 → 0.95 |
-| 2 | Delay tone | -1 (dark) → +1 (bright) |
-| 3 | Delay level | 0 → 1.0 |
-| 4 | Granular size mod | 0 → 1.0 (S&H depth) |
-| 5 | Granular position mod | 0 → 1.0 (S&H depth) |
-| 6 | Granular pitch range | 0 → 1.0 (quantized intervals) |
-| 7 | Granular level | 0 → 1.0 |
-| 8 | Reverb size | 0.1 → 1.0 |
-| 9 | Reverb damping | 0 → 1.0 |
-| 10 | Reverb level | 0 → 1.0 |
+|-----|-----------|------------------|
 | 11 | Saturation depth | 0 → 1.0 |
 | 12 | Saturation type | fold, tanh, softclip, hard clip, sqrt, rectify, quantize (row 6→0) |
 | 13 | Tilt EQ | -1 (dark) → +1 (bright) |
 | 14 | Compressor amount | 0 → 1.0 |
 | 15 | Compressor color | 0 (fast) → 1.0 (slow) |
 
-Default state: all send levels at 0 (delay/granular/reverb silent), saturation off, tilt neutral, compressor off. A limiter (0.95 ceiling) is always active with no user controls.
+Default state: MiClouds inGain at 0 (silent), all other Clouds params at mid-range defaults, saturation off, tilt neutral, compressor off. A limiter (0.95 ceiling) is always active with no user controls.
 
-The per-step "Delay Send" parameter (page 1) controls how much of each voice is sent to the shared FX bus. The three parallel effects (delay, granular, reverb) all read from this bus.
+### FX LFO (Col 0)
 
-The granular effect (MiClouds) receives a 3× input boost and per-parameter sample-and-hold modulation. When a step fires with delay send > 0, a trigger is sent to the granular synth, latching new random values. Columns 4-6 control modulation depth independently: size mod (random grain size variation around 0.5), position mod (random position variation around 0.5), and pitch range (quantized to musical intervals: unison, ±fifth, ±octave, ±octave+fifth). At 0 all parameters are fixed; raising the value increases the random spread per trigger. Density modulation is derived from the average of size and position mod depths.
+Col 0 of the FX page provides a dedicated FX LFO with shape selection and access to the mod detail page.
+
+**Rows 0-6 — Shape selector:**
+
+| Row | Shape |
+|-----|-------|
+| 0 | Sine |
+| 1 | Square |
+| 2 | Triangle |
+| 3 | Brownian |
+| 4 | Random |
+| 5 | Saw Up |
+| 6 | Saw Down |
+
+The selected shape cell animates to reflect the LFO waveform at the current rate.
+
+**Row 7 (col 0) — Mod detail**: Hold for 500ms to enter the FX mod detail overlay (full blocking). Tap to exit the mod detail overlay when inside it (key pulses).
+
+### FX Mod Detail Overlay
+
+Hold (0, 7) on the FX page for 500ms to open the FX mod detail overlay. The overlay is full blocking. Tap (0, 7) — which pulses — to return to the FX page.
+
+The FX mod detail overlay provides per-destination depth faders and polarity/phase controls for the FX LFO, using the same layout as the per-track LFO mod overlay.
+
+**12 mod destinations** (cols 2-13):
+
+| Col | Destination | Type |
+|-----|-------------|------|
+| 2 | inGain | continuous (SynthDef) |
+| 3 | pit | continuous (SynthDef) |
+| 4 | pos | continuous (SynthDef) |
+| 5 | size | continuous (SynthDef) |
+| 6 | dens | continuous (SynthDef) |
+| 7 | tex | continuous (SynthDef) |
+| 8 | spread | continuous (SynthDef) |
+| 9 | fb | continuous (SynthDef) |
+| 10 | rvb | continuous (SynthDef) |
+| 11 | freeze | discrete (sclang S&H) |
+| 12 | mode | discrete (sclang S&H) |
+| 13 | lofi | discrete (sclang S&H) |
+
+Within each column, the depth fader layout matches the per-track mod overlay (rows 0-5 = depth levels 6→1, row 6 = zero, row 7 = polarity toggle). Phase offset entry works the same as for per-track LFO destinations: hold a polarity key 500ms to enter phase fader mode.
+
+### Fine Fader in FX Page
+
+Hold any fader cell in the FX page for 500ms to enter the fine fader view for that parameter. Fine fader contexts:
+
+| Context | Covers |
+|---------|--------|
+| `\fxClouds` | MiClouds continuous params (cols 1-9) |
+| `\fxMaster` | Master bus faders (cols 11-15, excluding satType) |
+| `\fxModDepth` | FX LFO depth faders in mod detail overlay |
+| `\fxModPhase` | FX LFO phase faders in mod detail overlay |
+
+Tap (0, 0) — which pulses — to exit the fine fader view.
 
 ### Transpose
 
@@ -398,7 +478,7 @@ Center dent at row 3 = no offset. Hold the current phase position for 500ms to o
 | Gate Length | 1/16 step - 16 steps | 15 exponential values, clock-relative |
 | Filter | -1.0 - 1.0 | Negative=lowpass, positive=highpass, center=bypass (center dent at pos 7) |
 | Pan | -1.0 - 1.0 | Stereo position, center=mono (center dent at pos 7) |
-| Delay Send | 0.0 - 1.0 | Amount sent to FX bus (delay, granular, reverb) |
+| Delay Send | 0.0 - 1.0 | Amount sent to FX bus (MiClouds) |
 
 ### Page 2 Parameters
 
@@ -501,7 +581,7 @@ The session manager window provides:
 
 - All 7 tracks: steps, per-step parameters, sub-step data, start/end points, mute state
 - Per-track mod settings: LFO shape, rate, depth per destination, polarity per destination, phase offset per destination
-- BPM, clock division, FX parameters, transpose, global reverse
+- BPM, clock division, FX parameters (MiClouds params, toggles, FX LFO settings), transpose, global reverse
 - All 49 preset slots, slot map, confirm mode, quantize mode
 - Sample directory path
 
@@ -529,8 +609,7 @@ Loading a session stops transport, frees existing buffers (with a server sync to
 | `~panicVoices.()` | Silence all voices immediately |
 | `~setTempo.(bpm)` | Change tempo (20-300) |
 | `~setClockDiv.(div)` | Clock division (0.0625-4.0) |
-| `~setFxParam.(key, val)` | Set FX parameter (see FX Matrix for keys) |
-| `~setDelayDiv.(div)` | Legacy wrapper: set delay division (0.0625-4.0) |
+| `~setFxParam.(key, val)` | Set FX parameter (see FX Page for keys; Clouds params: \inGain, \pit, \pos, \size, \dens, \tex, \spread, \fb, \rvb, \freeze, \mode, \lofi, \trigRate; master bus: \satDepth, \satType, \tilt, \compAmt, \compColor) |
 | `~setTrackStart.(track, step)` | Set track start point (0-15) |
 | `~setTrackEnd.(track, step)` | Set track end point (0-15) |
 | `~muteTrack.(idx)` | Mute track |
@@ -561,7 +640,7 @@ Loading a session stops transport, frees existing buffers (with a server sync to
 | `main.scd` | Boot, load order, cleanup, session auto-open |
 | `sequencer.scd` | 7-track sequencer engine, transport, clock |
 | `synthdefs/sample_voice.scd` | Sample playback SynthDef |
-| `synthdefs/fx_chain.scd` | FX chain SynthDefs (delay, granular, reverb, saturation, tilt, compressor, limiter) |
+| `synthdefs/fx_chain.scd` | FX chain SynthDefs (MiClouds, saturation, tilt EQ, compressor, limiter) |
 | `fx_params.scd` | FX parameter definitions, value tables, lookup functions |
 | `sample_loader.scd` | Bank-based sample loading; Server.sync after freeSamples prevents buffer exhaustion |
 | `grid_params.scd` | Parameter definitions, value tables |

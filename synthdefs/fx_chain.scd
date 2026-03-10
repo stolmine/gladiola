@@ -1,62 +1,63 @@
 ~gladiolaLoadFxSynthDefs = {
 
-    SynthDef(\gladiolaDelay, {
-        arg fxSendBus = 0, delaytime = 0.5, feedback = 0.7, tone = 0, level = 0;
-        var input, delayed, filtered, lpf, hpf;
-        input = In.ar(fxSendBus, 2);
-        delayed = CombC.ar(input, 2.0, Lag.kr(delaytime, 0.3), delaytime * 12 * Lag.kr(feedback, 0.1));
-        lpf = LPF.ar(delayed, LinExp.kr(tone.linlin(-1, 0, 0, 1), 0, 1, 400, 20000));
-        hpf = HPF.ar(delayed, LinExp.kr(tone.linlin(0, 1, 0, 1), 0, 1, 20, 8000));
-        filtered = SelectX.ar(Lag.kr(tone, 0.1).linlin(-1, 1, 0, 2), [lpf, delayed, hpf]);
-        Out.ar(0, filtered * Lag.kr(level, 0.05));
-    }).add;
+    SynthDef(\gladiolaClouds, {
+        arg fxSendBus = 0, inGain = 1.0, pit = 0.5, pos = 0.5, size = 0.25,
+            dens = 0.4, tex = 0.5, spread = 0.5, fb = 0, rvb = 0,
+            freeze = 0, mode = 0, lofi = 0, trigRate = 0,
+            lfoBus = 0, lfoRate = 0.25,
+            modInGain = 0, modPit = 0, modPos = 0, modSize = 0, modDens = 0,
+            modTex = 0, modSpread = 0, modFb = 0, modRvb = 0,
+            phaseInGain = 0, phasePit = 0, phasePos = 0, phaseSize = 0, phaseDens = 0,
+            phaseTex = 0, phaseSpread = 0, phaseFb = 0, phaseRvb = 0;
+        var lfo, safeLfoRate;
+        var lfoInGain, lfoPit, lfoPos, lfoSize, lfoDens, lfoTex, lfoSpread, lfoFb, lfoRvb;
+        var modGain, modPitVal, modPosVal, modSizeVal, modDensVal, modTexVal;
+        var modSpreadVal, modFbVal, modRvbVal;
+        var input, trig, sig;
 
-    SynthDef(\gladiolaGranular, {
-        arg fxSendBus = 0, sizeMod = 0, posMod = 0, pitchRange = 0, level = 0;
-        var input, sig, trig, stepTrig, posVal, sizeVal, densVal, pitchVal;
-        var pitchOffsets = #[-0.396, -0.25, -0.146, 0, 0.146, 0.25, 0.396];
-        var pitchIdx, densAvg, rvbVal, fbVal;
-        input = In.ar(fxSendBus, 2) * 3;
-        stepTrig = \t_trig.tr;
-        posVal = 0.5 + (Latch.kr(WhiteNoise.kr, stepTrig) * Lag.kr(posMod, 0.1));
-        sizeVal = 0.5 + (Latch.kr(WhiteNoise.kr, stepTrig) * Lag.kr(sizeMod, 0.1));
-        densAvg = (Lag.kr(posMod, 0.1) + Lag.kr(sizeMod, 0.1)) * 0.5;
-        densVal = 0.6 + (Latch.kr(WhiteNoise.kr, stepTrig) * densAvg);
-        pitchIdx = (3 + (Latch.kr(WhiteNoise.kr, stepTrig) * Lag.kr(pitchRange, 0.1) * 3)).round.clip(0, 6);
-        pitchVal = 0.5 + Select.kr(pitchIdx, pitchOffsets);
-        rvbVal = Lag.kr(sizeMod, 0.1) * 0.5;
-        fbVal = Lag.kr(posMod, 0.1) * 0.4;
-        trig = Dust.kr(LFNoise1.kr(0.1).linlin(-1, 1, 4, 12));
+        lfo = In.kr(lfoBus, 1);
+        safeLfoRate = lfoRate.max(0.001);
+
+        lfoInGain = DelayC.kr(lfo, 4.0, (1.0 - phaseInGain).mod(1.0) / safeLfoRate);
+        lfoPit    = DelayC.kr(lfo, 4.0, (1.0 - phasePit).mod(1.0) / safeLfoRate);
+        lfoPos    = DelayC.kr(lfo, 4.0, (1.0 - phasePos).mod(1.0) / safeLfoRate);
+        lfoSize   = DelayC.kr(lfo, 4.0, (1.0 - phaseSize).mod(1.0) / safeLfoRate);
+        lfoDens   = DelayC.kr(lfo, 4.0, (1.0 - phaseDens).mod(1.0) / safeLfoRate);
+        lfoTex    = DelayC.kr(lfo, 4.0, (1.0 - phaseTex).mod(1.0) / safeLfoRate);
+        lfoSpread = DelayC.kr(lfo, 4.0, (1.0 - phaseSpread).mod(1.0) / safeLfoRate);
+        lfoFb     = DelayC.kr(lfo, 4.0, (1.0 - phaseFb).mod(1.0) / safeLfoRate);
+        lfoRvb    = DelayC.kr(lfo, 4.0, (1.0 - phaseRvb).mod(1.0) / safeLfoRate);
+
+        modGain     = (inGain + (lfoInGain * modInGain)).clip(0.25, 4.0);
+        modPitVal   = pit + (lfoPit * modPit);
+        modPosVal   = (pos + (lfoPos * modPos)).clip(0, 1);
+        modSizeVal  = (size + (lfoSize * modSize)).clip(0, 1);
+        modDensVal  = (dens + (lfoDens * modDens)).clip(0, 1);
+        modTexVal   = (tex + (lfoTex * modTex)).clip(0, 1);
+        modSpreadVal = (spread + (lfoSpread * modSpread)).clip(0, 1);
+        modFbVal    = (fb + (lfoFb * modFb)).clip(0, 0.6);
+        modRvbVal   = (rvb + (lfoRvb * modRvb)).clip(0, 1);
+
+        input = In.ar(fxSendBus, 2) * Lag.kr(modGain, 0.05);
+        trig = \t_trig.tr + Dust.kr(trigRate);
+
         sig = MiClouds.ar(
             input[0], input[1],
-            pit: pitchVal,
-            pos: posVal,
-            size: sizeVal,
-            dens: densVal,
-            tex: 0.5,
-            rvb: rvbVal,
-            fb: fbVal,
-            freeze: 0,
-            mode: 0,
-            lofi: 0,
-            trig: trig
+            pit:    Lag.kr(modPitVal,    0.05),
+            pos:    Lag.kr(modPosVal,    0.05),
+            size:   Lag.kr(modSizeVal,   0.05),
+            dens:   Lag.kr(modDensVal,   0.05),
+            tex:    Lag.kr(modTexVal,    0.05),
+            spread: Lag.kr(modSpreadVal, 0.05),
+            fb:     Lag.kr(modFbVal,     0.05),
+            rvb:    Lag.kr(modRvbVal,    0.05),
+            freeze: freeze,
+            mode:   mode,
+            lofi:   lofi,
+            trig:   trig
         );
-        Out.ar(0, sig * Lag.kr(level, 0.05));
-    }).add;
 
-    SynthDef(\gladiolaReverb, {
-        arg fxSendBus = 0, size = 0.5, damping = 0.5, level = 0;
-        var input, sig;
-        input = HPF.ar(In.ar(fxSendBus, 2), 200);
-        sig = Greyhole.ar(
-            input,
-            Lag.kr(size, 0.3).linlin(0, 1, 0.1, 10),
-            Lag.kr(damping, 0.1),
-            Lag.kr(size, 0.3),
-            0.1,
-            Lag.kr(size, 0.3).linlin(0, 1, 0.1, 0.5)
-        );
-        Out.ar(0, sig * Lag.kr(level, 0.05));
+        Out.ar(0, sig);
     }).add;
 
     SynthDef(\gladiolaSaturation, {
