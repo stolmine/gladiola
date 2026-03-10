@@ -1365,6 +1365,7 @@
                 ~pendingSubToggle = nil;
                 ~subStepEditing = true;
                 ~subStepEditIdx = subIdx;
+                ~latchActive = true;
                 ~startPulseRoutine.();
 
                 ~savedParamPage = ~paramPage;
