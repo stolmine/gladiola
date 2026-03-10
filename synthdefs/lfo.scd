@@ -11,7 +11,7 @@
         sawUp   = LFSaw.kr(rate, 1);
         sawDown = LFSaw.kr(rate, 1).neg;
 
-        sig = Select.kr(shape, [sine, square, tri, brown, random, sawUp, sawDown]);
+        sig = Select.kr(shape.round, [sine, square, tri, brown, random, sawUp, sawDown]);
         lfoOut = Select.kr(freeze, [sig, Latch.kr(sig, 1 - freeze)]);
         Out.kr(out, lfoOut);
     }).add;

@@ -67,6 +67,7 @@
     if(~pulseRoutine.isNil) {
         ~pulseRoutine = Routine({
             loop {
+                if(~grid.isNil) { nil.yield }; // exit if grid freed
                 0.033.wait;
                 { ~updateGridLEDs.() }.defer;
             };

@@ -118,6 +118,12 @@
 - [x] slink visualization: depth fader columns show single bright LED at set depth plus dim LEDs indicating LFO position with exponential bunching toward the depth marker
 - [x] hold-to-freeze: holding col 1 row 7 in mod overlay freezes LFO output and pauses all slink animation; released on exit or key release
 - [x] guard conditions for mod overlay: cannot enter mod overlay while step param overlay is active; mod key in track overlay shows medium brightness when track has any active modulation depth
+- [x] fine fader view (phase 6): hold any param selector in step/track/FX/mixer/mod overlay 500ms → full-grid 127-position fader; (0,0) pulsing exit key; center dent for bipolar params; sample mode flattens across banks; auto-latches on entry; state vars: ~fineActive, ~fineContext, ~fineParamPage, ~fineParamIdx, etc.
+- [x] slice mode (phase 7b): per-track toggle in track overlay action grid (S key, was stub); per-step sliceIdx (0-15); BufRd repitch playback replaces Warp1 granular path when active; LFO sample mod modulates sliceIdx in slice mode; track overlay preview bypasses slice mode; persisted in presets/sessions; layout key rename ~copyCol/~copyRow → ~sliceCol/~sliceRow
+- [x] one-shot fix: sweep-based gates on both normal and slice BufRd paths prevent looping when gate length exceeds sample duration
+- [x] LFO slink fix: bipolar range mapping for full throw (was half-rectified due to .max(0))
+- [x] re-evaluation safety: main.scd calls ~cleanup before re-init; nil guards in meter routine, pulse routine, and ~updateGridLEDs prevent orphaned routine crashes
+- [x] LFO shape fix: .asInteger coercion in ~setModShape and .round in SynthDef Select.kr ensures shape switching works reliably after session restore
 
 ## per-track global overlay rework
 
@@ -156,16 +162,17 @@ Reworked from simple hold-to-open param editor to proper track control surface u
   - param order matches step overlay page 1 + page 2 for memorability
 - implementation: one LFO synth per track → control bus, read by sample_voice SynthDef with 14 mod depth args (verbose but lightweight); params stored as floats so continuous interpolation is straightforward
 
-### sample slice mode
-- toggle slice mode on in per-track global action grid
-- locks all steps on track to selected sample (slices by equal division, 16 slices; whatever is simplest and fastest)
-- sample selection inside per-track global (requires auditioning in this overlay)
-- step overlay sample bank chooser disabled in slice mode; user chooses from 16 slices per step instead
-- time stretching is prerequisite for this to be useful
+### sample slice mode (implemented as phase 7b)
+- toggle slice mode on/off via S key in track overlay action grid
+- 16 equal-division slices via BufRd repitch; per-step sliceIdx (0-15)
+- step overlay param page 0 shows sliceIdx selector in place of bank when slice mode active
+- LFO sample mod destination modulates sliceIdx in slice mode
+- track overlay audition uses whole-sample playback (slice bypassed)
+- time stretching remains a future phase
 
-### time stretching
-- per-track toggle, lives in per-track global overlay; prerequisite for slicing
-- how would this work when not in slice mode with a locked sample? would everything just get stretched? a problem to consider
+### time stretching (phase 7a, not started)
+- per-track toggle, lives in per-track global overlay
+- behavior outside slice mode TBD
 
 ## roadmap
 
@@ -208,33 +215,33 @@ foundation for phases 4 and 5. get solid and tested before building on top.
 
 biggest single feature. SynthDef work and UI work can be developed somewhat in parallel.
 
-### phase 6 — fine fader view
-- [ ] fine fader infrastructure — hold-to-reveal full-grid selector, 127-128 positions, latch key, center dent rendering
-- [ ] integrate across all contexts — step overlay, track overlay, transport, FX, mod page
-  - respects parent page's latch and audition status
-  - interaction flow (step/track overlays):
-    - user enters overlay → holds param selector button in column → detail fader opens
-    - 127 or 128 choices across the full grid
-    - latch key at (0,0) or (0,7) for iterating by ear
-    - if latch off: select value → page closes → return to parent overlay (if latched) or main screen (if unlatched)
-    - if latch on: select value → page stays open for further adjustment
-    - coarse fader on parent page shows closest-fit representation of fine value
-  - center dents represented in fine view for params that have them (filter, pan)
-  - discrete params (reverse, bank) excluded; only continuous values get fine view
+### phase 6 — fine fader view ✓
+- [x] fine fader infrastructure — hold-to-reveal full-grid selector, 127 positions, (0,0) exit key, center dent rendering
+- [x] integrate across all contexts — step overlay, track overlay, FX, mixer, mod page
+  - center dents for bipolar params (filter, pan, delayTone, tilt)
+  - sample mode: flattened across banks, bank boundaries at ledMedium
+  - discrete params excluded (reverse, ratchet, bank, satType, transpose, clockDiv, LFO shape)
+  - auto-latches on entry; coarse selector shows closest-fit on return
 
-do after everything else — universal enhancement that touches every overlay, easier once all overlays are in final form.
+### phase 7b — slice mode ✓
+- [x] per-track slice toggle in track overlay action grid (S key, fully functional — was stub)
+- [x] per-step sliceIdx (0-15) stored in step data
+- [x] BufRd repitch playback replaces Warp1 granular path when slice mode active
+- [x] sweep-based one-shot gate on both normal and slice paths
+- [x] LFO sample mod destination modulates sliceIdx when track is in slice mode
+- [x] track overlay audition preview bypasses slice mode (previews whole sample)
+- [x] persisted in presets and sessions; migration handles missing sliceIdx
+- [x] layout key rename: ~copyCol/~copyRow → ~sliceCol/~sliceRow
 
-### phase 7 — time stretch + slicing (longest horizon)
-- [ ] time stretch SynthDef — per-track toggle, figure out behavior outside slice mode
-- [ ] slice mode — toggle in track overlay, lock sample, 16 equal divisions, step overlay shows slice selection instead of bank/sample
-
-most open design questions and heaviest DSP work. save for last.
+### phase 7a — time stretch (not started)
+- [ ] time stretch SynthDef — per-track toggle, behavior outside slice mode TBD
 
 ### unsequenced (implement whenever)
 - [ ] clock sync (MIDI clock, Link)
 - [ ] audio output routing options (bus selection)
 - [ ] legato mode for preset switching: start presets from the same position the previous one was at instead of resetting to start, given instant switching is enabled (clock div interpolation would be goofy but worth a try)
 - [ ] add record button to session manager
+- [x] stop audio with high gate length from looping — fixed: sweep-based gate on both normal and slice BufRd paths, samples are one-shots by default
 
 ## abandoned
 - [0] groove templates (swing is implemented; templates would be preset swing curves beyond linear)

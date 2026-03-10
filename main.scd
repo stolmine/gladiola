@@ -15,6 +15,12 @@ var loadOrError = { |path|
 
 ~basePath = basePath;
 
+// Tear down previous instance if re-evaluated
+if(~cleanup.notNil) {
+	"[Gladiola] Cleaning up previous instance...".postln;
+	~cleanup.();
+};
+
 "[Gladiola] Booting server...".postln;
 
 s.waitForBoot({
@@ -185,10 +191,13 @@ s.waitForBoot({
 	// ========================================
 
 	~cleanup = {
+		if(~pulseRoutine.notNil) { ~pulseRoutine.stop; ~pulseRoutine = nil };
 		if(~meterUpdateRoutine.notNil) { ~meterUpdateRoutine.stop; ~meterUpdateRoutine = nil };
 		if(~meterSynth.notNil) { ~meterSynth.free; ~meterSynth = nil };
 		if(~meterBus.notNil) { ~meterBus.free; ~meterBus = nil };
 		if(~stopTransport.notNil)  { ~stopTransport.() };
+		OSCdef(\gladiolaDeviceInfo).free;
+		if(~sessionWindow.notNil && { ~sessionWindow.isClosed.not }) { ~sessionWindow.close };
 		if(~disconnectGrid.notNil) { ~disconnectGrid.() };
 		if(~freeSamples.notNil)    { ~freeSamples.() };
 		[\delaySynth, \granularSynth, \reverbSynth, \satSynth, \tiltSynth, \compSynth, \limiterSynth].do { |key|

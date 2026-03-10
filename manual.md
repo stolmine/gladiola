@@ -265,13 +265,13 @@ The overlay uses `~overlayLayout` for layout computation, placing two 3x3 grids 
 **Action grid** (cols 4-6, 3 rows determined by layout):
 
 ```
-[P] [ ] [S]    P = Page toggle     S = Slice stub
+[P] [ ] [S]    P = Page toggle     S = Slice toggle
 [ ] [M] [ ]    M = Mod (opens LFO overlay)
 [A] [ ] [L]    A = Audition         L = Latch
 ```
 
 - **P (Page toggle)**: Switches between param page 1 and page 2. Medium = page 1, full = page 2.
-- **S (Slice stub)**: Placeholder for future slice mode toggle.
+- **S (Slice)**: Toggles slice mode for the track. Full = slice mode on, dim = off. See [Slice Mode](#slice-mode).
 - **M (Mod)**: Center key. Opens the LFO modulation overlay for the track. Shows medium brightness when the track has any active modulation depth.
 - **A (Audition)**: Toggles step preview. Full = enabled. Only active when transport is stopped.
 - **L (Latch)**: Keeps the overlay open after releasing the mute key. Pulses when engaged. Tap again to disengage and close the overlay.
@@ -279,6 +279,20 @@ The overlay uses `~overlayLayout` for layout computation, placing two 3x3 grids 
 **Clear track** — center cell of the phantom sub-step grid (col 1, middle row): Two-tap confirmation. First tap arms the clear (LED pulses). Second tap confirms — resets all 16 steps on the track to defaults. Tapping any other button disarms. The clear state (`~trackClearArmed`) resets when the overlay closes.
 
 Cannot open the step param overlay while the track overlay is active, and vice versa.
+
+### Slice Mode
+
+Tap the S (Slice) key in the track overlay action grid to toggle slice mode on or off for the current track.
+
+When slice mode is active:
+
+- The track's buffer is divided into 16 equal slices. Each step plays one slice using BufRd repitch playback instead of normal sample playback.
+- The per-step **sliceIdx** (0-15) selects which slice plays. This appears on param page 0 in the step overlay in place of the bank selector.
+- The LFO sample mod destination modulates sliceIdx instead of the sample selection.
+- Audition preview in the track overlay plays the whole sample (slice mode bypassed for preview).
+- A sweep-based gate on both slice and normal playback paths prevents the sample from looping when gate length exceeds sample duration (one-shot behavior).
+
+Slice mode is saved per track in presets and sessions.
 
 ### LFO Modulation
 
@@ -320,7 +334,7 @@ Each column controls modulation depth for one destination. Destinations match th
 
 | Col | Destination |
 |-----|-------------|
-| 2 | Sample |
+| 2 | Sample (modulates sliceIdx when slice mode is active) |
 | 3 | Pitch |
 | 4 | Velocity |
 | 5 | Gate Length |

@@ -13,7 +13,7 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 
 | File | Purpose |
 |------|---------|
-| `main.scd` | Boot sequence, file loading, grid connection, session auto-open |
+| `main.scd` | Boot sequence, file loading, grid connection, session auto-open; calls ~cleanup before re-init for safe re-evaluation |
 | `sequencer.scd` | 7-track sequencer engine, transport, presets, clock |
 | `synthdefs/sample_voice.scd` | Sample playback SynthDef |
 | `synthdefs/fx_chain.scd` | FX chain SynthDefs (delay, granular, reverb, saturation, tilt, compressor, limiter) |
@@ -41,6 +41,7 @@ A 7-track groovebox for monome grid, powered by SuperCollider.
 - Granular (MiClouds) with 3× input boost, per-parameter S&H mod depth (size/position/pitch), quantized pitch intervals
 - Clock-relative loop lengths (scales with tempo and clock division)
 - Start/end points with wrap-around for polymetric patterns
-- Per-track "macro" parameter overlay via mute key hold (apply params to all steps at once) with action grid (page, slice stub, audition, latch, mod key), clear track (two-tap confirm), and audition preview; mod key opens the LFO overlay and shows medium brightness when the track has active modulation
-- Per-track LFO modulation system: one tempo-synced LFO per track with 7 shapes, rate in 1-128 sixteenths, and 14 per-destination depth faders with polarity toggles; slink visualization shows LFO position; hold key freezes LFO; mod settings saved per preset and session
+- Per-track "macro" parameter overlay via mute key hold (apply params to all steps at once) with action grid (page, slice toggle, audition, latch, mod key), clear track (two-tap confirm), and audition preview; mod key opens the LFO overlay and shows medium brightness when the track has active modulation
+- Per-track slice mode: S key in track overlay divides buffer into 16 equal slices; per-step sliceIdx selects which slice plays via BufRd repitch; LFO sample mod modulates sliceIdx in slice mode; sweep-based gate prevents looping on both slice and normal paths; persisted per preset and session
+- Per-track LFO modulation system: one tempo-synced LFO per track with 7 shapes, rate in 1-128 sixteenths, and 14 per-destination depth faders with polarity toggles; slink visualization shows full bipolar LFO travel; hold key freezes LFO; mod settings saved per preset and session
 - Input mutex system preventing gesture conflicts across modal states

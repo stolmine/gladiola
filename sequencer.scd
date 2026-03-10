@@ -93,6 +93,7 @@ var defaultStep = {
     }
 };
 ~setModShape = { |trackIdx, shape|
+    shape = shape.asInteger;
     ~trackModSettings[trackIdx][\shape] = shape;
     if(~lfoSynths.notNil) { if(~lfoSynths[trackIdx].notNil) {
         ~lfoSynths[trackIdx].set(\shape, shape)
@@ -259,6 +260,7 @@ var defaultStep = {
     ~meterLevel = [0, 0];
     ~meterUpdateRoutine = Routine({
         loop {
+            if(~meterBus.isNil) { nil.yield }; // exit if bus freed
             ~meterBus.getn(2, { |vals|
                 ~meterLevel = [
                     vals[0].ampdb.linlin(-40, 0, 0, 1).clip(0, 1),
