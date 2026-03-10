@@ -251,8 +251,15 @@ biggest single feature. SynthDef work and UI work can be developed somewhat in p
 - [ ] clock sync (MIDI clock, Link)
 - [ ] audio output routing options (bus selection)
 - [ ] legato mode for preset switching: start presets from the same position the previous one was at instead of resetting to start, given instant switching is enabled (clock div interpolation would be goofy but worth a try)
+- [ ] session manager: project name should appear in window/title area
+- [ ] session save animation (visual feedback on save like scatter on load)
+- [ ] slink LFO shape switching: shape is still not updating consistently — needs investigation
+- [ ] slice mode: enforce track-level sample selection on previously-used steps when converting a track to slice mode (currently, steps that were toggled off retain old params which causes issues on re-engage)
 - [x] add record button to session manager — two-state Rec toggle (gray/red), s.record AIFF int24, elapsed MM:SS timer, stops on quit
 - [x] stop audio with high gate length from looping — fixed: sweep-based gate on both normal and slice BufRd paths, samples are one-shots by default
+
+### proposals
+- [ ] replace delay and reverb with expanded MiClouds: consolidate FX chain to just Clouds, spreading its parameters across the full FX UI space currently occupied by delay + reverb
 
 ## abandoned
 - [0] groove templates (swing is implemented; templates would be preset swing curves beyond linear)

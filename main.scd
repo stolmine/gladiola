@@ -130,6 +130,30 @@ s.waitForBoot({
 		}.play(AppClock);
 	};
 
+	~gridAnimSave = { |callback|
+		// Concentric rings fill outside-in, each grading up to medium brightness
+		var numRings = 4; // min(16,8) / 2
+		var fadeSteps = 6;
+		var levels = Array.fill(16, { Array.fill(8, { 0 }) });
+		var target = GridInterface.ledMedium;
+		Routine {
+			numRings.do { |ring|
+				fadeSteps.do { |step|
+					var brightness = ((step + 1) / fadeSteps * target).round.asInteger;
+					16.do { |x| 8.do { |y|
+						if(min(x, min(y, min(15 - x, 7 - y))) == ring) {
+							levels[x][y] = brightness;
+							~grid.led(x, y, brightness);
+						};
+					}};
+					(0.025).wait;
+				};
+			};
+			0.15.wait;
+			if(callback.notNil) { callback.() };
+		}.play(AppClock);
+	};
+
 	~connectGrid = { |ip = "127.0.0.1", port = 13001, oscgrid = true, prefix = "/monome"|
 		if(~grid.notNil) { ~grid.free };
 		~grid = GridInterface.new(ip, port, oscgrid, prefix);

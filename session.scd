@@ -66,6 +66,9 @@
 		var snapshot = ~buildSessionSnapshot.();
 		snapshot.writeArchive(~sessionPath);
 		"[Gladiola] Session '%' saved.".format(~sessionName).postln;
+		if(~grid.notNil && ~gridAnimSave.notNil) {
+			~gridAnimSave.({ ~updateGridLEDs.() });
+		};
 	} {
 		"[Gladiola] No session name set.".postln;
 	};
