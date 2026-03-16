@@ -253,6 +253,8 @@ biggest single feature. SynthDef work and UI work can be developed somewhat in p
 - [ ] clock sync (MIDI clock, Link)
 - [ ] audio output routing options (bus selection)
 - [ ] legato mode for preset switching: start presets from the same position the previous one was at instead of resetting to start, given instant switching is enabled (clock div interpolation would be goofy but worth a try)
+- [ ] preset-independent master bus: master bus settings (cols 11-15 on FX page) should live at the session/file level rather than per-preset — avoids having to match master bus values across presets manually
+- [ ] clock div phase correction: when changing a track's clock division, snap the track's playhead to the correct phase relative to the global transport position, so it stays in sync rather than drifting
 - [x] session manager: project name appears in window title
 - [x] session save animation (concentric ring fill to medium brightness)
 - [x] slink LFO shape switching: shape is still not updating consistently — needs investigation
@@ -281,9 +283,131 @@ biggest single feature. SynthDef work and UI work can be developed somewhat in p
 
 ### proposals
 
+#### song mode
+Lives in the preset matrix overlay (right side of grid). User arranges presets into a linear song.
+
+**Layout (within preset overlay):**
+- Cols 0-6, rows 0-6: existing preset matrix (49 slots)
+- Col 8: existing action keys (save/clear/confirm/quantized)
+- Col 9: repeat count column for selected song slot
+- Cols 10-12, rows 0-7: song matrix (3×8 = 24 slots, L→R T→B)
+- Song mode toggle: TBD location (col 8 unused row, or col 13)
+
+**Song matrix LED states:**
+- Dim: unpopulated slot
+- Medium: populated, unselected
+- Full: currently playing
+- Pulsing: selected
+- Flashing (3/4 bright): queued for quantized switch
+
+**Interactions:**
+- Tap song slot: select it (pulsing). While selected:
+  - Tap repeat count column to set repeats for that slot
+  - Tap populated preset matrix slot to assign that preset
+  - Tap existing clear button (col 8 row 2) to depopulate
+- Hold populated song slot: queue for next play (quantized preset switch); auto-engages song mode if off
+- Hold unpopulated song slot: tap a preset matrix slot while held to populate
+- Hold again while queued: cancel queue
+
+**Repeat count (col 9):**
+- Shows repeat count for selected song slot (full on current value, dim elsewhere)
+- Dark/off when nothing selected
+- Default: 1 for newly populated slots
+
+**Song mode toggle:**
+- Two-tap confirm for engage and disengage (matches track clear pattern)
+- Full when active, dim when off, pulsing when armed
+
+**Playback behavior:**
+- Song plays from slot 0 when transport starts with song mode active
+- Unpopulated slots are skipped (allows gaps for undecided arrangement)
+- Song stops at end (no loop — avoids cognitive overhead)
+- Each slot plays for its repeat count before advancing to next populated slot
+
+**Queue/cancel behavior:**
+- If queuing activated song mode, canceling deactivates it and returns to normal preset
+- If song mode was already on, canceling queue keeps song mode on
+
+**State variables (estimated):**
+- ~songMode (bool), ~songSlots (Array[24] of nil or preset index)
+- ~songRepeats (Array[24] of int, default 1), ~songPosition (current slot idx)
+- ~songRepeatCount (current repeat within slot), ~songSelectedSlot (nil or idx)
+- ~songQueuedSlot (nil or idx), ~songConfirmArmed (bool for toggle)
+
+**Open questions:**
+- Song toggle exact position: col 8 row 1/3/5/7? col 13 row 0? somewhere on row 7?
+- Repeat count range: 1-8 (needs 8 rows) or 1-7 (frees a row)?
+- Should song mode persist in sessions/presets?
+- What happens to song position when user manually switches preset during song playback?
+- Should there be a "restart song" gesture?
+
+#### stash slot (edit safety net)
+
+Single hidden buffer that automatically captures unsaved work before it can be lost to a preset switch.
+
+**Core behavior:**
+- User is on preset A, makes any edit → live state silently moves to the stash slot
+- Stash tracks its origin (`~stashOrigin = A`)
+- Stash LED lights up (utility row, bottom-left corner of preset overlay), preset A LED dims to medium
+- All further edits accumulate on the stash — no repeated snapshots, it's just "you're working on the stash now"
+- Stash persists across preset switches: recall B → stash still holds your A-edits, still lit
+
+**Accessing the stash:**
+- Tap stash LED from a saved preset → swap to stash contents (live state becomes your unsaved work)
+- Tap stash LED while on stash → return to clean origin preset (A). Stash still holds your edits — enables A/B bounce between saved and work-in-progress
+- Stash LED: off = empty, lit = occupied, full = currently active
+
+**Saving from stash:**
+- Save (in preset matrix) while on stash → saves to origin slot. Stash clears, you're back "on" preset A
+- Clone to empty slot while on stash → stash contents go to that slot. Stash clears
+
+**Stash lifecycle — what replaces/clears it:**
+1. Making edits on a different saved preset (new stash replaces old, origin updates) — one level deep
+2. Saving or cloning the stash to a permanent slot (stash clears)
+3. Nothing else — deliberate preset switches don't clear it, only new unsaved work does
+
+**First-edit detection:**
+- Single `~markDirty` helper called from all edit codepaths (step toggle, param change, sub-step edit, track clear, mute toggle, start/end change)
+- Guard: `if(~onStash.not) { snapshot current state to stash, set ~onStash = true }`
+- Centralized — avoids scattering stash logic across every edit site
+
+**Quantized switching:**
+- Stash must capture state at the moment the queued switch fires, not when queued — user may still be editing during the queue window
+
+**Session persistence:**
+- Stash survives session save/load — stored as a hidden 50th slot in the session archive
+- If session is saved while on stash, restore to stash-active state
+
+**State variables (estimated):**
+- ~stashSlot (Dictionary, same structure as preset slots, or nil)
+- ~stashOrigin (preset index or nil — where we came from)
+- ~onStash (bool — are we currently working on the stash)
+
+**LED placement:**
+- Utility row during normal view: TBD exact position (bottom-left area has room)
+- Preset matrix overlay: dedicated cell, same brightness rules
+
+**Origin indicator in preset matrix:**
+- When stash is occupied and preset overlay is open, origin slot shows a distinct indicator
+- Needs to be visually separable from queued-preset pulse (which is dim→full→dim) — steady medium or half-rate pulse
+- No indicator when origin is nil (stash populated before any preset was saved/recalled)
+- No conflict with song mode — origin indicator is a brightness state on an existing matrix cell (cols 0-6), song mode uses cols 9-12
+
+**Nil-origin case (no preset ever recalled):**
+- Fresh boot → edit steps → on stash with ~stashOrigin = nil
+- Stash LED lit, but no origin cell to indicate in the matrix
+- Save from stash with nil origin: use normal save gestures (hold preset button on utility row, or save action key in matrix targeting a selected slot) — no special logic needed, just clones current dirty state to target
+- Tapping an empty matrix slot while on stash = no-op (same as today) — avoids breaking "tap = recall" semantics; empty slot has nothing to recall
+- Clone to empty slot still works normally
+
+**Open questions:**
+- Exact grid position for stash LED on utility row and in preset overlay
+- Should mute toggles count as edits? (they're performance gestures, not pattern data — maybe not)
+- Should the stash LED pulse when occupied-but-not-active, to draw attention?
+- Origin indicator style: steady medium vs slow pulse vs something else? Must not conflict with queued-preset pulse
+
 ## abandoned
 - [0] groove templates (swing is implemented; templates would be preset swing curves beyond linear)
 - [0] copy/paste step regions (multi-step copy) - given we have no facility for selecting multiple steps i think we forget this one
-- [0] pattern chaining / song mode - i think we will stick to manual preset switching
 - [0] per-track sample lock (all steps in a track share one sample) - already accomplished with global track overlays
 - [0] FX volumes to transport hold page - conceptually wrong grouping; FX levels belong with FX matrix, transport is for global performance controls; 3 reclaimed FX columns aren't valuable enough
